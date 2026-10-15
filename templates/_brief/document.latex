@@ -1,0 +1,214 @@
+% Appellate brief LaTeX template for Pandoc, shared by the federal and Missouri brief
+% templates (the Missouri one sets the `missouri` variable; the federal one sets `federal`).
+% Typeface: TeX Gyre Termes, a Times clone. 14 pt (federal, FRAP 32(a)(5)) or 13 pt (Missouri,
+% Rule 84.06(a)), footnotes included. The Word version uses Times New Roman itself.
+%
+% Build: scripts/build_pdf.sh runs this several times so the table of contents and the
+% table of authorities (scripts/make_toa.py) have their page numbers.
+\documentclass[12pt,letterpaper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{fontspec}
+\setmainfont{texgyretermes}[
+  Extension      = .otf,
+  UprightFont    = *-regular,
+  BoldFont       = *-bold,
+  ItalicFont     = *-italic,
+  BoldItalicFont = *-bolditalic]
+\usepackage{microtype}
+\usepackage{setspace}
+
+% ---- One type size everywhere (footnotes too), as the court rules require ------------
+\makeatletter
+$if(missouri)$
+\newcommand{\briefsize}{13pt}\newcommand{\brieflead}{15.6pt}
+$else$
+\newcommand{\briefsize}{14pt}\newcommand{\brieflead}{16.8pt}
+$endif$
+\renewcommand\normalsize{\@setfontsize\normalsize{\briefsize}{\brieflead}}
+\let\small\normalsize
+\let\footnotesize\normalsize
+\let\large\normalsize
+\let\Large\normalsize
+\makeatother
+\normalsize
+\doublespacing
+\frenchspacing
+\hyphenpenalty=10000 \exhyphenpenalty=10000 \tolerance=1500
+\setlength{\parindent}{0.5in}
+\setlength{\parskip}{0pt}
+
+\usepackage[hang,flushmargin,bottom]{footmisc}
+\setlength{\footnotemargin}{1.2em}
+\renewcommand{\footnotelayout}{\setstretch{1}}
+\interfootnotelinepenalty=10000
+
+% ---- Headings: MAIN HEADINGS (unnumbered, centered), I.  A.  1. ----------------------
+\usepackage{titlesec}
+\setcounter{secnumdepth}{4}
+\renewcommand{\thesection}{}
+\renewcommand{\thesubsection}{\Roman{subsection}.}
+\renewcommand{\thesubsubsection}{\Alph{subsubsection}.}
+\renewcommand{\theparagraph}{\arabic{paragraph}.}
+\titleformat{\section}{\normalfont\bfseries\centering\singlespacing}{}{0pt}{\MakeUppercase}
+\titleformat{\subsection}[hang]{\normalfont\bfseries\singlespacing}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}[hang]{\normalfont\bfseries\singlespacing}{\thesubsubsection}{1em}{}
+\titleformat{\paragraph}[hang]{\normalfont\bfseries\singlespacing}{\theparagraph}{1em}{}
+\titlespacing*{\section}{0pt}{1em}{1em}
+\titlespacing*{\subsection}{0pt}{0.5em}{1em}
+\titlespacing*{\subsubsection}{1.5em}{0.5em}{1em}
+\titlespacing*{\paragraph}{3em}{0.5em}{1em}
+\setlength{\parskip}{0pt}
+
+% ---- Pandoc plumbing -----------------------------------------------------------------
+\usepackage{xcolor}
+\usepackage{graphicx}
+\makeatletter
+\providecommand{\pandocbounded}[1]{#1}
+\makeatother
+\usepackage{longtable,booktabs,array,calc}
+\usepackage{enumitem}
+\setlist{nosep}
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{etoolbox}
+\usepackage[hidelinks]{hyperref}
+\usepackage{bookmark}
+\urlstyle{same}
+
+% ---- Redline markup (used by `make redline`) -----------------------------------------
+\IfFileExists{ulem.sty}{%
+  \usepackage[normalem]{ulem}%
+  \newcommand{\redins}[1]{{\color{blue}\uline{##1}}}%
+  \newcommand{\reddel}[1]{{\color{red}\sout{##1}}}%
+}{%
+  \newcommand{\redins}[1]{{\color{blue}##1}}%
+  \newcommand{\reddel}[1]{{\color{red}[##1]}}%
+}
+\newcommand{\redinsplain}[1]{{\color{blue}#1}}
+\newcommand{\reddelplain}[1]{{\color{red}#1}}
+
+% ---- Table of contents: dotted leaders on every level ---------------------------------
+\setcounter{tocdepth}{4}
+\makeatletter
+\renewcommand\contentsname{Table of Contents}
+\renewcommand*\l@section{\@dottedtocline{1}{0em}{0em}}
+\renewcommand*\l@subsection{\@dottedtocline{2}{1.5em}{2.3em}}
+\renewcommand*\l@subsubsection{\@dottedtocline{3}{3.8em}{2.3em}}
+\renewcommand*\l@paragraph{\@dottedtocline{4}{6.1em}{2.3em}}
+\renewcommand\@dotsep{1.5}
+\makeatother
+
+% ---- Table of authorities (filled in by scripts/make_toa.py) --------------------------
+% toa.lua puts \toamark{category}{tag} in front of each cite inserted from the library.
+% Each mark records its page in <job>.toa-raw; make_toa.py turns that into <job>.toa.tex.
+\makeatletter
+\newwrite\toarawfile
+\immediate\openout\toarawfile=\jobname.toa-raw
+\newcommand{\toamark}[2]{\protected@write\toarawfile{}{\string\toaraw{#1}{#2}{\thepage}}}
+\makeatother
+\newcommand{\toacat}[1]{\par\vspace{0.8em}\noindent{\bfseries #1}\par\nopagebreak\vspace{0.3em}}
+\newcommand{\toaentry}[2]{%
+  \begingroup\hangindent=1.5em\hangafter=1\noindent #1\unskip\nobreak
+  \leaders\hbox to 0.5em{\hss.\hss}\hskip 2em plus 1fill\nobreak\mbox{#2}\par\endgroup\vspace{0.4em}}
+
+$for(header-includes)$
+$header-includes$
+$endfor$
+
+\begin{document}
+
+% ---- Cover ----------------------------------------------------------------------------
+\thispagestyle{empty}
+\begin{center}
+\singlespacing
+$if(case-number)$\textbf{$case-number$}\par\vspace{1.2em}$endif$
+$for(court)$\textbf{$court$}\par
+$endfor$
+\vspace{0.6em}\rule{0.7\textwidth}{0.5pt}\par\vspace{1.2em}
+$if(appellant)$
+\begin{minipage}{0.75\textwidth}\raggedright
+$appellant.name$\\
+\hspace*{3em}\textit{$appellant.role$}\\[1em]
+\hspace*{1.5em}v.\\[1em]
+$appellee.name$\\
+\hspace*{3em}\textit{$appellee.role$}
+\end{minipage}\par
+$endif$
+\vspace{1.2em}\rule{0.7\textwidth}{0.5pt}\par\vspace{1.2em}
+$for(appeal-from)$$appeal-from$\par
+$endfor$
+\vspace{1.2em}\rule{0.7\textwidth}{0.5pt}\par\vspace{1.5em}
+{\bfseries $if(brief-title)$$brief-title$$else$BRIEF$endif$}\par
+\vfill
+\begin{minipage}{0.7\textwidth}\raggedright
+$for(counsel)$$counsel$\\
+$endfor$
+\end{minipage}
+\end{center}
+\clearpage
+
+% ---- Tables (lower-case roman page numbers) -------------------------------------------
+\pagenumbering{roman}
+\pagestyle{plain}
+{\singlespacing\tableofcontents}
+\clearpage
+\section*{Table of Authorities}
+\addcontentsline{toc}{section}{Table of Authorities}
+{\singlespacing\IfFileExists{\jobname.toa.tex}{\input{\jobname.toa.tex}}{\par\textit{(Build once more to fill in the table of authorities.)}}}
+\clearpage
+
+% ---- Body (page 1 starts here) --------------------------------------------------------
+\pagenumbering{arabic}
+$body$
+
+% ---- Signature block ------------------------------------------------------------------
+\par\vspace{1.5em}
+\begin{flushright}
+\begin{minipage}{0.55\textwidth}\singlespacing\raggedright
+Respectfully submitted,\par\vspace{1.6em}
+$if(signature)$/s/ $signature$\\$endif$
+$for(counsel)$$counsel$\\
+$endfor$
+\end{minipage}
+\end{flushright}
+
+% ---- Certificates -----------------------------------------------------------------------
+\clearpage
+$if(missouri)$
+\section*{Certificate of Compliance and Service}
+\addcontentsline{toc}{section}{Certificate of Compliance and Service}
+\par Pursuant to Rule 84.06(c), the undersigned certifies that:
+\begin{enumerate}[label=(\arabic*),itemsep=0.5em]
+\item this brief includes the information required by Rule 55.03;
+\item this brief complies with the limitations contained in Rule 84.06(b); and
+\item this brief contains $if(words)$$words$$else$[\textit{N}]$endif$ words.
+\end{enumerate}
+\par $if(date)$On $date$, $else$On [\textit{date}], $endif$$if(service)$$service$$else$a copy of this brief was served through the Missouri Courts electronic filing system on all counsel of record.$endif$
+\par\vspace{1em}
+\begin{flushright}\begin{minipage}{0.55\textwidth}\singlespacing\raggedright
+$if(signature)$/s/ $signature$$endif$
+\end{minipage}\end{flushright}
+$else$
+\section*{Certificate of Compliance}
+\addcontentsline{toc}{section}{Certificate of Compliance}
+\begin{enumerate}[label=\arabic*.,itemsep=0.5em]
+\item This brief complies with the type-volume limitation of Fed. R. App. P. 32(a)(7)(B) because it contains $if(words)$$words$$else$[\textit{N}]$endif$ words, excluding the parts of the brief exempted by Fed. R. App. P. 32(f).
+\item This brief complies with the typeface requirements of Fed. R. App. P. 32(a)(5) and the type-style requirements of Fed. R. App. P. 32(a)(6) because it has been prepared in a proportionally spaced typeface in 14-point $if(typeface)$$typeface$$else$TeX Gyre Termes (a Times-style typeface)$endif$.
+\item Pursuant to 8th Cir. R. 28A(h), the electronic version of this brief was scanned for viruses and is virus-free.
+\end{enumerate}
+\par\vspace{1em}
+\begin{flushright}\begin{minipage}{0.55\textwidth}\singlespacing\raggedright
+$if(signature)$/s/ $signature$$endif$
+\end{minipage}\end{flushright}
+
+\clearpage
+\section*{Certificate of Service}
+\addcontentsline{toc}{section}{Certificate of Service}
+\par I certify that $if(date)$on $date$, $else$on [\textit{date}], $endif$I electronically filed the foregoing brief with the Clerk of $if(court-name)$$court-name$$else$the Court$endif$ by using the CM/ECF system. Participants in the case who are registered CM/ECF users will be served by the CM/ECF system.
+\par\vspace{1em}
+\begin{flushright}\begin{minipage}{0.55\textwidth}\singlespacing\raggedright
+$if(signature)$/s/ $signature$$endif$
+\end{minipage}\end{flushright}
+$endif$
+
+\end{document}

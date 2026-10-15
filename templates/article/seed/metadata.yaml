@@ -1,0 +1,11 @@
+# Front matter for every build. Edit freely.
+title: "{{title}}"
+author:
+  - name: Brianna Imm
+    note: "J.D. Thanks to … for comments on earlier drafts."
+abstract: |
+  One paragraph stating the problem, the gap in the literature, and the
+  article's contribution. Replace this placeholder.
+# singlespace: true        # uncomment for a single-spaced reading copy
+# toc: true                # uncomment to add a table of contents
+lang: en-US

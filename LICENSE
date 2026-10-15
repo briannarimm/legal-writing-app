@@ -1,0 +1,93 @@
+ReWord is distributed under two licenses, by type of content.
+
+  1. Software (source code, scripts, filters, templates' code, build files):
+     MIT License. See Part 1.
+  2. Documentation and written content (README.md, distro/README.md, docs/,
+     and the instructional text in templates/*/seed/): Creative Commons
+     Attribution 4.0 International (CC BY 4.0). See Part 2.
+
+Third-party components keep their own licenses. See Part 3.
+
+Copyright (c) 2026 Brianna Imm
+
+
+===============================================================================
+Part 1. MIT License (software)
+===============================================================================
+
+Copyright (c) 2026 Brianna Imm
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+===============================================================================
+Part 2. Creative Commons Attribution 4.0 International (documentation)
+===============================================================================
+
+Copyright (c) 2026 Brianna Imm
+
+The documentation and written content identified above are licensed under the
+Creative Commons Attribution 4.0 International License (CC BY 4.0).
+
+You are free to:
+  - Share: copy and redistribute the material in any medium or format.
+  - Adapt: remix, transform, and build upon the material for any purpose,
+    even commercially.
+
+Under the following terms:
+  - Attribution: You must give appropriate credit, provide a link to the
+    license, and indicate if changes were made. You may do so in any
+    reasonable manner, but not in any way that suggests the licensor endorses
+    you or your use.
+  - No additional restrictions: You may not apply legal terms or
+    technological measures that legally restrict others from doing anything
+    the license permits.
+
+Full legal code: https://creativecommons.org/licenses/by/4.0/legalcode
+
+Notice: This license does not cover the documents, notes, sources or attached
+files that a person makes or stores with ReWord. That material belongs to its
+authors and stays under its own terms.
+
+
+===============================================================================
+Part 3. Third-party components
+===============================================================================
+
+PDF.js (app/static/vendor/pdfjs/)
+  Copyright Mozilla Foundation and contributors.
+  Apache License 2.0. The full license text is in
+  app/static/vendor/pdfjs/LICENSE.
+
+The Indigo Book: A Manual of Legal Citation, 2nd ed. (2023 revision)
+  Abbreviation tables T11, T12.1, T15 and T18, copied into
+  app/data/abbreviations.json.
+  Dedicated to the public domain under CC0 1.0 Universal by Public.Resource.Org.
+  https://creativecommons.org/publicdomain/zero/1.0/
+
+Components that the stand-alone app downloads at build time and bundles
+(they are inside the zip file in distro/, not in the source code):
+  - Python (python-build-standalone): Python Software Foundation License 2.0.
+  - Pandoc: GNU General Public License v2.0 or later.
+  - Tectonic: MIT License. Its TeX support files have their own licenses
+    (mostly the LaTeX Project Public License and the SIL Open Font License).
+  Anyone who redistributes the built app must comply with these licenses,
+  including the source-availability terms of the GPL for Pandoc. The zip in
+  distro/ contains THIRD-PARTY NOTICES.txt, which gives the version, checksum
+  and source-code location of each bundled program.

@@ -1,0 +1,12 @@
+{
+  "id": "memo",
+  "name": "Legal memo",
+  "description": "Internal office memorandum: MEMORANDUM header with To/From/Date/Re, single-spaced, with Question Presented, Brief Answer, Facts, Discussion and Conclusion sections.",
+  "outputs": ["pdf", "docx"],
+  "multi_section": true,
+  "cite_mode": "inline",
+  "toa": false,
+  "redline": true,
+  "heading_scheme": "memo",
+  "new_section_heading": "#"
+}

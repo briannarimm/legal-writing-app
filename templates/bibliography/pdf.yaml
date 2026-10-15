@@ -1,0 +1,6 @@
+to: latex
+template: templates/bibliography/document.latex
+pdf-engine: xelatex
+filters:
+  - filters/redline-latex.lua
+  - filters/bibliography.lua

@@ -1,0 +1,7 @@
+to: docx
+reference-doc: templates/bibliography/reference.docx
+filters:
+  - filters/docx.lua
+  - filters/bibliography.lua
+metadata:
+  heading-levels: [none, none, none, none]

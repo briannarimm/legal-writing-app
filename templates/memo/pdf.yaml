@@ -1,0 +1,5 @@
+to: latex
+template: templates/memo/document.latex
+pdf-engine: xelatex
+filters:
+  - filters/redline-latex.lua

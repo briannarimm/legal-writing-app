@@ -1,0 +1,8 @@
+# Annotated bibliography. citation-style: apa, bluebook (briefs and memos) or bluebook-lawreview.
+title: "{{title}}"
+author: "Your Name"
+# course: "COURSE 101: Course Name"
+# date: "October 14, 2026"
+citation-style: apa
+# single: true          # uncomment for single spacing
+lang: en-US

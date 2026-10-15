@@ -1,0 +1,16 @@
+{
+  "id": "brief-missouri",
+  "name": "Missouri appellate brief",
+  "description": "Missouri appellate brief modeled on Supreme Court Rules 84.04 and 84.06: cover page, table of contents, table of authorities, 13-point double-spaced text, jurisdictional statement, statement of facts, points relied on, argument, and a certificate of compliance and service. Cites inserted from your library feed the table of authorities.",
+  "outputs": [
+    "pdf",
+    "docx"
+  ],
+  "multi_section": true,
+  "cite_mode": "inline",
+  "toa": true,
+  "redline": true,
+  "heading_scheme": "brief",
+  "word_limit": 31000,
+  "pdf_builder": "toa"
+}

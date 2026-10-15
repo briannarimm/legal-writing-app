@@ -1,0 +1,16 @@
+{
+  "id": "brief-federal",
+  "name": "Federal appellate brief",
+  "description": "Federal court of appeals brief modeled on FRAP 28 and 32 and Eighth Circuit practice: cover page, table of contents, table of authorities, 14-point double-spaced text, signature block and certificates. Cites inserted from your library feed the table of authorities.",
+  "outputs": [
+    "pdf",
+    "docx"
+  ],
+  "multi_section": true,
+  "cite_mode": "inline",
+  "toa": true,
+  "redline": true,
+  "heading_scheme": "brief",
+  "word_limit": 13000,
+  "pdf_builder": "toa"
+}

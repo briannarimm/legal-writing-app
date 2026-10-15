@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReWord</title>
+<script>
+  // Set the theme before anything paints, so there is no flash of the wrong colors.
+  (function () {
+    var t = 'light';
+    try {
+      t = localStorage.getItem('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.style.setProperty('--page-scale', localStorage.getItem('pageScale') || '1');
+    } catch (e) { /* storage blocked: use light */ }
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- ================= Title bar ================= -->
+<header id="titlebar">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" class="logo" aria-hidden="true"><path d="M5 9h14v8H5z M8 9V5h8v4 M7 20h10 M9 13h6"/></svg>
+    ReWord
+  </div>
+  <nav id="nav">
+    <button data-view="writing" class="active">Writing</button>
+    <button data-view="research">Research</button>
+    <button data-view="citations">Citations</button>
+  </nav>
+  <div id="project-switch"></div>
+  <span id="save-status" class="muted">Loading…</span>
+  <div class="spacer"></div>
+  <span id="version-info" class="muted writing-only"></span>
+  <div id="theme-switch" class="seg" role="group" aria-label="Color theme">
+    <button data-theme-btn="light" title="Light"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2 M12 19v2 M3 12h2 M19 12h2 M5.6 5.6l1.4 1.4 M17 17l1.4 1.4 M5.6 18.4L7 17 M17 7l1.4-1.4"/></svg></button>
+    <button data-theme-btn="dark" title="Dark"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
+    <button data-theme-btn="dark-paper" title="Dark, with a white page to write on"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z M4 4h8v16H4z" /></svg></button>
+  </div>
+</header>
+
+<!-- ================= Ribbon ================= -->
+<div id="ribbon">
+  <div class="rb-tabs">
+    <button class="rb-tab active" data-tab="home">Home</button>
+    <button class="rb-tab" data-tab="insert">Insert</button>
+    <button class="rb-tab" data-tab="view">View</button>
+    <button class="rb-tab" data-tab="publish">Publish</button>
+    <button class="rb-tab ctx" data-tab="research" data-for-view="research">Research</button>
+    <button class="rb-tab ctx" data-tab="library" data-for-view="citations">Library</button>
+    <span class="spacer"></span>
+    <button id="rb-keys" class="rb-collapse" title="Keyboard shortcuts">⌨</button>
+    <button id="rb-collapse" class="rb-collapse" title="Collapse the ribbon">▴</button>
+  </div>
+  <div class="rb-body">
+
+    <div class="rb-panel active" data-panel="home">
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn" id="btn-save" data-ic="save" title="Save now (⌘S)"><span class="lbl">Save</span></button>
+          <button class="rb-btn primary writing-only" id="btn-run" data-ic="run" title="Commit, then build this document and make its redline"><span class="lbl">Run</span></button>
+          <button class="rb-btn writing-only" id="btn-tag" data-ic="tag" title="Mark this draft as a version. The next redline compares against it."><span class="lbl">Tag version</span></button>
+          <button class="rb-btn writing-only toggle" id="btn-final" data-ic="final" title="Final draft: Run also builds a copy with short forms, Id. and supra (the draft keeps every citation in full)"><span class="lbl">Final draft</span></button>
+        </div>
+        <div class="rb-label">Document <span id="run-step" class="muted"></span></div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn" data-cmd="manageProjects" data-ic="projects" title="Create, edit or delete projects"><span class="lbl">Projects</span></button>
+          <button class="rb-btn" data-cmd="newProject" data-ic="plus" title="Start a new project"><span class="lbl">New project</span></button>
+        </div>
+        <div class="rb-label">Project</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn sm" data-cmd="italic" title="Italic (⌘I)"><i>I</i></button>
+          <button class="rb-btn sm" data-cmd="bold" title="Bold (⌘B)"><b>B</b></button>
+          <button class="rb-btn sm" data-cmd="smallcaps" title="Large and small caps (for journal names)"><span class="sc">Sc</span></button>
+        </div>
+        <div class="rb-label">Font</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items col">
+          <select id="tb-block" class="rb-select" title="Paragraph style" data-views="writing research">
+            <option value="p">Body text</option>
+            <option value="h1">Heading 1</option>
+            <option value="h2">Heading 2</option>
+            <option value="h3">Heading 3</option>
+            <option value="h4">Heading 4</option>
+            <option value="blockquote">Block quote</option>
+          </select>
+          <div class="rb-row">
+            <button class="rb-btn sm" data-cmd="ul" data-views="writing research" title="Bulleted list">• List</button>
+            <button class="rb-btn sm" data-cmd="ol" data-views="writing research" title="Numbered list">1. List</button>
+            <button class="rb-btn sm" data-cmd="quote" data-views="writing research" title="Block quote: set the cursor paragraph off as a quotation (click again to undo)">❝ Quote</button>
+            <button class="rb-btn sm" id="tb-unnumbered" data-cmd="unnumbered" data-views="writing" title="Toggle “no number” on this heading (for Introduction, Conclusion)">No №</button>
+          </div>
+        </div>
+        <div class="rb-label">Paragraph</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn" data-cmd="cite" data-ic="cite" data-views="writing research" title="Insert a citation from your library at the cursor"><span class="lbl">Cite…</span></button>
+          <button class="rb-btn" data-cmd="footnote" data-ic="footnote" data-views="writing" title="Insert a footnote at the cursor"><span class="lbl">Footnote</span></button>
+        </div>
+        <div class="rb-label">Insert</div>
+      </div>
+      <div class="rb-group" id="email-tools" hidden>
+        <div class="rb-items">
+          <button class="rb-btn" id="em-copy" data-ic="copy" title="Copy the email with its formatting, ready to paste into Gmail or Outlook"><span class="lbl">Copy email</span></button>
+          <button class="rb-btn" id="em-subject" data-ic="copy" title="Copy the subject line"><span class="lbl">Subject</span></button>
+          <button class="rb-btn" id="em-mailto" data-ic="mail" title="Open a draft in your mail app (plain text)"><span class="lbl">Open in Mail</span></button>
+        </div>
+        <div class="rb-label">Email</div>
+      </div>
+    </div>
+
+    <div class="rb-panel" data-panel="insert">
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn" id="tb-footnote" data-cmd="footnote" data-ic="footnote" data-views="writing" title="Insert a footnote at the cursor"><span class="lbl">Footnote</span></button>
+          <button class="rb-btn" id="tb-cite" data-cmd="cite" data-ic="cite" data-views="writing research" title="Insert a citation from your library"><span class="lbl">Cite…</span></button>
+          <button class="rb-btn" data-cmd="bibAdd" data-ic="books" data-views="writing" title="Annotated bibliography: add sources from your library as entries"><span class="lbl">Sources…</span></button>
+        </div>
+        <div class="rb-label">Insert</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn" data-cmd="addSection" data-ic="plus" data-views="writing" id="tb-addsection" title="Add a section to this document"><span class="lbl">Section</span></button>
+          <button class="rb-btn" data-cmd="newDoc" data-ic="doc" title="Start a new document from a template"><span class="lbl">Document</span></button>
+          <button class="rb-btn" data-cmd="newNote" data-ic="note" title="Start a research note"><span class="lbl">Note</span></button>
+          <button class="rb-btn" data-cmd="newCite" data-ic="cite" title="Add a citation to the library"><span class="lbl">Citation</span></button>
+        </div>
+        <div class="rb-label">New</div>
+      </div>
+    </div>
+
+    <div class="rb-panel" data-panel="view">
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn sm" data-layout="editor" data-views="writing research" title="Editor only">Editor</button>
+          <button class="rb-btn sm" data-layout="split" data-views="writing research" title="Editor and preview side by side">Split</button>
+          <button class="rb-btn sm" data-layout="preview" data-views="writing research" title="Preview only">Preview</button>
+        </div>
+        <div class="rb-label">Layout</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn sm" data-editmode="rich" data-views="writing research" title="Edit the formatted text">Rich text</button>
+          <button class="rb-btn sm" data-editmode="md" data-views="writing research" title="Edit the Markdown directly (both stay in sync)">Markdown</button>
+        </div>
+        <div class="rb-label">Edit as</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items col">
+          <select id="view-zoom" class="rb-select" title="Zoom for the PDF preview" data-views="writing">
+            <option value="fit">Fit width</option>
+            <option value="75">75%</option>
+            <option value="100">100%</option>
+            <option value="125">125%</option>
+            <option value="150">150%</option>
+            <option value="200">200%</option>
+          </select>
+          <button class="rb-btn sm" id="view-newtab" data-views="writing" title="Open the preview in its own browser tab">Open in tab</button>
+        </div>
+        <div class="rb-label">Preview zoom</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn sm" id="size-down" title="Smaller text in the editor">A−</button>
+          <button class="rb-btn sm" id="size-reset" title="Normal text size">A</button>
+          <button class="rb-btn sm" id="size-up" title="Larger text in the editor">A+</button>
+        </div>
+        <div class="rb-label">Editor text size</div>
+      </div>
+    </div>
+
+    <div class="rb-panel" data-panel="publish">
+      <div class="rb-group">
+        <div class="rb-items col">
+          <div class="rb-path" id="out-path" title="">…</div>
+          <div class="rb-row">
+            <button class="rb-btn sm" data-cmd="openOutput" data-ic-sm="folder" title="Show the output folder in Finder">Open</button>
+            <button class="rb-btn sm" data-cmd="changeOutput" title="Choose a different output folder">Change…</button>
+          </div>
+        </div>
+        <div class="rb-label">Output folder</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn primary" data-cmd="publish" data-ic="upload" title="Copy this document's latest build into the output folder, commit it, and push it to GitHub (once connected)"><span class="lbl">Publish</span></button>
+          <div class="rb-items col wide">
+            <div class="gh-status" id="gh-out-status">…</div>
+            <div class="rb-row">
+              <button class="rb-btn sm" data-cmd="connectOutputs" title="Connect the output folder to a GitHub repository">Connect…</button>
+              <button class="rb-btn sm" data-cmd="webOutputs" id="gh-out-web" title="Open the repository on GitHub">View on GitHub</button>
+            </div>
+          </div>
+        </div>
+        <div class="rb-label">Outputs → GitHub</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn primary" data-cmd="syncWork" data-ic="sync" title="Save your documents, research, citations and their files to GitHub, and bring in changes made on your other computers"><span class="lbl">Sync</span></button>
+          <div class="rb-items col wide">
+            <div class="gh-status" id="gh-work-status">…</div>
+            <div class="rb-row">
+              <button class="rb-btn sm" data-cmd="connectWork" title="Connect your work (documents, research, library) to a private GitHub repository">Connect…</button>
+              <button class="rb-btn sm" data-cmd="webWork" id="gh-work-web" title="Open the repository on GitHub">View on GitHub</button>
+            </div>
+          </div>
+        </div>
+        <div class="rb-label">Your work → GitHub</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items col">
+          <label class="rb-check" title="After every Run, also push the output folder to GitHub"><input type="checkbox" id="pub-auto"> Push outputs after every Run</label>
+        </div>
+        <div class="rb-label">Automatic</div>
+      </div>
+    </div>
+
+
+    <div class="rb-panel" data-panel="research">
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn" data-cmd="newNote" data-ic="note" title="Start a research note"><span class="lbl">New note</span></button>
+          <button class="rb-btn" data-cmd="cite" data-ic="cite" data-views="research" title="Insert a citation from your library"><span class="lbl">Cite…</span></button>
+        </div>
+        <div class="rb-label">Note</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn sm" data-editmode="rich" data-views="research" title="Edit the formatted text">Rich text</button>
+          <button class="rb-btn sm" data-editmode="md" data-views="research" title="Edit the Markdown directly (both stay in sync)">Markdown</button>
+        </div>
+        <div class="rb-label">Edit as</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn sm" data-layout="editor" data-views="research" title="Editor only">Editor</button>
+          <button class="rb-btn sm" data-layout="split" data-views="research" title="Editor and page view side by side">Split</button>
+          <button class="rb-btn sm" data-layout="preview" data-views="research" title="Page view only">Page</button>
+        </div>
+        <div class="rb-label">Layout</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn" data-cmd="exportPdf" data-ic="doc" data-views="research" title="Save this note as a PDF"><span class="lbl">PDF</span></button>
+          <button class="rb-btn" data-cmd="exportDocx" data-ic="doc" data-views="research" title="Save this note as a Word file"><span class="lbl">Word</span></button>
+        </div>
+        <div class="rb-label">Export</div>
+      </div>
+    </div>
+
+    <div class="rb-panel" data-panel="library">
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn" data-cmd="newCite" data-ic="cite" title="Add a source to the library"><span class="lbl">New source</span></button>
+          <button class="rb-btn" data-cmd="lookup" data-ic="search" data-views="citations" title="Fill in a source from its DOI, ISBN or web address"><span class="lbl">Look up</span></button>
+        </div>
+        <div class="rb-label">Source</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn" data-cmd="attachFile" data-ic="clip" data-views="citations" title="Attach a PDF of this source (or drop one on the reader)"><span class="lbl">Attach PDF</span></button>
+          <button class="rb-btn" data-cmd="snapshot" data-ic="camera" data-views="citations" title="Save the source’s web page as a PDF you can read offline and annotate"><span class="lbl">Snapshot</span></button>
+          <button class="rb-btn" data-cmd="livePage" data-ic="globe" data-views="citations" title="Open the live web page in your browser"><span class="lbl">Live page</span></button>
+        </div>
+        <div class="rb-label">Files</div>
+      </div>
+      <div class="rb-group">
+        <div class="rb-items">
+          <button class="rb-btn" data-cmd="highlight" data-ic="marker" data-views="citations" title="Highlight the text selected in the reader (or pick a color from the bar that appears)"><span class="lbl">Highlight</span></button>
+          <div class="rb-items col">
+            <div class="rb-row">
+              <button class="rb-btn sm" data-cmd="readerOut" data-views="citations" title="Smaller (⌥⌘−)">−</button>
+              <button class="rb-btn sm" data-cmd="readerFit" data-views="citations" title="Fit the width">Fit</button>
+              <button class="rb-btn sm" data-cmd="readerIn" data-views="citations" title="Bigger (⌥⌘+)">+</button>
+            </div>
+          </div>
+          <button class="rb-btn" data-cmd="exportAnnotated" data-ic="download" data-views="citations" title="Save a copy of the PDF with your highlights and comments written in"><span class="lbl">Export annotated</span></button>
+        </div>
+        <div class="rb-label">Read and annotate</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= Writing ================= -->
+<main id="view-writing" class="view layout-split">
+  <nav class="sidebar" id="tree-pane">
+    <button id="btn-newdoc" class="btn small wide primary-soft">+ New document</button>
+    <div id="tree"></div>
+    <div id="wordcount" class="muted small"></div>
+  </nav>
+
+  <section class="editor-pane" id="editor-pane">
+    <div id="empty-writing" class="empty big" hidden>
+      <p>No documents yet.</p>
+      <button class="btn primary" id="btn-newdoc-2">+ New document</button>
+    </div>
+    <div class="scroller" id="scroller">
+      <div class="page" id="page">
+        <div id="doc" contenteditable="true" spellcheck="true" data-rich="block"></div>
+        <div id="notes-title">Footnotes</div>
+        <div id="notes"></div>
+      </div>
+      <textarea id="doc-md" class="md-editor" spellcheck="true" hidden></textarea>
+      <div id="meta-wrap" hidden>
+        <div class="row proj-row"><label class="inline-label">Project <span id="doc-project"></span></label>
+          <span class="hint">Sources you cite here are added to the project automatically.</span></div>
+        <p class="hint" id="meta-hint">Document details, as YAML: keep the quotes and the indentation.</p>
+        <textarea id="meta-editor" spellcheck="false"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <div id="splitter" title="Drag to resize the editor and preview"></div>
+
+  <section class="right-pane" id="right-pane">
+    <div id="tabs" class="tabs">
+      <button class="tab active" data-tab="md">Markdown</button>
+      <button class="tab" data-tab="pdf">Preview</button>
+      <button class="tab" data-tab="log">Run log</button>
+      <span class="spacer"></span>
+    </div>
+    <div id="tab-md" class="tabbody"><pre id="md-view"></pre></div>
+    <div id="tab-pdf" class="tabbody" hidden>
+      <div id="pdf-bar"></div>
+      <div id="pdf-view" hidden></div>
+      <div id="pdf-zoom" aria-label="Zoom the preview">
+        <button id="pz-out" title="Zoom out (⌥⌘−)">−</button>
+        <button id="pz-val" title="Fit the page to the width of the pane">100%</button>
+        <button id="pz-in" title="Zoom in (⌥⌘+)">+</button>
+      </div>
+      <iframe id="pdf-frame" title="Preview" hidden></iframe>
+      <div id="pdf-empty" class="empty">Press <b>Run</b> to build this document.</div>
+    </div>
+    <div id="tab-log" class="tabbody" hidden>
+      <pre id="log-view"></pre>
+    </div>
+  </section>
+</main>
+
+<!-- ================= Research ================= -->
+<main id="view-research" class="view view-2col" hidden>
+  <nav class="sidebar">
+    <div class="side-row">
+      <input id="rs-search" type="search" placeholder="Search notes">
+    </div>
+    <button id="btn-newnote" class="btn small wide primary-soft">+ New note</button>
+    <div id="note-list"></div>
+  </nav>
+  <section class="detail">
+    <div id="note-empty" class="empty big">
+      <p>Research notes live here: one note per source, topic or idea.</p>
+      <p class="muted small">Creating a note asks for the source's citation, so it lands in your Citations library at the same time.</p>
+    </div>
+    <div id="note-editor" hidden>
+      <div class="note-head">
+        <input id="note-title" class="title-input" placeholder="Note title">
+        <div class="row">
+          <label class="inline-label">Topic <input id="note-topic" list="topic-list" placeholder="e.g. Standing, Trust law"></label>
+          <label class="inline-label">Project <span id="note-project"></span></label>
+          <datalist id="topic-list"></datalist>
+          <span class="spacer"></span>
+          <button id="note-export-docx" class="btn small" title="Save this note as a Word file">Export Word</button>
+          <button id="note-export-pdf" class="btn small" title="Save this note as a PDF">Export PDF</button>
+          <button id="note-delete" class="btn small danger" title="Move this note to research/_trash">Delete note</button>
+        </div>
+        <div id="note-source" class="source-card"></div>
+      </div>
+      <div id="note-split" class="note-split layout-split">
+        <div class="note-left">
+          <div class="scroller" id="note-rich">
+            <div class="page note-page">
+              <div id="note-body" contenteditable="true" spellcheck="true" data-rich="block"></div>
+            </div>
+          </div>
+          <textarea id="note-md" class="md-editor" spellcheck="true" hidden placeholder="Write in Markdown: *italic*, **bold**, [small caps]{.smallcaps}, # Heading, - list, > quote, footnotes[^1]
+
+[^1]: like this."></textarea>
+        </div>
+        <div class="note-right">
+          <div class="pane-label">Page view <span class="muted small" id="note-render-state"></span></div>
+          <div class="scroller"><div class="page note-render" id="note-render"></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ================= Citations ================= -->
+<main id="view-citations" class="view view-2col" hidden>
+  <nav class="sidebar">
+    <div class="side-row">
+      <input id="ct-search" type="search" placeholder="Search citations">
+    </div>
+    <div class="side-row">
+      <select id="ct-filter"><option value="">All types</option></select>
+    </div>
+    <button id="btn-newcite" class="btn small wide primary-soft">+ New citation</button>
+    <div id="cite-list"></div>
+  </nav>
+  <section class="detail">
+    <div id="cite-empty" class="empty big">
+      <p>Your shared citation library. Every document and note can use it.</p>
+    </div>
+    <div id="cite-work" hidden>
+      <div id="cite-editor">
+        <h2 id="cite-heading">Citation</h2>
+        <div id="cite-form"></div>
+        <div class="row" id="cite-actions"></div>
+        <div id="cite-notes"></div>
+      </div>
+      <div id="cite-source">
+        <div class="src-bar">
+          <select id="src-file" title="Files attached to this source"></select>
+          <button class="btn small" id="src-attach" title="Attach a PDF of this source (or drop one here)">Attach PDF…</button>
+          <input type="file" id="src-input" accept="application/pdf,.pdf" hidden multiple>
+          <button class="btn small" id="src-snap" title="Save the source's web page as a PDF you can read offline and annotate">Snapshot page</button>
+          <button class="btn small" id="src-live" title="Open the live web page in your browser">Live page ↗</button>
+          <span class="spacer"></span>
+          <button class="btn small" id="src-zoom-out" title="Smaller">−</button>
+          <button class="btn small" id="src-zoom-fit" title="Fit the width">Fit</button>
+          <button class="btn small" id="src-zoom-in" title="Bigger">+</button>
+          <button class="btn small" id="src-export" title="Save a copy of the PDF with your highlights and comments written in (opens in Preview, Acrobat…)">Export annotated</button>
+          <button class="btn small danger" id="src-remove" title="Move this file to the trash folder">Remove</button>
+        </div>
+        <div class="src-body">
+          <div id="src-view" class="reader"></div>
+          <aside id="src-anns" class="ann-list"></aside>
+        </div>
+        <div id="src-empty" class="empty">
+          <p><b>No file yet.</b> Attach a PDF of this source, or save a snapshot of its web page.</p>
+          <p class="muted small">You can also drop a PDF here. Files are stored with your library (library/files/), so they sync with your research.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ================= Dialogs ================= -->
+<dialog id="dlg-newdoc">
+  <h2>New document</h2>
+  <div id="tpl-grid" class="tpl-grid"></div>
+  <label class="block-label">Title
+    <input id="nd-title" placeholder="A short name you'll recognize">
+  </label>
+  <label class="block-label">Project <span id="nd-project"></span></label>
+  <div class="dlg-actions">
+    <button class="btn" data-close>Cancel</button>
+    <button class="btn primary" id="nd-create">Create</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-newnote">
+  <h2>New research note</h2>
+  <label class="block-label">Note title
+    <input id="nn-title" placeholder="e.g. Smith v. Jones: holding on standing">
+  </label>
+  <label class="block-label">Topic (optional)
+    <input id="nn-topic" list="topic-list" placeholder="e.g. Standing">
+  </label>
+  <fieldset class="source-choice">
+    <legend>Source</legend>
+    <label><input type="radio" name="nn-src" value="new" checked> New source (adds it to Citations)</label>
+    <label><input type="radio" name="nn-src" value="existing"> A source already in Citations</label>
+    <label><input type="radio" name="nn-src" value="none"> No source</label>
+  </fieldset>
+  <div id="nn-new"></div>
+  <div id="nn-existing" hidden>
+    <button class="btn" id="nn-pick">Choose a citation…</button>
+    <div id="nn-picked" class="source-card" hidden></div>
+  </div>
+  <div id="nn-error" class="error" hidden></div>
+  <div class="dlg-actions">
+    <button class="btn" data-close>Cancel</button>
+    <button class="btn primary" id="nn-create">Create note</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-cite">
+  <h2 id="cp-title">Insert a citation</h2>
+  <div class="cp-top">
+    <input id="cp-search" type="search" placeholder="Search by tag or text">
+    <select id="cp-style" title="Citation style to insert">
+      <option value="lawreview">Bluebook · law review</option>
+      <option value="practitioner">Bluebook · brief or memo</option>
+      <option value="apa">APA 7th</option>
+    </select>
+  </div>
+  <div id="cp-list" class="cp-list"></div>
+  <div class="dlg-actions">
+    <button class="btn" data-close>Cancel</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-github">
+  <h2 id="gh-title">Connect to GitHub</h2>
+  <p class="hint" id="gh-intro"></p>
+  <h3>Use a repository you already have</h3>
+  <div class="row">
+    <input id="gh-url" class="grow" placeholder="https://github.com/you/your-repo" spellcheck="false">
+    <button class="btn primary" id="gh-connect">Connect</button>
+  </div>
+  <h3>Or create a new one</h3>
+  <div id="gh-cli" class="hint"></div>
+  <div class="row">
+    <input id="gh-name" class="grow" placeholder="repository-name" spellcheck="false">
+    <label class="rb-check"><input type="checkbox" id="gh-private" checked> Private</label>
+    <button class="btn" id="gh-create">Create on GitHub</button>
+  </div>
+  <div id="gh-error" class="error" hidden></div>
+  <div class="dlg-actions">
+    <button class="btn" data-close>Close</button>
+  </div>
+</dialog>
+
+<div id="toast" hidden></div>
+
+<script src="/static/md.js"></script>
+<script src="/static/rich.js"></script>
+<script src="/static/app.js"></script>
+<script src="/static/ribbon.js"></script>
+<script src="/static/projects.js"></script>
+<script src="/static/citations.js"></script>
+<script src="/static/sources.js"></script>
+<script src="/static/research.js"></script>
+<script src="/static/citechips.js"></script>
+<script src="/static/writing.js"></script>
+<script src="/static/github.js"></script>
+<script src="/static/shortcuts.js"></script>
+<script src="/static/boot.js"></script>
+<script type="module" src="/static/pdfview.js"></script>
+<script type="module" src="/static/reader.js"></script>
+</body>
+</html>

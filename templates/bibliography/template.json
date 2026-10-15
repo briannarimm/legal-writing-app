@@ -1,0 +1,13 @@
+{
+  "id": "bibliography",
+  "name": "Annotated bibliography",
+  "description": "Sources from your library, formatted and sorted automatically in APA 7th or Bluebook style, each followed by your annotation. Add sources with Insert → Sources; annotations can start from your research notes.",
+  "outputs": ["pdf", "docx"],
+  "multi_section": false,
+  "cite_mode": "inline",
+  "cite_style": "document",
+  "bibliography": true,
+  "toa": false,
+  "redline": true,
+  "heading_scheme": "none"
+}

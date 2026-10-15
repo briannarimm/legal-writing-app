@@ -1,0 +1,27 @@
+# Cover page and certificate. Edit the values; keep the structure.
+title: "{{title}}"
+case-number: "No. WD00000"
+court:
+  - "IN THE MISSOURI COURT OF APPEALS"
+  - "WESTERN DISTRICT"
+appellant:
+  name: "APPELLANT NAME,"
+  role: "Appellant,"
+appellee:
+  name: "RESPONDENT NAME,"
+  role: "Respondent."
+appeal-from:
+  - "Appeal from the Circuit Court of County Name, Missouri"
+  - "The Honorable Judge Name, Circuit Judge"
+brief-title: "APPELLANT'S BRIEF"
+counsel:
+  - "Brianna Imm, Mo. Bar No. 00000"
+  - "Firm Name"
+  - "Street Address"
+  - "City, Missouri ZIP"
+  - "(000) 000-0000"
+  - "email@example.com"
+  - "Attorney for Appellant"
+signature: "Brianna Imm"
+date: "[date]"
+# service: "a copy of this brief was served through the Missouri Courts electronic filing system on all counsel of record."

@@ -1,0 +1,114 @@
+% Law review LaTeX template for Pandoc.
+% Metadata comes from article/metadata.yaml. Swap this file for a journal's own
+% template later; keep the "Pandoc plumbing" block so Pandoc output still compiles.
+\documentclass[12pt,letterpaper]{article}
+
+% ---- Page and type -----------------------------------------------------------
+\usepackage[margin=1in]{geometry}
+\usepackage{fontspec}
+% Loaded by file name so XeTeX finds it inside the TeX tree (no system font needed).
+\setmainfont{texgyretermes}[
+  Extension      = .otf,
+  UprightFont    = *-regular,
+  BoldFont       = *-bold,
+  ItalicFont     = *-italic,
+  BoldItalicFont = *-bolditalic]
+\usepackage{microtype}
+\usepackage{setspace}
+$if(singlespace)$\singlespacing$else$\doublespacing$endif$
+
+% ---- Footnotes: single-spaced, 10pt, hanging number --------------------------
+\usepackage[hang,flushmargin,bottom]{footmisc}
+\setlength{\footnotemargin}{1.2em}
+\renewcommand{\footnotelayout}{\setstretch{1}\fontsize{10}{12}\selectfont}
+\setlength{\footnotesep}{6pt}
+\interfootnotelinepenalty=10000
+
+% ---- Law review headings: I.  A.  1.  a. ------------------------------------
+\usepackage{titlesec}
+\setcounter{secnumdepth}{4}
+\renewcommand{\thesection}{\Roman{section}.}
+\renewcommand{\thesubsection}{\Alph{subsection}.}
+\renewcommand{\thesubsubsection}{\arabic{subsubsection}.}
+\renewcommand{\theparagraph}{\alph{paragraph}.}
+\titleformat{\section}{\centering\normalfont\scshape}{\thesection}{0.5em}{}
+\titleformat{\subsection}{\centering\normalfont\itshape}{\thesubsection}{0.5em}{}
+\titleformat{\subsubsection}{\normalfont\itshape}{\thesubsubsection}{0.5em}{}
+\titleformat{\paragraph}[runin]{\normalfont\itshape}{\theparagraph}{0.5em}{}[.]
+\titlespacing*{\paragraph}{\parindent}{0pt}{0.5em}
+$if(no-heading-numbers)$\setcounter{secnumdepth}{0}$endif$
+
+% ---- Pandoc plumbing ---------------------------------------------------------
+\usepackage{xcolor}
+\usepackage{graphicx}
+\makeatletter
+\providecommand{\pandocbounded}[1]{#1}
+\makeatother
+\usepackage{longtable,booktabs,array,calc}
+\usepackage{enumitem}
+\setlist{nosep}
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{etoolbox}
+\usepackage[hidelinks]{hyperref}
+\usepackage{bookmark}
+\urlstyle{same}
+$if(csl-refs)$
+% citeproc output (only used if you build with CITEPROC=1)
+\newlength{\cslhangindent}\setlength{\cslhangindent}{1.5em}
+\newlength{\csllabelwidth}\setlength{\csllabelwidth}{3em}
+\newenvironment{CSLReferences}[2]{}{}
+\newcommand{\CSLBlock}[1]{#1\hfill\break}
+\newcommand{\CSLLeftMargin}[1]{#1}
+\newcommand{\CSLRightInline}[1]{#1\break}
+\newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
+$endif$
+
+% ---- Redline markup (used by `make redline`) ---------------------------------
+\IfFileExists{ulem.sty}{%
+  \usepackage[normalem]{ulem}%
+  \newcommand{\redins}[1]{{\color{blue}\uline{##1}}}%
+  \newcommand{\reddel}[1]{{\color{red}\sout{##1}}}%
+}{%
+  \newcommand{\redins}[1]{{\color{blue}##1}}%
+  \newcommand{\reddel}[1]{{\color{red}[##1]}}%
+}
+\newcommand{\redinsplain}[1]{{\color{blue}#1}}
+\newcommand{\reddelplain}[1]{{\color{red}#1}}
+
+$for(header-includes)$
+$header-includes$
+$endfor$
+
+\begin{document}
+
+$if(title)$
+\begin{center}
+  \singlespacing
+  {\large\scshape $title$}%
+  $if(title-note)$\footnote[0]{$title-note$}$endif$\par
+  $if(subtitle)$\vspace{0.5em}{\itshape $subtitle$}\par$endif$
+  \vspace{1em}
+  $for(author)$
+  {\scshape $author.name$}%
+  $if(author.note)$\renewcommand{\thefootnote}{\fnsymbol{footnote}}\footnote[1]{$author.note$}\renewcommand{\thefootnote}{\arabic{footnote}}$endif$\par
+  $endfor$
+\end{center}
+\setcounter{footnote}{0}
+$endif$
+
+$if(abstract)$
+\begin{center}\begin{minipage}{0.85\textwidth}
+\singlespacing\small
+\noindent\textsc{Abstract.} $abstract$
+\end{minipage}\end{center}
+\vspace{1em}
+$endif$
+
+$if(toc)$
+{\singlespacing\tableofcontents}
+\clearpage
+$endif$
+
+$body$
+
+\end{document}

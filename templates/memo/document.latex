@@ -1,0 +1,98 @@
+% Legal memo LaTeX template for Pandoc. Metadata comes from the document's metadata.yaml:
+%   to, from, cc, date, re, privileged   (all optional; date defaults to today)
+\documentclass[12pt,letterpaper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{fontspec}
+\setmainfont{texgyretermes}[
+  Extension      = .otf,
+  UprightFont    = *-regular,
+  BoldFont       = *-bold,
+  ItalicFont     = *-italic,
+  BoldItalicFont = *-bolditalic]
+\usepackage{microtype}
+\usepackage{setspace}
+\singlespacing
+\frenchspacing
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.7em}
+
+% ---- Footnotes ------------------------------------------------------------------
+\usepackage[hang,flushmargin,bottom]{footmisc}
+\setlength{\footnotemargin}{1.2em}
+\renewcommand{\footnotelayout}{\setstretch{1}\fontsize{10}{12}\selectfont}
+\interfootnotelinepenalty=10000
+
+% ---- Headings: SECTION TITLES (unnumbered), A.  1.  a. ----------------------------
+\usepackage{titlesec}
+\setcounter{secnumdepth}{4}
+\renewcommand{\thesection}{}
+\renewcommand{\thesubsection}{\Alph{subsection}.}
+\renewcommand{\thesubsubsection}{\arabic{subsubsection}.}
+\renewcommand{\theparagraph}{\alph{paragraph}.}
+\titleformat{\section}{\normalfont\bfseries\centering}{}{0pt}{\MakeUppercase}
+\titleformat{\subsection}{\normalfont\bfseries}{\thesubsection}{0.6em}{}
+\titleformat{\subsubsection}{\normalfont\bfseries\itshape}{\thesubsubsection}{0.6em}{}
+\titleformat{\paragraph}[runin]{\normalfont\itshape}{\theparagraph}{0.6em}{}[.]
+\titlespacing*{\section}{0pt}{1.2em}{0.4em}
+\titlespacing*{\subsection}{0pt}{0.8em}{0.3em}
+\titlespacing*{\subsubsection}{0pt}{0.6em}{0.2em}
+\titlespacing*{\paragraph}{0pt}{0.5em}{0.5em}
+
+% ---- Pandoc plumbing ---------------------------------------------------------------
+\usepackage{xcolor}
+\usepackage{graphicx}
+\makeatletter
+\providecommand{\pandocbounded}[1]{#1}
+\makeatother
+\usepackage{longtable,booktabs,array,calc}
+\usepackage{enumitem}
+\setlist{nosep}
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{etoolbox}
+\usepackage[hidelinks]{hyperref}
+\usepackage{bookmark}
+\urlstyle{same}
+
+% ---- Redline markup (used by `make redline`) ---------------------------------------
+\IfFileExists{ulem.sty}{%
+  \usepackage[normalem]{ulem}%
+  \newcommand{\redins}[1]{{\color{blue}\uline{##1}}}%
+  \newcommand{\reddel}[1]{{\color{red}\sout{##1}}}%
+}{%
+  \newcommand{\redins}[1]{{\color{blue}##1}}%
+  \newcommand{\reddel}[1]{{\color{red}[##1]}}%
+}
+\newcommand{\redinsplain}[1]{{\color{blue}#1}}
+\newcommand{\reddelplain}[1]{{\color{red}#1}}
+
+$for(header-includes)$
+$header-includes$
+$endfor$
+
+\begin{document}
+\pagestyle{plain}
+
+\begin{center}
+  {\Large\bfseries MEMORANDUM}
+\end{center}
+$if(privileged)$
+\begin{center}\textbf{$privileged$}\end{center}
+$endif$
+\vspace{0.4em}
+\noindent
+\begin{tabular}{@{}l@{\hspace{1.5em}}p{0.8\textwidth}@{}}
+$if(to)$\textbf{TO:} & $to$ \\[0.4em]$endif$
+$if(from)$\textbf{FROM:} & $from$ \\[0.4em]$endif$
+$if(cc)$\textbf{CC:} & $cc$ \\[0.4em]$endif$
+\textbf{DATE:} & $if(date)$$date$$else$\today$endif$ \\[0.4em]
+$if(re)$\textbf{RE:} & $re$ \\$endif$
+\end{tabular}
+
+\vspace{0.2em}
+\noindent\rule{\textwidth}{0.8pt}
+\vspace{0.4em}
+
+$body$
+
+\end{document}

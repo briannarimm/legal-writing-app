@@ -1,0 +1,6 @@
+to: docx
+reference-doc: templates/article/reference.docx
+filters:
+  - filters/docx.lua
+metadata:
+  heading-levels: [roman, alpha, decimal, alpha-lower]

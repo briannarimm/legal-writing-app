@@ -1,0 +1,4 @@
+# Used by "Copy email" and the open-in-mail button. Remove lines you don't need.
+to: ""
+cc: ""
+subject: "{{title}}"

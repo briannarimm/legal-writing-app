@@ -1,0 +1,231 @@
+# ---------------------------------------------------------------------------
+# AI assistants and LLM tools: instructions, memory, rules, prompts, transcripts.
+# These are local working notes, never part of the published project.
+# ---------------------------------------------------------------------------
+# Claude / Claude Code
+CLAUDE.md
+CLAUDE.local.md
+**/CLAUDE.md
+**/CLAUDE.local.md
+.claude/
+.claude*
+.mcp.json
+# OpenAI Codex, Google Gemini / Jules, generic agent files
+AGENTS.md
+**/AGENTS.md
+AGENT.md
+.codex/
+GEMINI.md
+.gemini/
+.jules/
+# GitHub Copilot
+.github/copilot-instructions.md
+.github/instructions/
+.github/prompts/
+.github/chatmodes/
+.copilot/
+# Cursor, Windsurf, Cline, Roo, Kiro, Junie, Zed, Continue, Aider, Codeium, Tabnine, Amazon Q
+.cursor/
+.cursorrules
+.cursorignore
+.cursorindexingignore
+.windsurf/
+.windsurfrules
+.clinerules
+.clinerules/
+.cline/
+.roo/
+.roomodes
+.kiro/
+.junie/
+.zed/
+.rules
+.continue/
+.aider*
+.codeium/
+.tabnine/
+.amazonq/
+.aiexclude
+# Documentation written for LLMs, prompt files, saved chats and agent memory
+llms.txt
+llms-full.txt
+*.llm.md
+*.llms.md
+*.prompt.md
+*.prompt.yml
+prompts/
+.prompts/
+memory-bank/
+.specstory/
+.ai/
+.llm/
+*.chat.md
+*.transcript.md
+*.jsonl
+
+# ---------------------------------------------------------------------------
+# Operating system
+# ---------------------------------------------------------------------------
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---------------------------------------------------------------------------
+# Editors and IDEs
+# ---------------------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.ztr-directory
+.ztr-*
+~$*.docx
+~$*.xlsx
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# ---------------------------------------------------------------------------
+# Secrets, keys and credentials (ReWord never needs any; keep it that way)
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+.envrc
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+*.crt
+*.cer
+*.der
+*.mobileprovision
+*.provisionprofile
+*.gpg
+*.asc
+id_rsa*
+id_ed25519*
+id_ecdsa*
+*.ppk
+.ssh/
+.netrc
+.git-credentials
+.npmrc
+.pypirc
+.docker/config.json
+credentials.json
+credentials.*
+client_secret*.json
+service-account*.json
+*-service-account.json
+token.json
+*.token
+secrets.*
+secret.*
+*.secret
+*.secrets
+.secrets/
+.vault-token
+*.kdbx
+
+# ---------------------------------------------------------------------------
+# Logs and temporary files
+# ---------------------------------------------------------------------------
+*.log
+*.tmp
+*.bak
+
+# ---------------------------------------------------------------------------
+# Build output (finished PDF and Word files go to the separate outputs repository)
+# ---------------------------------------------------------------------------
+build/
+*.pdf
+!templates/*.pdf
+
+# LaTeX intermediates
+*.aux
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.xdv
+*.bbl
+*.blg
+*.bcf
+*.run.xml
+*.toa-raw
+*.toa.tex
+
+# ---------------------------------------------------------------------------
+# Zotero: the library, attachments and caches stay outside this repository.
+# Commit only the Better BibTeX auto-export in refs/.
+# ---------------------------------------------------------------------------
+*.sqlite
+*.sqlite-journal
+*.zotero-ft-*
+zotero.bib.bak
+storage/
+.zotero*/
+refs/*.pdf
+
+# ---------------------------------------------------------------------------
+# Personal work. This repository publishes the program only. A person's
+# documents, notes, sources, attachments and projects stay on their computer
+# (use the app's "ReWord Data" folder and its own private work repository).
+# ---------------------------------------------------------------------------
+documents/*
+!documents/.gitkeep
+research/*
+!research/.gitkeep
+library/*
+!library/.gitkeep
+projects/
+# Editors' marked-up Word files and import reports (contain other people's comments)
+edits/*
+!edits/.gitkeep
+
+# ---------------------------------------------------------------------------
+# Project-specific
+# ---------------------------------------------------------------------------
+
+# Per-machine app settings (output folder, auto-push)
+settings.local.json
+
+# The outputs repository (a separate git repository; see Publish in the app)
+/outputs/
+
+# Built by scripts/make_app.py (the download in distro/ is committed; nothing else there)
+/ReWord.app/
+/ReWord/
+distro/*
+!distro/README.md
+!distro/ReWord-*-mac-arm64.zip
+!distro/ReWord-*-mac-arm64.zip.sha256
+
+# Removed items kept by the app for recovery
+_trash/
+
+# Offline TeX cache created inside a data folder
+.tex-cache/

@@ -1,0 +1,13 @@
+{
+  "id": "assignment",
+  "name": "Assignment (APA 7th)",
+  "description": "Student paper in APA 7th edition style: title page, double-spaced Times New Roman, centered/flush-left bold headings, page numbers at top right, in-text citations like (Author, 2020), and a hanging-indent References page.",
+  "outputs": ["pdf", "docx"],
+  "multi_section": true,
+  "cite_mode": "inline",
+  "cite_style": "apa",
+  "toa": false,
+  "redline": true,
+  "heading_scheme": "apa",
+  "new_section_heading": "#"
+}

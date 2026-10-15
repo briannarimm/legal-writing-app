@@ -1,0 +1,15 @@
+{
+  "id": "article",
+  "name": "Law review article",
+  "description": "Law review formatting: double-spaced, footnoted, I./A./1./a. headings, author and title star notes, abstract. Citations are written in footnotes.",
+  "outputs": [
+    "pdf",
+    "docx"
+  ],
+  "multi_section": true,
+  "cite_mode": "footnote",
+  "toa": false,
+  "redline": true,
+  "heading_scheme": "article",
+  "cite_typeface": "lawreview"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "email",
+  "name": "Email",
+  "description": "A short professional email. Italics and small caps survive pasting into Gmail or Outlook (use Copy email in the toolbar). Builds an HTML and a plain-text file.",
+  "outputs": [
+    "html",
+    "txt"
+  ],
+  "multi_section": false,
+  "cite_mode": "inline",
+  "toa": false,
+  "redline": false,
+  "heading_scheme": "none",
+  "sentence_lines": false
+}

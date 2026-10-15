@@ -1,0 +1,10 @@
+to: docx
+reference-doc: templates/brief-federal/reference.docx
+filters:
+  - filters/docx.lua
+  - filters/toa.lua
+  - filters/docx-frontmatter.lua
+metadata:
+  doctype: brief
+  jurisdiction: federal
+  heading-levels: [none, roman, alpha, decimal]

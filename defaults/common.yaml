@@ -1,0 +1,3 @@
+# Shared Pandoc settings. Each document's metadata.yaml and section files are
+# passed by the Makefile; each template adds its own settings (templates/<id>/*.yaml).
+from: markdown+smart

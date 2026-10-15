@@ -1,0 +1,4 @@
+to: html5
+wrap: none
+filters:
+  - filters/email.lua

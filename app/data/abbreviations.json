@@ -1,0 +1,2031 @@
+{
+"source": "The Indigo Book 2.0 (2023 revision), Tables T11, T12.1, T15 and T18. CC0 public domain dedication.",
+"t11": [
+[
+"Academic, Academy",
+"Acad."
+],
+[
+"Accountant, Accounting, Accountancy",
+"Acct."
+],
+[
+"Administrative, Administration",
+"Admin."
+],
+[
+"Administrator, Administratrix",
+"Adm’r, Adm’x"
+],
+[
+"Advertising",
+"Advert."
+],
+[
+"Advocate, Advocacy",
+"Advoc."
+],
+[
+"Affair",
+"Aff."
+],
+[
+"Africa, African",
+"Afr."
+],
+[
+"Agriculture, Agricultural",
+"Agric."
+],
+[
+"Alliance",
+"All."
+],
+[
+"Alternative",
+"Alt."
+],
+[
+"Amendment",
+"Amend."
+],
+[
+"America, American",
+"Am."
+],
+[
+"Annual",
+"Ann."
+],
+[
+"Appellate",
+"App."
+],
+[
+"Arbitration, Arbitrator",
+"Arb."
+],
+[
+"Artificial Intelligence",
+"A.I."
+],
+[
+"Associate",
+"Assoc."
+],
+[
+"Association",
+"Ass’n"
+],
+[
+"Atlantic",
+"Atl."
+],
+[
+"Attorney",
+"Att’y"
+],
+[
+"Authority",
+"Auth."
+],
+[
+"Automobile, Automotive",
+"Auto."
+],
+[
+"Avenue",
+"Ave."
+],
+[
+"Bankruptcy",
+"Bankr."
+],
+[
+"Behavior, Behavioral",
+"Behav."
+],
+[
+"Board",
+"Bd."
+],
+[
+"Broadcaster, Broadcasting",
+"Broad."
+],
+[
+"Brotherhood",
+"Bhd."
+],
+[
+"Brothers",
+"Bros."
+],
+[
+"Building",
+"Bldg."
+],
+[
+"Business, Businesses",
+"Bus."
+],
+[
+"Capital",
+"Cap."
+],
+[
+"Casualty, Casualties",
+"Cas."
+],
+[
+"Catholic",
+"Cath."
+],
+[
+"Center, Centre",
+"Ctr."
+],
+[
+"Central",
+"Cent."
+],
+[
+"Chemical",
+"Chem."
+],
+[
+"Children",
+"Child."
+],
+[
+"Chronicle",
+"Chron."
+],
+[
+"Circuit",
+"Cir."
+],
+[
+"Coalition",
+"Coal."
+],
+[
+"College",
+"Coll."
+],
+[
+"Commentary",
+"Comment."
+],
+[
+"Commission",
+"Comm’n"
+],
+[
+"Commissioner",
+"Comm’r"
+],
+[
+"Committee",
+"Comm."
+],
+[
+"Communication",
+"Commc’n"
+],
+[
+"Community",
+"Cmty."
+],
+[
+"Company",
+"Co."
+],
+[
+"Comparative",
+"Compar."
+],
+[
+"Compensation",
+"Comp."
+],
+[
+"Computer, Computing, Computational",
+"Comput."
+],
+[
+"Condominium",
+"Condo."
+],
+[
+"Conference",
+"Conf."
+],
+[
+"Congress, Congressional",
+"Cong."
+],
+[
+"Consolidated",
+"Consol."
+],
+[
+"Construction",
+"Constr."
+],
+[
+"Contemporary",
+"Contemp."
+],
+[
+"Continental",
+"Cont’l"
+],
+[
+"Contract",
+"Cont."
+],
+[
+"Conveyance, Conveyancer",
+"Conv."
+],
+[
+"Cooperation, Cooperative",
+"Coop."
+],
+[
+"Corporate, Corporation",
+"Corp."
+],
+[
+"Corrections, Correctional",
+"Corr."
+],
+[
+"Cosmetic",
+"Cosm."
+],
+[
+"County",
+"Cnty."
+],
+[
+"Defend, Defender, Defense, Defensive",
+"Def."
+],
+[
+"Delinquent, Delinquency",
+"Delinq."
+],
+[
+"Department",
+"Dep’t"
+],
+[
+"Detention",
+"Det."
+],
+[
+"Developer, Development",
+"Dev."
+],
+[
+"Digest",
+"Dig."
+],
+[
+"Digital",
+"Digit."
+],
+[
+"Diplomacy",
+"Dipl."
+],
+[
+"Director",
+"Dir."
+],
+[
+"Discount",
+"Disc."
+],
+[
+"Dispute",
+"Disp."
+],
+[
+"Distributor, Distributing, Distribution",
+"Distrib."
+],
+[
+"District",
+"Dist."
+],
+[
+"Division",
+"Div."
+],
+[
+"Doctor",
+"Dr."
+],
+[
+"East, Eastern",
+"E."
+],
+[
+"Economic, Economical, Economics, Economy",
+"Econ."
+],
+[
+"Editor, Editorial",
+"Ed."
+],
+[
+"Educate, Education, Educating, Educational, Educator",
+"Educ."
+],
+[
+"Electric, Electrical, Electricity, Electronic",
+"Elec."
+],
+[
+"Employee, Employer, Employment",
+"Emp."
+],
+[
+"Enforcement",
+"Enf’t"
+],
+[
+"Engineer",
+"Eng’r"
+],
+[
+"Engineering",
+"Eng’g"
+],
+[
+"English",
+"Eng."
+],
+[
+"Enterprise",
+"Enter."
+],
+[
+"Entertainment",
+"Ent."
+],
+[
+"Environment, Environmental",
+"Env’t"
+],
+[
+"Equality",
+"Equal."
+],
+[
+"Equipment",
+"Equip."
+],
+[
+"Estate",
+"Est."
+],
+[
+"Examiner",
+"Exam’r"
+],
+[
+"Exchange",
+"Exch."
+],
+[
+"Executive",
+"Exec."
+],
+[
+"Executor, Executrix",
+"Ex’[r, x]"
+],
+[
+"Exploration, Exploratory",
+"Expl."
+],
+[
+"Exporter, Exportation",
+"Exp."
+],
+[
+"Faculty",
+"Fac."
+],
+[
+"Federal",
+"Fed."
+],
+[
+"Federation",
+"Fed’n"
+],
+[
+"Fidelity",
+"Fid."
+],
+[
+"Finance, Financial, Financing",
+"Fin."
+],
+[
+"Fortnightly",
+"Fort."
+],
+[
+"Forum",
+"F."
+],
+[
+"Foundation",
+"Found."
+],
+[
+"General",
+"Gen."
+],
+[
+"Global",
+"Glob."
+],
+[
+"Government",
+"Gov’t"
+],
+[
+"Group",
+"Grp."
+],
+[
+"Guaranty, Guarantor",
+"Guar."
+],
+[
+"Hispanic",
+"Hisp."
+],
+[
+"Historical, History",
+"Hist."
+],
+[
+"Hospital",
+"Hosp."
+],
+[
+"Hospitality",
+"Hosp."
+],
+[
+"Housing",
+"Hous."
+],
+[
+"Human",
+"Hum."
+],
+[
+"Import, Importer, Importation",
+"Imp."
+],
+[
+"Incorporated",
+"Inc."
+],
+[
+"Indemnity",
+"Indem."
+],
+[
+"Independence, Independent",
+"Indep."
+],
+[
+"Industry, Industries, Industrial",
+"Indus."
+],
+[
+"Inequality",
+"Ineq."
+],
+[
+"Information",
+"Info."
+],
+[
+"Institute, Institution",
+"Inst."
+],
+[
+"Insurance",
+"Ins."
+],
+[
+"Intellectual",
+"Intell."
+],
+[
+"Intelligence",
+"Intel."
+],
+[
+"Interdisciplinary",
+"Interdisc."
+],
+[
+"Interest",
+"Int."
+],
+[
+"International",
+"Int’l"
+],
+[
+"Investment, Investor",
+"Inv."
+],
+[
+"Journal, Journals",
+"J."
+],
+[
+"Judicial",
+"Jud."
+],
+[
+"Juridicial",
+"Jurid."
+],
+[
+"Jurisprudence",
+"Juris."
+],
+[
+"Justice",
+"Just."
+],
+[
+"Juvenile",
+"Juv."
+],
+[
+"Labor",
+"Lab."
+],
+[
+"Laboratory",
+"Lab’y"
+],
+[
+"Law",
+"L."
+],
+[
+"Lawyer",
+"Law."
+],
+[
+"Legislate, Legislation, Legislative",
+"Legis."
+],
+[
+"Liability",
+"Liab."
+],
+[
+"Library, Librarian",
+"Libr."
+],
+[
+"Limited",
+"Ltd."
+],
+[
+"Litigation",
+"Litig."
+],
+[
+"Local",
+"Loc."
+],
+[
+"Machine, Machinery",
+"Mach."
+],
+[
+"Magazine",
+"Mag."
+],
+[
+"Maintenance",
+"Maint."
+],
+[
+"Management",
+"Mgmt."
+],
+[
+"Manufacturer",
+"Mfr."
+],
+[
+"Manufacturing",
+"Mfg."
+],
+[
+"Maritime",
+"Mar."
+],
+[
+"Market",
+"Mkt."
+],
+[
+"Marketing",
+"Mktg."
+],
+[
+"Matrimonial",
+"Matrim."
+],
+[
+"Mechanic, Mechanical",
+"Mech."
+],
+[
+"Medical, Medicinal, Medicine",
+"Med."
+],
+[
+"Memorial",
+"Mem’l"
+],
+[
+"Merchant, Merchandise, Merchandising",
+"Merch."
+],
+[
+"Metropolitan",
+"Metro."
+],
+[
+"Military",
+"Mil."
+],
+[
+"Mineral",
+"Min."
+],
+[
+"Modern",
+"Mod."
+],
+[
+"Mortgage",
+"Mortg."
+],
+[
+"Municipal, Municipality",
+"Mun."
+],
+[
+"Mutual",
+"Mut."
+],
+[
+"National",
+"Nat’l"
+],
+[
+"Nationality",
+"Nat’y"
+],
+[
+"Natural",
+"Nat."
+],
+[
+"Negligence",
+"Negl."
+],
+[
+"Negotiation, Negotiator",
+"Negot."
+],
+[
+"Newsletter",
+"Newsl."
+],
+[
+"North, Northern",
+"N."
+],
+[
+"Northeast, Northeastern",
+"Ne."
+],
+[
+"Northwest, Northwestern",
+"Nw."
+],
+[
+"Number",
+"No."
+],
+[
+"Office, Official",
+"Off."
+],
+[
+"Opinion",
+"Op."
+],
+[
+"Order",
+"Ord."
+],
+[
+"Organization, Organizing",
+"Org."
+],
+[
+"Pacific",
+"Pac."
+],
+[
+"Parish",
+"Par."
+],
+[
+"Partnership",
+"P’ship"
+],
+[
+"Patent",
+"Pat."
+],
+[
+"Person, Personal, Personnel",
+"Pers."
+],
+[
+"Perspective",
+"Persp."
+],
+[
+"Pharmaceutic, Pharmaceutical",
+"Pharm."
+],
+[
+"Philosophical, Philosophy",
+"Phil."
+],
+[
+"Planning",
+"Plan."
+],
+[
+"Policy",
+"Pol’y"
+],
+[
+"Politic, Political, Politics",
+"Pol."
+],
+[
+"Practical, Practice, Practitioner",
+"Prac."
+],
+[
+"Preserve, Preservation",
+"Pres."
+],
+[
+"Privacy, Private",
+"Priv."
+],
+[
+"Probate, Probation",
+"Prob."
+],
+[
+"Problems",
+"Probs."
+],
+[
+"Proceedings, Procedure",
+"Proc."
+],
+[
+"Product, Production",
+"Prod."
+],
+[
+"Profession, Professional",
+"Pro."
+],
+[
+"Property",
+"Prop."
+],
+[
+"Protection",
+"Prot."
+],
+[
+"Psychological, Psychologist, Psychology",
+"Psych."
+],
+[
+"Public",
+"Pub."
+],
+[
+"Publication",
+"Publ’n"
+],
+[
+"Publishing",
+"Publ’g"
+],
+[
+"Quarterly",
+"Q."
+],
+[
+"Railroad",
+"R.R."
+],
+[
+"Railway",
+"Ry."
+],
+[
+"Record",
+"Rec."
+],
+[
+"Referee",
+"Ref."
+],
+[
+"Refining, Refinement",
+"Refin."
+],
+[
+"Regional",
+"Reg’l"
+],
+[
+"Register",
+"Reg."
+],
+[
+"Regulation, Regulator, Regulatory",
+"Regul."
+],
+[
+"Rehabilitation, Rehabilitative",
+"Rehab."
+],
+[
+"Relation",
+"Rel."
+],
+[
+"Report, Reporter",
+"Rep."
+],
+[
+"Reproduction, Reproductive",
+"Reprod."
+],
+[
+"Research",
+"Rsch."
+],
+[
+"Reservation, Reserve",
+"Rsrv."
+],
+[
+"Resolution",
+"Resol."
+],
+[
+"Resource, Resources",
+"Res."
+],
+[
+"Responsibility",
+"Resp."
+],
+[
+"Restaurant",
+"Rest."
+],
+[
+"Retirement",
+"Ret."
+],
+[
+"Review, Revista",
+"Rev."
+],
+[
+"Rights",
+"Rts."
+],
+[
+"Road",
+"Rd."
+],
+[
+"Savings",
+"Sav."
+],
+[
+"School",
+"Sch."
+],
+[
+"Science, Scientific",
+"Sci."
+],
+[
+"Scottish",
+"Scot."
+],
+[
+"Secretary",
+"Sec’y"
+],
+[
+"Security, Securities",
+"Sec."
+],
+[
+"Sentencing",
+"Sent’g"
+],
+[
+"Service",
+"Serv."
+],
+[
+"Shareholder, Stockholder",
+"S’holder"
+],
+[
+"Social",
+"Soc."
+],
+[
+"Society",
+"Soc’y"
+],
+[
+"Sociological, Sociology",
+"Socio."
+],
+[
+"Solicitor",
+"Solic."
+],
+[
+"Solution",
+"Sol."
+],
+[
+"South, Southern",
+"S."
+],
+[
+"Southeast, Southeastern",
+"Se."
+],
+[
+"Southwest, Southwestern",
+"Sw."
+],
+[
+"Statistic, Statistics, Statistical",
+"Stat."
+],
+[
+"Steamship, Steamships",
+"S.S."
+],
+[
+"Street",
+"St."
+],
+[
+"Studies",
+"Stud."
+],
+[
+"Subcommittee",
+"Subcomm."
+],
+[
+"Supreme Court",
+"Sup. Ct."
+],
+[
+"Surety",
+"Sur."
+],
+[
+"System, Systems",
+"Sys."
+],
+[
+"Taxation",
+"Tax’n"
+],
+[
+"Teacher",
+"Tchr."
+],
+[
+"Technical, Technique, Technological, Technology",
+"Tech."
+],
+[
+"Telecommunication",
+"Telecomm."
+],
+[
+"Telephone, Telegraph",
+"Tel."
+],
+[
+"Temporary",
+"Temp."
+],
+[
+"Township",
+"Twp."
+],
+[
+"Transcontinental",
+"Transcon."
+],
+[
+"Transnational",
+"Transnat’l"
+],
+[
+"Transport, Transportation",
+"Transp."
+],
+[
+"Tribune",
+"Trib."
+],
+[
+"Trust, Trustee",
+"Tr."
+],
+[
+"Turnpike",
+"Tpk."
+],
+[
+"Uniform",
+"Unif."
+],
+[
+"United States",
+"U.S."
+],
+[
+"University",
+"Univ."
+],
+[
+"University",
+"U."
+],
+[
+"Urban",
+"Urb."
+],
+[
+"Utility",
+"Util."
+],
+[
+"Village",
+"Vill."
+],
+[
+"Week",
+"Wk."
+],
+[
+"Weekly",
+"Wkly."
+],
+[
+"West, Western",
+"W."
+],
+[
+"Yearbook, Year Book",
+"Y.B."
+]
+],
+"t12": [
+[
+"Alabama",
+"Ala."
+],
+[
+"Alaska",
+"Alaska"
+],
+[
+"Arizona",
+"Ariz."
+],
+[
+"Arkansas",
+"Ark."
+],
+[
+"California",
+"Cal."
+],
+[
+"Colorado",
+"Colo."
+],
+[
+"Connecticut",
+"Conn."
+],
+[
+"Delaware",
+"Del."
+],
+[
+"Florida",
+"Fla."
+],
+[
+"Georgia",
+"Ga."
+],
+[
+"Hawaii",
+"Haw."
+],
+[
+"Idaho",
+"Idaho"
+],
+[
+"Illinois",
+"Ill."
+],
+[
+"Indiana",
+"Ind."
+],
+[
+"Iowa",
+"Iowa"
+],
+[
+"Kansas",
+"Kan."
+],
+[
+"Kentucky",
+"Ky."
+],
+[
+"Louisiana",
+"La."
+],
+[
+"Maine",
+"Me."
+],
+[
+"Maryland",
+"Md."
+],
+[
+"Massachusetts",
+"Mass."
+],
+[
+"Michigan",
+"Mich."
+],
+[
+"Minnesota",
+"Minn."
+],
+[
+"Mississippi",
+"Miss."
+],
+[
+"Missouri",
+"Mo."
+],
+[
+"Montana",
+"Mont."
+],
+[
+"Nebraska",
+"Neb."
+],
+[
+"Nevada",
+"Nev."
+],
+[
+"New Hampshire",
+"N.H."
+],
+[
+"New Jersey",
+"N.J."
+],
+[
+"New Mexico",
+"N.M."
+],
+[
+"New York",
+"N.Y."
+],
+[
+"North Carolina",
+"N.C."
+],
+[
+"North Dakota",
+"N.D."
+],
+[
+"Ohio",
+"Ohio"
+],
+[
+"Oklahoma",
+"Okla."
+],
+[
+"Oregon",
+"Or."
+],
+[
+"Pennsylvania",
+"Pa."
+],
+[
+"Rhode Island",
+"R.I."
+],
+[
+"South Carolina",
+"S.C."
+],
+[
+"South Dakota",
+"S.D."
+],
+[
+"Tennessee",
+"Tenn."
+],
+[
+"Texas",
+"Tex."
+],
+[
+"Utah",
+"Utah"
+],
+[
+"Vermont",
+"Vt."
+],
+[
+"Virginia",
+"Va."
+],
+[
+"Washington",
+"Wash."
+],
+[
+"West Virginia",
+"W. Va."
+],
+[
+"Wisconsin",
+"Wis."
+],
+[
+"Wyoming",
+"Wyo."
+],
+[
+"Baltimore",
+"Balt."
+],
+[
+"Boston",
+"Bos."
+],
+[
+"Chicago",
+"Chi."
+],
+[
+"Dallas",
+"Dall."
+],
+[
+"District of Columbia",
+"D.C."
+],
+[
+"Houston",
+"Hous."
+],
+[
+"Los Angeles",
+"L.A."
+],
+[
+"Miami",
+"Mia."
+],
+[
+"New York",
+"N.Y.C."
+],
+[
+"Philadelphia",
+"Phila."
+],
+[
+"Phoenix",
+"Phx."
+],
+[
+"San Francisco",
+"S.F."
+],
+[
+"American Samoa",
+"Am. Sam."
+],
+[
+"Guam",
+"Guam"
+],
+[
+"Northern Mariana Islands",
+"N. Mar. I."
+],
+[
+"Puerto Rico",
+"P.R."
+],
+[
+"Virgin Islands",
+"V.I."
+]
+],
+"t15": [
+[
+"Adelaide",
+"Adel."
+],
+[
+"Air Force",
+"A.F."
+],
+[
+"Albany",
+"Alb."
+],
+[
+"American Bar Association",
+"A.B.A."
+],
+[
+"American Intellectual Property Law Association",
+"AIPLA"
+],
+[
+"American Law Institute",
+"A.L.I."
+],
+[
+"American Medical Association",
+"AMA"
+],
+[
+"American Society of Composers, Authors, & Publishers",
+"ASCAP"
+],
+[
+"American University",
+"Am. U."
+],
+[
+"Boston College",
+"B.C."
+],
+[
+"Boston University",
+"B.U."
+],
+[
+"Brigham Young University",
+"BYU"
+],
+[
+"Brooklyn",
+"Brook."
+],
+[
+"Buffalo",
+"Buff."
+],
+[
+"California",
+"Calif."
+],
+[
+"Capital",
+"Cap."
+],
+[
+"Chapman",
+"Chap."
+],
+[
+"Chartered Life Underwriters",
+"C.L.U."
+],
+[
+"Cincinnati",
+"Cin."
+],
+[
+"City University of New York",
+"CUNY"
+],
+[
+"Cleveland",
+"Clev."
+],
+[
+"Columbia",
+"Colum."
+],
+[
+"Cumberland",
+"Cumb."
+],
+[
+"Denver",
+"Denv."
+],
+[
+"Detroit",
+"Det."
+],
+[
+"Dickinson",
+"Dick."
+],
+[
+"Duquesne",
+"Duq."
+],
+[
+"East, Eastern",
+"E."
+],
+[
+"Foreign Broadcast Information Service",
+"F.B.I.S."
+],
+[
+"George Mason",
+"Geo. Mason"
+],
+[
+"George Washington",
+"Geo. Wash."
+],
+[
+"Georgetown",
+"Geo."
+],
+[
+"Gonzaga",
+"Gonz."
+],
+[
+"Harvard",
+"Harv."
+],
+[
+"Howard",
+"How."
+],
+[
+"John Marshall",
+"J. Marshall"
+],
+[
+"Journal of the American Medical Association",
+"JAMA"
+],
+[
+"Judge Advocate General, Judge Advocate General’s",
+"JAG"
+],
+[
+"Las Vegas",
+"L.V."
+],
+[
+"Lawyer's Reports Annotated",
+"L.R.A."
+],
+[
+"Loyola",
+"Loy."
+],
+[
+"Marquette",
+"Marq."
+],
+[
+"Melbourne",
+"Melb."
+],
+[
+"Memphis",
+"Mem."
+],
+[
+"New England",
+"New Eng."
+],
+[
+"New York University, New York University School of Law",
+"N.Y.U."
+],
+[
+"North, Northern",
+"N."
+],
+[
+"Northeast, Northeastern",
+"Ne."
+],
+[
+"Northwest, Northwestern",
+"Nw."
+],
+[
+"Pepperdine",
+"Pepp."
+],
+[
+"Pittsburgh",
+"Pitt."
+],
+[
+"Richmond",
+"Rich."
+],
+[
+"Rocky Mountain Mineral Law Institute",
+"Rocky Mtn. Min. L. Inst."
+],
+[
+"Saint Louis",
+"St. Louis"
+],
+[
+"San Fernando Valley",
+"San Fern. V."
+],
+[
+"Southeast, Southeastern",
+"Se."
+],
+[
+"South, Southern",
+"S."
+],
+[
+"Southern Methodist University",
+"SMU"
+],
+[
+"Southwest, Southwestern",
+"Sw."
+],
+[
+"Stanford",
+"Stan."
+],
+[
+"Temple",
+"Temp."
+],
+[
+"Thomas Jefferson",
+"T. Jefferson"
+],
+[
+"Thomas M. Cooley",
+"T.M. Cooley"
+],
+[
+"Thurgood Marshall",
+"T. Marshall"
+],
+[
+"Toledo",
+"Tol."
+],
+[
+"Tulane",
+"Tul."
+],
+[
+"Universidad de Puerto Rico",
+"U. P.R."
+],
+[
+"University of California",
+"U.C."
+],
+[
+"University of California - Los Angeles",
+"UCLA"
+],
+[
+"University of Missouri Kansas City",
+"UMKC"
+],
+[
+"University of the District of Columbia, David A. Clarke School of Law",
+"UDC/DCSL"
+],
+[
+"University of West Los Angeles",
+"UWLA"
+],
+[
+"Valparaiso",
+"Val."
+],
+[
+"Vanderbilt",
+"Vand."
+],
+[
+"Villanova",
+"Vill."
+],
+[
+"Washington & Lee",
+"Wash. & Lee"
+],
+[
+"West, Western",
+"W."
+],
+[
+"William & Mary",
+"Wm. & Mary"
+],
+[
+"William Mitchell",
+"Wm. Mitchell"
+]
+],
+"t18": [
+[
+"Admission",
+"Admis."
+],
+[
+"Affidavit",
+"Aff."
+],
+[
+"Affirm",
+"Affirm"
+],
+[
+"Amended",
+"Am."
+],
+[
+"Answer",
+"Answer"
+],
+[
+"Appeal",
+"Appeal"
+],
+[
+"Appellant",
+"Appellant"
+],
+[
+"Appellee",
+"Appellee"
+],
+[
+"Appendix",
+"App."
+],
+[
+"Application",
+"Appl."
+],
+[
+"Argument",
+"Arg."
+],
+[
+"Attachment",
+"Attach."
+],
+[
+"Attorney",
+"Att’y"
+],
+[
+"Brief",
+"Br."
+],
+[
+"Certiorari",
+"Cert."
+],
+[
+"Civil",
+"Civ."
+],
+[
+"Compel",
+"Compel"
+],
+[
+"Counterclaim",
+"Countercl."
+],
+[
+"Court",
+"Ct."
+],
+[
+"Cross-claim",
+"Cross-cl."
+],
+[
+"Declaration",
+"Decl."
+],
+[
+"Defendant, Defendant’s",
+"Def., Def.’s"
+],
+[
+"Defendants, Defendants’",
+"Defs., Defs.’"
+],
+[
+"Demurrer",
+"Dem."
+],
+[
+"Deny, Denying",
+"Den."
+],
+[
+"Deposition",
+"Dep."
+],
+[
+"Discovery",
+"Disc."
+],
+[
+"Dismiss",
+"Dismiss"
+],
+[
+"Docket",
+"Docket"
+],
+[
+"Evidence",
+"Evid."
+],
+[
+"Exhibit",
+"Ex."
+],
+[
+"Grant",
+"Grant"
+],
+[
+"Hearing",
+"Hr’g"
+],
+[
+"Injunction",
+"Inj."
+],
+[
+"Instruction",
+"Instr."
+],
+[
+"Interrogatory",
+"Interrog."
+],
+[
+"Joint Appendix",
+"J.A."
+],
+[
+"Judgment",
+"J."
+],
+[
+"Limine",
+"Lim."
+],
+[
+"Memorandum",
+"Mem."
+],
+[
+"Minute",
+"Min."
+],
+[
+"Motion",
+"Mot."
+],
+[
+"Objection",
+"Obj."
+],
+[
+"Opinion",
+"Op."
+],
+[
+"Opposition",
+"Opp’n"
+],
+[
+"Order",
+"Order"
+],
+[
+"Petition",
+"Pet."
+],
+[
+"Petitioner, Petitioner’s",
+"Pet’r, Pet’r’s"
+],
+[
+"Petitioners, Petitioners’",
+"Pet’rs, Pet’rs’"
+],
+[
+"Plaintiff, Plaintiff’s",
+"Pl., Pl.’s"
+],
+[
+"Plaintiffs, Plaintiffs’",
+"Pls., Pls.’"
+],
+[
+"Points and Authorities",
+"P. & A."
+],
+[
+"Preliminary",
+"Prelim."
+],
+[
+"Produce, Production",
+"Produc."
+],
+[
+"Quash",
+"Quash"
+],
+[
+"Reconsideration",
+"Recons."
+],
+[
+"Record",
+"R."
+],
+[
+"Rehearing",
+"Reh’g"
+],
+[
+"Reply",
+"Reply"
+],
+[
+"Report and Recommendation",
+"R. & R."
+],
+[
+"Reporter",
+"Rep."
+],
+[
+"Request",
+"Req."
+],
+[
+"Respondent",
+"Resp’t"
+],
+[
+"Response",
+"Resp."
+],
+[
+"Stay",
+"Stay"
+],
+[
+"Subpoena",
+"Subpoena"
+],
+[
+"Summary",
+"Summ."
+],
+[
+"Supplement, Supplemental",
+"Supp."
+],
+[
+"Suppress",
+"Suppress"
+],
+[
+"Temporary Restraining Order",
+"TRO"
+],
+[
+"Testimony",
+"Test."
+],
+[
+"Transcript",
+"Tr."
+],
+[
+"Verified Statement",
+"V.S."
+]
+]
+}

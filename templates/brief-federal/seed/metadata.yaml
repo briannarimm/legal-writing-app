@@ -1,0 +1,28 @@
+# Cover page and certificates. Edit the values; keep the structure.
+title: "{{title}}"
+case-number: "No. 00-0000"
+court:
+  - "UNITED STATES COURT OF APPEALS"
+  - "FOR THE EIGHTH CIRCUIT"
+appellant:
+  name: "APPELLANT NAME,"
+  role: "Plaintiff–Appellant"
+appellee:
+  name: "APPELLEE NAME,"
+  role: "Defendant–Appellee"
+appeal-from:
+  - "On Appeal from the United States District Court"
+  - "for the Eastern District of Missouri"
+  - "The Honorable Judge Name"
+brief-title: "BRIEF OF APPELLANT"
+counsel:
+  - "Brianna Imm"
+  - "Firm Name"
+  - "Street Address"
+  - "City, State ZIP"
+  - "(000) 000-0000"
+  - "email@example.com"
+  - "Counsel for Appellant"
+signature: "Brianna Imm"
+date: "[date]"
+court-name: "the United States Court of Appeals for the Eighth Circuit"

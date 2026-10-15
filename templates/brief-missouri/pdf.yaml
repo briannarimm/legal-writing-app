@@ -1,0 +1,8 @@
+to: latex
+template: templates/_brief/document.latex
+pdf-engine: xelatex
+filters:
+  - filters/redline-latex.lua
+  - filters/toa.lua
+variables:
+  missouri: true
