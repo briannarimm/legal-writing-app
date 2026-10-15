@@ -32,7 +32,7 @@
 
   function chipHtml(c, attrs, format) {
     const a = Object.assign({ tag: c.tag }, attrs || {});
-    const text = App.citeMarkdown(c, format === 'apa' ? (a.narrative ? 'narrative' : 'intext') : 'full', format);
+    const text = App.citeMarkdown(c, App.isParenFormat(format) ? (a.narrative ? 'narrative' : 'intext') : 'full', format);
     return MD.citeChip(a, MD.inlineHtml(text));
   }
 
@@ -60,7 +60,7 @@
   function edit(chip, opts) {
     closePop();
     const format = opts.format || 'practitioner';
-    const apa = format === 'apa';
+    const apa = App.isParenFormat(format);          // APA or Chicago author-date: (Author, Year) in the text
     popChip = chip; chip.classList.add('editing');
     pop = el('div', 'chip-pop');
     const c = App.citation(chip.dataset.tag);
@@ -92,11 +92,12 @@
       pop.appendChild(fl);
     } else {
       const nar = el('input'); nar.type = 'checkbox'; nar.checked = !!chip.dataset.narrative;
-      const nl = el('label', 'chip-check'); nl.append(nar, ' Narrative: Walker (2017) instead of (Walker, 2017)');
+      const nl = el('label', 'chip-check'); nl.append(nar, format === 'apa' ? ' Narrative: Walker (2017) instead of (Walker, 2017)' : ' Narrative: Walker (2017) instead of (Walker 2017)');
       nar.addEventListener('change', () => set('narrative', nar.checked ? '1' : ''));
       pop.appendChild(nl);
     }
-    pop.appendChild(el('div', 'hint', apa ? 'APA in-text citations are the same every time; the References list is built from them.'
+    pop.appendChild(el('div', 'hint', apa ? 'In-text citations are the same every time; the References list is built from them.'
+      : format === 'chicago' ? 'Drafts show every note in full. With Final draft on, Run also builds a copy with shortened notes after the first full one.'
       : 'Drafts show every citation in full. With Final draft on, Run also builds a copy with Id., short forms and supra.'));
     const acts = el('div', 'row');
     const swap = el('button', 'btn small', 'Change source…'); swap.type = 'button';
@@ -104,7 +105,7 @@
       const keep = chip; closePop();
       App.pickCitation({ title: 'Change the source', format, live: true, onPick: (nc, which) => {
         keep.dataset.tag = nc.tag;
-        if (format === 'apa') { if (which === 'narrative') keep.dataset.narrative = '1'; else delete keep.dataset.narrative; }
+        if (App.isParenFormat(format)) { if (which === 'narrative') keep.dataset.narrative = '1'; else delete keep.dataset.narrative; }
         refresh([keep.parentElement], format).then(() => opts.changed && opts.changed(keep));
       } });
     };

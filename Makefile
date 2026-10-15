@@ -30,7 +30,7 @@ endif
 
 SECTIONS := $(sort $(wildcard $(DOC)/[0-9]*.md))
 DEPS     := $(SECTIONS) $(DOC)/metadata.yaml $(DOC)/document.json $(wildcard defaults/*.yaml) \
-            $(wildcard $(TDIR)/*) $(wildcard templates/_brief/*) $(wildcard filters/*.lua) \
+            $(wildcard $(TDIR)/*) $(wildcard templates/_brief/*) $(wildcard templates/_chicago/*) $(wildcard filters/*.lua) \
             $(wildcard library/citations/*.md)
 
 ifeq ($(USE_DOCKER),1)

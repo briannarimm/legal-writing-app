@@ -53,7 +53,10 @@ Templates:
 |---|---|
 | Law review article | PDF and Word. Double spacing, footnotes, law review citation typeface. |
 | Assignment (APA 7th) | PDF and Word. Title page, APA headings, automatic References page. |
-| Annotated bibliography | PDF and Word. Sorted entries in APA or Bluebook style, each with an annotation. |
+| Journal submission (APA 7th) | PDF and Word. Professional title page with running head and author note, abstract and keywords, automatic References page. |
+| Journal submission (Chicago notes) | PDF and Word. Title page, footnotes in Chicago notes-and-bibliography style (shortened notes in the final draft), automatic Bibliography. |
+| Journal submission (Chicago author-date) | PDF and Word. Title page, in-text citations like (Walker 2017, 45), automatic References list. |
+| Annotated bibliography | PDF and Word. Sorted entries in APA, Bluebook or Chicago style, each with an annotation. |
 | Legal memo | PDF and Word. MEMORANDUM header, standard memo sections. |
 | Federal appellate brief | PDF and Word. Cover, tables of contents and authorities, certificates. |
 | Missouri appellate brief | PDF and Word. Cover, tables, points relied on, certificates. |
@@ -174,6 +177,24 @@ Use the project menu at the top of the window.
 
 The new document contains sample sections. Replace the sample text with your text.
 The **Details** section contains the title page or header data, for example the court and the parties.
+
+### 7.1.1 Change a document's template
+
+Open **Details** and choose another **Template**, for example to turn a law review article into an APA
+assignment. ReWord converts the document:
+
+- Citations take the new template's style. Where the new style puts them somewhere else, they move:
+  footnotes that hold only citations become in-text citations (APA, Chicago author-date) or citation
+  sentences (memos, briefs), and in-text citations become footnotes (law review, Chicago notes).
+  Footnotes that also say something stay footnotes.
+- The References or Bibliography section is renamed, added or removed to fit the new template.
+- The details are rebuilt from the new template, with the title, authors and abstract carried over.
+  The old details stay below them as comments.
+- A copy of the files as they were goes to the document's `_trash` folder.
+
+When the new template uses Chicago style, ReWord lists any sources that are missing details Chicago
+uses (for example a book's publisher). They still format; add the details in **Citations** when you can.
+An annotated bibliography can't switch templates.
 
 ### 7.2 Write
 

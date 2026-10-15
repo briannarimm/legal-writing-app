@@ -31,7 +31,8 @@
   function noteFormat(n) {
     const p = App.projects.get(((n || cur) || {}).project);
     const st = p && p.citation_style;
-    return st === 'apa' ? 'apa' : st === 'bluebook-lawreview' ? 'lawreview' : 'practitioner';
+    return st === 'apa' ? 'apa' : st === 'bluebook-lawreview' ? 'lawreview' : st === 'chicago' ? 'chicago'
+      : st === 'chicago-author-date' ? 'chicago-ad' : 'practitioner';
   }
 
   function noteRow(n) {

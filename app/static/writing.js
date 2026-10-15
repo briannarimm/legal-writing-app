@@ -99,6 +99,50 @@
   }
   App.projects.onChange(() => { renderTree(); showDocProject(); });
 
+  // Template: a detail you can change. Switching converts the document on the server (store.change_template):
+  // citations take the new style and move between footnotes and the text as it needs, the reference list
+  // follows, and the details are rebuilt from the new template. The files as they were go to _trash first.
+  function showDocTemplate() {
+    const sel = $('#doc-template'); sel.innerHTML = '';
+    if (!W.info) return;
+    const bib = !!(W.tmpl && W.tmpl.bibliography);
+    App.state.templates.forEach(t => {
+      if (t.bibliography && t.id !== W.info.template) return;
+      const o = el('option', '', t.name); o.value = t.id; sel.appendChild(o);
+    });
+    sel.value = W.info.template;
+    sel.disabled = bib;
+    $('#doc-template-hint').textContent = bib ? 'An annotated bibliography can’t switch to another template.'
+      : 'Switching converts the document: citations take the new template’s style.';
+  }
+  function conversionSummary(r) {
+    const n = (k, one, many) => r[k] ? r[k] + ' ' + (r[k] === 1 ? one : many) : '';
+    const bits = [n('to_notes', 'citation moved into a footnote', 'citations moved into footnotes'),
+      n('to_text', 'footnote became a text citation', 'footnotes became text citations'),
+      n('notes_kept', 'footnote with commentary stays a footnote', 'footnotes with commentary stay footnotes'),
+      { added: 'a reference list was added', renamed: 'the reference list was renamed', removed: 'the empty reference list was removed',
+        kept: 'your typed reference list was kept (this template doesn’t build one)' }[r.references] || ''].filter(Boolean);
+    return 'Now a ' + r.name + '.' + (bits.length ? ' ' + bits.join('; ').replace(/^./, x => x.toUpperCase()) + '.' : '');
+  }
+  $('#doc-template').addEventListener('change', async () => {
+    const sel = $('#doc-template'), tid = sel.value;
+    if (!W.info || tid === W.info.template) return;
+    const t = App.state.templates.find(x => x.id === tid) || { name: tid };
+    if (!confirm('Switch “' + W.info.title + '” to ' + t.name + '?\n\nCitations are reformatted in the new style and moved between ' +
+      'footnotes and the text as it needs. The details are rebuilt from the new template, with your old ones kept below them as ' +
+      'comments. A copy of the files as they are now goes to the document’s _trash folder.')) { sel.value = W.info.template; return; }
+    await saver.flush(false);
+    let r;
+    try { r = await post('/api/doc/template', { slug: W.info.slug, template: tid }); }
+    catch (e) { toast(e.message, true); sel.value = W.info.template; return; }
+    await openDoc(W.info.slug, W.cur);
+    toast(conversionSummary(r));
+    if (r.gaps && r.gaps.length) {
+      alert('These sources format in Chicago style, but Chicago would also use details they don’t have yet. ' +
+        'Add them in Citations when you can:\n\n' + r.gaps.map(g => '• ' + g.tag + ': ' + g.missing.join(', ')).join('\n'));
+    }
+  });
+
   function renderSections() {
     const sections = W.files.filter(f => f.kind === 'section');
     const box = el('ul', 'sections');
@@ -233,7 +277,7 @@
     catch (e) { toast('Couldn’t open that document: ' + e.message, true); showEmpty(App.state.documents.length === 0); return; }
     showEmpty(false);
     W.info = r.doc; W.tmpl = r.template; W.cur = null;
-    showFinal(); showDocProject();
+    showFinal(); showDocProject(); showDocTemplate();
     W.files = r.files.map(f => {
       const file = { file: f.file, kind: f.kind, md: f.md, mtime: f.mtime };
       file.item = {
@@ -509,7 +553,8 @@
         }
         if (bodies.length) ann = bodies.join('\n\n').replace(/^#{1,6}\s+/gm, '').replace(/\n\[\^[^\]]+\]:[^\n]*/g, '').replace(/\[\^[^\]]+\]/g, '');
       }
-      parts.push('[' + App.citeText(c, docFormat() === 'apa' ? 'apa_reference' : 'bluebook_practitioner') + ']{.cite tag="' + c.tag + '" form="entry"}\n\n' + ann);
+      const f = docFormat();
+      parts.push('[' + App.citeText(c, f === 'apa' || f.startsWith('chicago') ? App.formKey('reference', f) : 'bluebook_practitioner') + ']{.cite tag="' + c.tag + '" form="entry"}\n\n' + ann);
     }
     f.md = f.md.replace(/\s*$/, '') + '\n\n' + parts.join('\n\n') + '\n';
     renderRich(f); docMd.value = f.md;

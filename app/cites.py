@@ -27,6 +27,11 @@ resolve(doc, …) walks the Pandoc AST in reading order (footnotes in place) and
   APA     always "(Author, Year)" / "Author (Year)", parenthetical cites side by side are combined
           ("(Ray, 2004; Walker, 2017)"), same-author-same-year sources get 2017a/2017b, and the
           References list is built from what was cited.
+  Chicago notes and bibliography (style "chicago"): full notes in the draft; in the final draft a shortened
+          note once the full note has been given (Chicago 18 prefers shortened notes to ibid.). The
+          Bibliography is built from what was cited (legal materials stay in the notes).
+  Chicago author-date (style "chicago-ad"): like APA, "(Walker 2017, 45)" / "Walker (2017, 45)", combined
+          and suffixed the same way, with a References list in Chicago form.
 
 For brief templates every authority is also wrapped in an .auth span so the table of authorities
 lists it (filters/toa.lua and scripts/make_toa.py do the rest).
@@ -90,6 +95,26 @@ def md_inlines(md):
 
 # ------------------------------------------------------------------ the resolver
 
+PAREN_STYLES = {'apa': (cf.apa_intext, cf.apa_sort_key, cf.apa_author_year),
+                'chicago-ad': (cf.chicago_ad_intext, cf.chicago_sort_key, cf.chicago_ad_author_year)}
+REF_HEADING = {'apa': 'References', 'chicago-ad': 'References', 'chicago': 'Bibliography'}
+
+
+def reference_entry(c, style, year_suffix=''):
+    """A reference-list or bibliography entry in the document's style (None: not listed)."""
+    if style == 'chicago':
+        return cf.chicago_bib(c)
+    if style == 'chicago-ad':
+        return cf.chicago_ad_reference(c, year_suffix)
+    if c['type'] == 'constitution':
+        return None
+    return cf.apa_reference(c, year_suffix=year_suffix)
+
+
+def sort_key(c, style):
+    return cf.chicago_sort_key(c) if style.startswith('chicago') else cf.apa_sort_key(c)
+
+
 class Resolver:
     def __init__(self, library, mode='draft', typeface='practitioner', style='bluebook', toa=False, note_offset=0):
         self.lib = library
@@ -130,11 +155,12 @@ class Resolver:
             c = self.lib[t]
             if c['type'] in cf.LEGAL_TYPES:
                 continue
-            who, year = cf.apa_author_year(c)
+            who, year = PAREN_STYLES.get(self.style, PAREN_STYLES['apa'])[2](c)
             groups.setdefault((who.plain().lower(), year), []).append(t)
         for key, ts in groups.items():
             if len(ts) > 1 and key[1] not in ('', 'n.d.'):
-                ts.sort(key=lambda t: cf.apa_title(self.lib[t]).plain().lower())
+                title = cf.ch_title if self.style.startswith('chicago') else cf.apa_title
+                ts.sort(key=lambda t: title(self.lib[t]).plain().lower())
                 for k, t in enumerate(ts):
                     self.suffix[t] = chr(ord('a') + k)
 
@@ -178,6 +204,22 @@ class Resolver:
             self.last_note[tag] = self.in_note
         return out
 
+    def chicago_one(self, c, a, cap):
+        """One Chicago note citation: full the first time (and always in the draft), shortened after that."""
+        tag, pin = c['tag'], a.get('pin', '').strip()
+        out = cf.Runs()
+        signal = a.get('signal', '').strip()
+        if signal:
+            out.r((signal[0].upper() if cap else signal[0].lower()) + signal[1:] + ' ')     # roman in Chicago
+        if self.mode == 'final' and a.get('form') != 'full' and tag in self.full_given:
+            out.extend_runs(cf.chicago_short(c, pin))
+        else:
+            out.extend_runs(cf.chicago_note(c, pin))
+            self.full_given.add(tag)
+        if a.get('paren', '').strip():
+            out.r(' (').extend_runs(cf.md_runs(a['paren'].strip())).r(')')
+        return out
+
     def render_group(self, spans, cap, in_text):
         """A run of adjacent citation marks (a string citation) -> inlines."""
         items = []
@@ -195,7 +237,7 @@ class Resolver:
             items.append((tag, c, a))
         alone = len(items) == 1
         out = []
-        if self.style == 'apa':
+        if self.style in PAREN_STYLES:
             out = self.apa_group(items)
         else:
             for k, (tag, c, a) in enumerate(items):
@@ -204,7 +246,10 @@ class Resolver:
                 if c is None:
                     out.append({'t': 'Str', 'c': '[missing citation: %s]' % tag})
                     continue
-                runs = self.bluebook_one(c, a, cap and k == 0, in_text, alone)
+                if self.style == 'chicago':
+                    runs = self.chicago_one(c, a, cap and k == 0)
+                else:
+                    runs = self.bluebook_one(c, a, cap and k == 0, in_text, alone)
                 inl = cf.to_pandoc(runs)
                 if self.toa and c['type'] in cf.TOA_GROUP:
                     inl = [{'t': 'Span', 'c': [['', ['auth'], [['tag', tag]]], inl]}]
@@ -213,19 +258,21 @@ class Resolver:
         return out
 
     def apa_group(self, items):
+        """Parenthetical text citations (APA or Chicago author-date), side-by-side ones in one pair."""
+        intext, key = PAREN_STYLES[self.style][:2]
         out = cf.Runs()
         paren = [(t, c, a) for t, c, a in items if c is not None and not a.get('narrative')]
         narr = [(t, c, a) for t, c, a in items if c is not None and a.get('narrative')]
         for t, c, a in narr:
             if out:
                 out.r('; ')
-            out.extend_runs(cf.apa_intext(c, a.get('pin', '').strip(), narrative=True, year_suffix=self.suffix.get(t, '')))
+            out.extend_runs(intext(c, a.get('pin', '').strip(), narrative=True, year_suffix=self.suffix.get(t, '')))
         if paren:
             if out:
                 out.r(' ')
             parts = []
-            for t, c, a in sorted(paren, key=lambda x: cf.apa_sort_key(x[1])):
-                one = cf.apa_intext(c, a.get('pin', '').strip(), year_suffix=self.suffix.get(t, ''))
+            for t, c, a in sorted(paren, key=lambda x: key(x[1])):
+                one = intext(c, a.get('pin', '').strip(), year_suffix=self.suffix.get(t, ''))
                 inner = cf.Runs(one[:])
                 # strip the outer parentheses of each so they can share one pair
                 if inner and inner[0][0].startswith('('):
@@ -321,9 +368,14 @@ class Resolver:
 
     # ---- APA References (or any reference list) built from what was cited
     def reference_blocks(self):
-        tags = [t for t in self.cited if t in self.lib and self.lib[t]['type'] != 'constitution']
-        tags.sort(key=lambda t: cf.apa_sort_key(self.lib[t]))
-        return [{'t': 'Para', 'c': cf.to_pandoc(cf.apa_reference(self.lib[t], year_suffix=self.suffix.get(t, '')))} for t in tags]
+        tags = [t for t in self.cited if t in self.lib]
+        tags.sort(key=lambda t: sort_key(self.lib[t], self.style))
+        out = []
+        for t in tags:
+            runs = reference_entry(self.lib[t], self.style, self.suffix.get(t, ''))
+            if runs:
+                out.append({'t': 'Para', 'c': cf.to_pandoc(runs)})
+        return out
 
 
 def entry_tag(b):
@@ -357,7 +409,7 @@ def annotated_bibliography(blocks, library, style, typeface, resolver):
         c = library.get(e['tag'])
         if not c:
             return ('~', e['tag'])
-        return cf.apa_sort_key(c)          # by author surname (or title), then year, in both styles
+        return sort_key(c, style)          # by author surname (or title), then year, in every style
     out = list(intro)
     for e in sorted(entries, key=key):
         c = library.get(e['tag'])
@@ -366,8 +418,12 @@ def annotated_bibliography(blocks, library, style, typeface, resolver):
             runs = cf.Runs().r('[missing citation: %s]' % e['tag'])
         else:
             cited.append(e['tag'])
-            if style == 'apa':
-                runs = cf.apa_reference(c, year_suffix=resolver.suffix.get(e['tag'], ''))
+            if style in ('apa', 'chicago', 'chicago-ad'):
+                runs = reference_entry(c, style, resolver.suffix.get(e['tag'], ''))
+                if runs is None:                    # legal materials: their citation, as a bibliography entry
+                    runs = cf.bluebook(c, 'practitioner')
+                    if not runs.plain().rstrip().endswith('.'):
+                        runs.r('.')
             else:
                 runs = cf.bluebook(c, typeface)
                 if not runs.plain().rstrip().endswith('.'):
@@ -379,10 +435,10 @@ def annotated_bibliography(blocks, library, style, typeface, resolver):
 
 
 def is_refs_header(b):
-    return b.get('t') == 'Header' and b['c'][0] == 1 and re.fullmatch(r'\s*references?\s*', stringify(b['c'][2]).lower() or '') is not None
+    return b.get('t') == 'Header' and b['c'][0] == 1 and re.fullmatch(r'\s*(references?|bibliography|works cited)\s*', stringify(b['c'][2]).lower() or '') is not None
 
 
-def add_references(blocks, refs):
+def add_references(blocks, refs, heading='References'):
     """Put the generated entries under the "References" heading (merged with anything typed there, in
     alphabetical order); add the heading at the end if the document has none."""
     if not refs:
@@ -396,7 +452,7 @@ def add_references(blocks, refs):
             merged = typed + [r for r in refs if stringify(r['c']).strip().lower() not in have]
             merged.sort(key=lambda x: re.sub(r'^[“"‘\'*_]+', '', stringify(x['c']).lower()))
             return blocks[:k + 1] + others + merged + blocks[end:]
-    head = {'t': 'Header', 'c': [1, ['references', [], []], [{'t': 'Str', 'c': 'References'}]]}
+    head = {'t': 'Header', 'c': [1, [heading.lower(), [], []], [{'t': 'Str', 'c': heading}]]}
     return blocks + [head] + refs
 
 
@@ -405,16 +461,16 @@ def resolve(doc, library, mode='draft', typeface='practitioner', style='bluebook
     """doc: Pandoc JSON (dict). Returns (doc, report). references: None = automatic (APA style only).
     bibliography: the document is an annotated bibliography (entries become sorted reference entries)."""
     r = Resolver(library, mode, typeface, style, toa, note_offset)
-    if style == 'apa':
+    if style in PAREN_STYLES:
         r.prescan(doc['blocks'])
     if bibliography:
         blocks, cited, missing = annotated_bibliography(doc['blocks'], library, style, typeface, r)
         doc = dict(doc, blocks=r.blocks(blocks))
         return doc, {'cited': cited, 'missing': sorted(set(missing + r.missing))}
     doc = dict(doc, blocks=r.blocks(doc['blocks']))
-    want_refs = (style == 'apa') if references is None else references
+    want_refs = (style in REF_HEADING) if references is None else references
     if want_refs:
-        doc['blocks'] = add_references(doc['blocks'], r.reference_blocks())
+        doc['blocks'] = add_references(doc['blocks'], r.reference_blocks(), REF_HEADING.get(style, 'References'))
     report = {'cited': r.cited, 'missing': sorted(set(r.missing))}
     return doc, report
 
@@ -431,15 +487,20 @@ def meta_text(meta, key):
 
 
 def style_of(template, meta=None):
-    """(style, typeface) for a template. Templates with "cite_style": "document" (the annotated bibliography)
-    take it from the document's `citation-style:` (apa · bluebook · bluebook-lawreview)."""
+    """(style, typeface) for a template: style is bluebook · apa · chicago (notes and bibliography) ·
+    chicago-ad (author-date). Templates with "cite_style": "document" (the annotated bibliography) take it
+    from the document's `citation-style:` (apa · bluebook · bluebook-lawreview · chicago · chicago-author-date)."""
     cs = template.get('cite_style')
     if cs == 'document':
         v = meta_text(meta, 'citation-style').strip().lower()
         if v.startswith('bluebook'):
             return 'bluebook', 'lawreview' if 'law' in v else 'practitioner'
+        if v.startswith('chicago'):
+            return ('chicago-ad' if 'date' in v or v.endswith('-ad') else 'chicago'), 'practitioner'
         return 'apa', 'practitioner'
-    return ('apa' if cs == 'apa' else 'bluebook'), (template.get('cite_typeface') or 'practitioner')
+    if cs in ('apa', 'chicago', 'chicago-ad'):
+        return cs, 'practitioner'
+    return 'bluebook', (template.get('cite_typeface') or 'practitioner')
 
 
 def options_for(template, mode='draft', meta=None):
@@ -470,11 +531,20 @@ def chip_text(c, attrs, typeface='practitioner', style='bluebook', in_note=True)
         return cf.Runs().r('[missing citation: %s]' % attrs.get('tag', ''))
     pin = (attrs.get('pin') or '').strip()
     if attrs.get('form') == 'entry':
-        return cf.apa_reference(c) if style == 'apa' else cf.bluebook(c, typeface)
-    if style == 'apa':
-        return cf.apa_intext(c, pin, narrative=bool(attrs.get('narrative')))
+        if style in ('apa', 'chicago', 'chicago-ad'):
+            return reference_entry(c, style) or cf.bluebook(c, 'practitioner')
+        return cf.bluebook(c, typeface)
+    if style in PAREN_STYLES:
+        return PAREN_STYLES[style][0](c, pin, narrative=bool(attrs.get('narrative')))
     out = cf.Runs()
     sig = (attrs.get('signal') or '').strip()
+    if style == 'chicago':
+        if sig:
+            out.r(sig + ' ')
+        out.extend_runs(cf.chicago_note(c, pin))
+        if (attrs.get('paren') or '').strip():
+            out.r(' (').extend_runs(cf.md_runs(attrs['paren'].strip())).r(')')
+        return out
     if sig:
         out.i(sig + ' ')
     tf = 'practitioner' if (typeface == 'lawreview' and not in_note) else typeface
