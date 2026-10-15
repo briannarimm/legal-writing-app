@@ -1,0 +1,15 @@
+# Title page and abstract (APA 7th professional paper). Remove any line you don't need.
+title: "{{title}}"
+running-head: "SHORT TITLE IN CAPITALS"     # 50 characters or fewer
+author:
+  - "Your Name"
+affiliation: "Department of …, University Name"
+author-note: |
+  Your Name https://orcid.org/0000-0000-0000-0000
+
+  Correspondence concerning this article should be addressed to Your Name, Address. Email: you@example.com
+abstract: |
+  One paragraph of 150 to 250 words summarizing the problem, method, findings and implications.
+  Replace this placeholder.
+keywords: [first keyword, second keyword, third keyword]
+lang: en-US

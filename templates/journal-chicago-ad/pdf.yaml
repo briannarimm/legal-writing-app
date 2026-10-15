@@ -1,0 +1,6 @@
+to: latex
+template: templates/_chicago/document.latex
+pdf-engine: xelatex
+filters:
+  - filters/redline-latex.lua
+  - filters/apa.lua

@@ -1,0 +1,13 @@
+{
+  "id": "journal-chicago-ad",
+  "name": "Journal submission (Chicago author-date)",
+  "description": "Manuscript for submitting to a journal in Chicago Manual of Style (18th ed.) author-date style: title page, double-spaced text, in-text citations like (Walker 2017, 45), and a References list built from what you cite.",
+  "outputs": ["pdf", "docx"],
+  "multi_section": true,
+  "cite_mode": "inline",
+  "cite_style": "chicago-ad",
+  "toa": false,
+  "redline": true,
+  "heading_scheme": "apa",
+  "new_section_heading": "#"
+}

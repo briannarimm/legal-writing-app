@@ -154,8 +154,8 @@
 
   /* ---------------------------------------------------------- citation picker
    * App.pickCitation({ title, pickOnly, format, onPick(cite, which) })
-   *   format: 'lawreview' | 'practitioner' | 'apa' (how cites are shown, and which buttons appear)
-   *   which:  'full' | 'short' (Bluebook) or 'intext' | 'narrative' | 'reference' (APA), or 'pick'
+   *   format: 'lawreview' | 'practitioner' | 'apa' | 'chicago' | 'chicago-ad' (how cites are shown, and which buttons appear)
+   *   which:  'full' | 'short' (Bluebook, Chicago notes) or 'intext' | 'narrative' | 'reference' (APA, Chicago author-date), or 'pick'
    * Used to insert a cite in Writing/Research, and to choose a source for a note. */
   const dlg = $('#dlg-cite');
   const cpSearch = $('#cp-search');
@@ -166,25 +166,40 @@
   cpScope.addEventListener('change', () => renderPicker());
   let cpOpts = null;
 
-  // Which citation style a template uses: APA, or Bluebook in law review or practitioner type.
-  // Templates with "cite_style": "document" (the annotated bibliography) read `citation-style:` from the
-  // document's details (apa · bluebook · bluebook-lawreview).
+  // Which citation style a template uses: APA, Chicago (notes, or author-date), or Bluebook in law review or
+  // practitioner type. Templates with "cite_style": "document" (the annotated bibliography) read
+  // `citation-style:` from the document's details (apa · bluebook · bluebook-lawreview · chicago · chicago-author-date).
   App.citeFormat = function (t, metaMd) {
     if (t && t.cite_style === 'document') {
       const m = /^citation-style:\s*"?([\w-]+)/m.exec(metaMd || '');
       const v = m ? m[1].toLowerCase() : 'apa';
+      if (v.startsWith('chicago')) return (v.includes('date') || v.endsWith('-ad')) ? 'chicago-ad' : 'chicago';
       return v.startsWith('bluebook') ? (v.includes('law') ? 'lawreview' : 'practitioner') : 'apa';
     }
-    return (t && t.cite_style === 'apa') ? 'apa' : ((t && t.cite_typeface) || 'practitioner');
+    const cs = t && t.cite_style;
+    if (cs === 'apa' || cs === 'chicago' || cs === 'chicago-ad') return cs;
+    return (t && t.cite_typeface) || 'practitioner';
   };
+  // Styles that cite in the text, in parentheses: (Walker, 2017) or (Walker 2017)
+  App.isParenFormat = format => format === 'apa' || format === 'chicago-ad';
+
+  // The form keys (citeformat.describe) for each style
+  function formKey(which, format) {
+    if (format === 'apa') return { intext: 'apa_intext', narrative: 'apa_narrative', reference: 'apa_reference' }[which] || 'apa_intext';
+    if (format === 'chicago-ad') return { intext: 'chicago_ad_intext', narrative: 'chicago_ad_narrative', reference: 'chicago_ad_reference' }[which] || 'chicago_ad_intext';
+    if (format === 'chicago') return { short: 'chicago_short', reference: 'chicago_bib' }[which] || 'chicago_note';
+    const tf = format === 'lawreview' ? 'lawreview' : 'practitioner';
+    if (which === 'intext') return 'apa_intext';
+    if (which === 'narrative') return 'apa_narrative';
+    if (which === 'reference') return 'apa_reference';
+    return (which === 'short' ? 'short_' : 'bluebook_') + tf;
+  }
+  App.formKey = formKey;
 
   // The Markdown for one form of a citation (forms come from the server's formatter).
   App.citeMarkdown = function (c, which, format) {
     const f = c.forms || {};
-    const key = which === 'intext' ? 'apa_intext' : which === 'narrative' ? 'apa_narrative' : which === 'reference' ? 'apa_reference'
-      : which === 'short' ? 'short_' + (format === 'lawreview' ? 'lawreview' : 'practitioner')
-      : 'bluebook_' + (format === 'lawreview' ? 'lawreview' : 'practitioner');
-    return (f[key] || {}).md || c.cite || c.tag;
+    return (f[formKey(which, format)] || {}).md || c.cite || c.tag;
   };
 
   function renderPicker() {
@@ -192,7 +207,7 @@
     list.innerHTML = '';
     const q = cpSearch.value.trim().toLowerCase();
     const format = cpFormat.value || 'practitioner';
-    const shownKey = format === 'apa' ? 'apa_reference' : 'bluebook_' + format;
+    const shownKey = App.isParenFormat(format) ? formKey('reference', format) : formKey('full', format);
     const proj = cpScope.value;
     const items = App.state.citations.filter(c => (!proj || (c.projects || []).includes(proj)) && (!q ||
       (c.tag + ' ' + App.typeLabel(c.type) + ' ' + App.citeText(c) + ' ' + App.citeText(c, 'apa_reference')).toLowerCase().includes(q)));
@@ -221,18 +236,18 @@
         row.onclick = e => { if (e.target !== cb) { cb.checked = !cb.checked; cb.onchange(); } };
         row.insertBefore(cb, row.firstChild);
       } else if (cpOpts.pickOnly) btn('Choose', 'pick', true);
-      else if (cpOpts.live && format === 'apa') {
-        btn('In-text', 'intext', true, App.citeText(c, 'apa_intext'));
-        btn('Narrative', 'narrative', false, App.citeText(c, 'apa_narrative'));
+      else if (cpOpts.live && App.isParenFormat(format)) {
+        btn('In-text', 'intext', true, App.citeText(c, formKey('intext', format)));
+        btn('Narrative', 'narrative', false, App.citeText(c, formKey('narrative', format)));
       } else if (cpOpts.live) {
         btn('Insert', 'full', true, 'Inserted as a live citation: full in drafts, short forms and Id. in the final draft');
-      } else if (format === 'apa') {
-        btn('In-text', 'intext', true, App.citeText(c, 'apa_intext'));
-        btn('Narrative', 'narrative', false, App.citeText(c, 'apa_narrative'));
+      } else if (App.isParenFormat(format)) {
+        btn('In-text', 'intext', true, App.citeText(c, formKey('intext', format)));
+        btn('Narrative', 'narrative', false, App.citeText(c, formKey('narrative', format)));
         btn('Reference entry', 'reference', false, 'For the References page');
       } else {
         btn('Full cite', 'full', true);
-        btn('Short form', 'short', false, App.citeText(c, 'short_' + format));
+        btn('Short form', 'short', false, App.citeText(c, formKey('short', format)));
       }
       row.append(main, btns);
       list.appendChild(row);

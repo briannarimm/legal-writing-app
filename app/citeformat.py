@@ -178,8 +178,8 @@ TYPES = {
         F('title', 'Article title*', 'rich'), TITLE_APA,
         F('journal', 'Journal name*', hint='Full name: Harvard Law Review'),
         F('journal_abbrev', 'Journal abbreviation (Bluebook)', hint='Harv. L. Rev. Leave blank to use an automatic abbreviation.'),
-        F('volume', 'Volume'), F('issue', 'Issue (APA)'),
-        F('first_page', 'First page'), F('last_page', 'Last page (APA)'),
+        F('volume', 'Volume'), F('issue', 'Issue'),
+        F('first_page', 'First page'), F('last_page', 'Last page'),
         F('date', 'Year*', 'date'), F('doi', 'DOI', hint='10.1000/xyz123'), URL, HEREINAFTER]),
     'book': dict(label='Book', group='Academic', fields=[
         AUTHORS,
@@ -187,7 +187,7 @@ TYPES = {
         F('translator', 'Translator'),
         F('title', 'Title*', 'rich'), TITLE_APA,
         F('edition', 'Edition', hint='2, 3, rev.'), F('volume', 'Volume (multi-volume works)'),
-        F('publisher', 'Publisher (APA)'), F('date', 'Year*', 'date'),
+        F('publisher', 'Publisher'), F('date', 'Year*', 'date'),
         F('doi', 'DOI'), URL, HEREINAFTER]),
     'chapter': dict(label='Chapter in an edited book', group='Academic', fields=[
         AUTHORS,
@@ -197,7 +197,7 @@ TYPES = {
         F('book_title_apa', 'Book title in sentence case (APA)'),
         F('edition', 'Edition'),
         F('first_page', 'First page'), F('last_page', 'Last page'),
-        F('publisher', 'Publisher (APA)'), F('date', 'Year*', 'date'),
+        F('publisher', 'Publisher'), F('date', 'Year*', 'date'),
         F('doi', 'DOI'), URL, HEREINAFTER]),
     # ---------------- web, news, reports
     'news': dict(label='Newspaper or magazine article', group='Web & news', fields=[
@@ -257,6 +257,7 @@ TYPES = {
     'other': dict(label='Other (type it yourself)', group='Other', fields=[
         F('text', 'Bluebook citation*', 'rich', 'Typed exactly as it should appear.'),
         F('text_apa', 'APA reference entry', 'rich'),
+        F('text_chicago', 'Chicago note', 'rich', 'Optional. Used in Chicago documents; the Bluebook citation is used when blank.'),
         F('intext_apa', 'APA in-text form', hint='Author, Year (without parentheses)'),
         F('short', 'Short form', 'rich'), URL]),
 }
@@ -1319,6 +1320,446 @@ def apa_sort_key(c):
     return (re.sub(r'^(the|a|an)\s+', '', who.plain().lower().strip('“”')), year)
 
 
+# ------------------------------------------------------------------ Chicago (18th edition)
+# Two systems from the same fields:
+#   notes and bibliography   chicago_note (full note), chicago_short (shortened note), chicago_bib (bibliography entry)
+#   author-date              chicago_ad_reference (reference list), chicago_ad_intext: (Walker 2017, 45) / Walker (2017, 45)
+# Legal materials follow legal citation form in Chicago (CMOS 14.269 ff.), so cases, statutes and the
+# rest use the practitioner Bluebook form, and they are left out of the bibliography and reference list.
+# Chicago 18 dropped the place of publication, so no new fields are needed: chicago_gaps() lists the
+# optional fields Chicago would use that a citation is missing (a book's publisher, a journal's pages…).
+
+def ch_date(s):
+    """Chicago date: August 19, 2021 / August 2021 / 2021 (anything else as typed)."""
+    d = parse_date(s)
+    if not d:
+        return s or ''
+    y, mo, da = d
+    if not mo:
+        return str(y)
+    return MONTHS[mo - 1] + (' %d,' % da if da else '') + ' %d' % y
+
+
+def ch_name(p, inverted=False):
+    if p.get('literal'):
+        return p['literal'].strip()
+    given, fam, suf = p.get('given', '').strip(), p.get('family', '').strip(), p.get('suffix', '').strip()
+    if inverted and fam:
+        return fam + (', ' + given if given else '') + (', ' + suf if suf else '')
+    return ' '.join(x for x in (given, fam, suf) if x)
+
+
+def _series(names, et_al_after=None, keep=None):
+    if not names:
+        return ''
+    if et_al_after and len(names) > et_al_after:
+        return ', '.join(names[:keep]) + (',' if keep > 1 else '') + ' et al.'
+    if len(names) == 1:
+        return names[0]
+    if len(names) == 2:
+        return names[0] + ' and ' + names[1]
+    return ', '.join(names[:-1]) + ', and ' + names[-1]
+
+
+def ch_note_names(ps):
+    """Notes: A; A and B; A, B, and C; four or more: A et al. (CMOS 14.76)."""
+    return _series([ch_name(p) for p in ps], 3, 1)
+
+
+def ch_bib_names(ps):
+    """Bibliography and reference list: first name inverted; more than six: the first three, et al."""
+    n = [ch_name(p, k == 0) for k, p in enumerate(ps)]
+    if len(n) == 2:
+        return n[0] + ', and ' + n[1]
+    return _series(n, 6, 3)
+
+
+def ch_short_names(ps):
+    return _series([family(p) for p in ps], 3, 1)
+
+
+def ch_ad_names(ps):
+    """Author-date text citations: A; A and B; three or more: A et al. (CMOS 18, 13.111)."""
+    return _series([family(p) for p in ps], 2, 1)
+
+
+def ch_title(c, key='title'):
+    """Title runs in headline style as typed (small caps from the law review form become roman)."""
+    return Runs((t, '' if f == 'sc' else f) for t, f in md_runs(g(c, key)))
+
+
+def ch_italic(runs):
+    """An italic title: words already in italics inside it (a case name, a ship) turn roman."""
+    return Runs((t, '' if f == 'i' else 'i') for t, f in runs)
+
+
+def _quoted(out, runs, punct=''):
+    """“Title,” with the comma or period inside the quotation marks (not after ? or !)."""
+    out.r('“').extend_runs(runs)
+    if punct and not runs.plain().rstrip().endswith(('?', '!')):
+        out.r(punct)
+    return out.r('”')
+
+
+ITALIC_TITLE = {'book', 'report'}
+QUOTED_TITLE = {'journal', 'chapter', 'news', 'webpage'}
+
+
+def ch_pin(pin):
+    return re.sub(r'(?<=\d)\s*-\s*(?=\d)', '–', pin or '')
+
+
+def ch_edition(c):
+    ed = g(c, 'edition')
+    if not ed:
+        return ''
+    return 'rev. ed.' if ed == 'rev.' else (ordinal_apa(ed) + ' ed.' if re.fullmatch(r'\d+', ed) else ed + ' ed.')
+
+
+def ch_link(c):
+    return _doi_or_url(c)
+
+
+def ch_who(c, note=True):
+    """(names, is_editor_list) for the author position."""
+    ps = people(c)
+    if ps:
+        return (ch_note_names(ps) if note else ch_bib_names(ps)), False
+    eds = people(c, 'editors') if c.get('type') == 'book' else []
+    if eds:
+        return (ch_note_names(eds) if note else ch_bib_names(eds)) + (', eds.' if len(eds) > 1 else ', ed.'), True
+    return '', False
+
+
+def chicago_note(c, pin=''):
+    """Full note (no final period)."""
+    t = c.get('type', 'other')
+    if t == 'other':
+        return md_runs(g(c, 'text_chicago') or g(c, 'text'))
+    if t in LEGAL_TYPES:
+        return bluebook(c, 'practitioner', pin)
+    pin = ch_pin(pin)
+    out = Runs()
+    who, _ = ch_who(c)
+    if who:
+        out.r(who + ', ')
+    title = ch_title(c)
+    year = year_of(g(c, 'date')) or g(c, 'date') or 'n.d.'
+    if t in ('book', 'report'):
+        out.extend_runs(ch_italic(title))
+        extra = []
+        eds = people(c, 'editors') if t == 'book' and people(c) else []
+        if eds:
+            extra.append('ed. ' + ch_note_names(eds))
+        if g(c, 'translator'):
+            extra.append('trans. ' + g(c, 'translator'))
+        if ch_edition(c):
+            extra.append(ch_edition(c))
+        if t == 'book' and g(c, 'volume'):
+            extra.append('vol. ' + g(c, 'volume'))
+        if t == 'report' and g(c, 'number'):
+            extra.append(g(c, 'number'))
+        for x in extra:
+            out.r(', ' + x)
+        pub = g(c, 'publisher')
+        if t == 'report' and pub and len(people(c)) == 1 and people(c)[0].get('literal', '').strip() == pub:
+            pub = ''
+        date = ch_date(g(c, 'date')) if t == 'report' else year
+        out.r(' (' + ', '.join(x for x in (pub, date) if x) + ')')
+        if pin:
+            out.r(', ' + pin)
+    elif t == 'chapter':
+        _quoted(out, title, ',').r(' in ')
+        out.extend_runs(ch_italic(ch_title(c, 'book_title')))
+        eds = people(c, 'editors')
+        if eds:
+            out.r(', ed. ' + ch_note_names(eds))
+        if ch_edition(c):
+            out.r(', ' + ch_edition(c))
+        out.r(' (' + ', '.join(x for x in (g(c, 'publisher'), year) if x) + ')')
+        if pin:
+            out.r(', ' + pin)
+    elif t == 'journal':
+        _quoted(out, title, ',').r(' ').i(g(c, 'journal'))
+        if g(c, 'volume'):
+            out.r(' ' + g(c, 'volume'))
+        if g(c, 'issue'):
+            out.r(', no. ' + g(c, 'issue'))
+        out.r(' (' + ch_date(g(c, 'date')) + ')' if g(c, 'date') else '')
+        if pin:
+            out.r(': ' + pin)
+    elif t == 'news':
+        _quoted(out, title, ',').r(' ').i(g(c, 'publication'))
+        if g(c, 'date'):
+            out.r(', ' + ch_date(g(c, 'date')))
+    elif t == 'webpage':
+        _quoted(out, title, ',')
+        if g(c, 'site'):
+            out.r(' ' + g(c, 'site'))
+        if parse_date(g(c, 'date')):
+            out.r(', ' + ch_date(g(c, 'date')))
+        elif g(c, 'last_visited'):
+            out.r(', accessed ' + ch_date(g(c, 'last_visited')))
+    else:
+        out.extend_runs(title)
+    link = ch_link(c)
+    if link:
+        out.r(', ' + link)
+    return out
+
+
+def _short_title(c):
+    """Up to four key words of the main title (no subtitle, no leading article), or the hereinafter title."""
+    if g(c, 'hereinafter'):
+        return Runs().r(g(c, 'hereinafter'))
+    runs = ch_title(c)
+    text = runs.plain()
+    main = re.split(r'[:?!]\s', text, 1)[0].strip()
+    main = re.sub(r'^(The|A|An)\s+', '', main)
+    words = main.split()
+    if len(words) > 4:
+        main = ' '.join(words[:4])
+    # keep the italics of the original words where they survive
+    out, pos = Runs(), text.find(main)
+    if pos < 0:
+        return Runs().r(main)
+    k = 0
+    for t, f in runs:
+        a, b = max(k, pos), min(k + len(t), pos + len(main))
+        if a < b:
+            out.add(t[a - k:b - k], f)
+        k += len(t)
+    return out
+
+
+def chicago_short(c, pin=''):
+    """Shortened note: Walker, *Why We Sleep*, 45 / Ray, “How the Mind Hurts,” 31."""
+    t = c.get('type', 'other')
+    if t == 'other':
+        r = md_runs(g(c, 'short') or g(c, 'text_chicago') or g(c, 'text'))
+        return r.r(', ' + pin) if pin and g(c, 'short') else r
+    if t in LEGAL_TYPES:
+        return bluebook_short(c, 'practitioner', pin)
+    pin = ch_pin(pin)
+    out = Runs()
+    ps = people(c) or (people(c, 'editors') if t == 'book' else [])
+    if ps:
+        out.r(ch_short_names(ps) + ', ')
+    st = _short_title(c)
+    if t in QUOTED_TITLE:
+        _quoted(out, st, ',' if pin else '')
+        if pin:
+            out.r(' ' + pin)
+        return out
+    out.extend_runs(ch_italic(st))
+    if pin:
+        out.r(', ' + pin)
+    return out
+
+
+def _bib_body(c, out, year_first=False, title_done=False):
+    """Everything after the author (and, author-date, the year) in a bibliography or reference-list entry."""
+    t = c.get('type', 'other')
+    title = ch_title(c)
+    date_full = ch_date(g(c, 'date'))
+    year = year_of(g(c, 'date')) or g(c, 'date') or 'n.d.'
+    if t in ('book', 'report'):
+        if not title_done:
+            out.extend_runs(ch_italic(title)); _end(out)
+        eds = people(c, 'editors') if t == 'book' and people(c) else []
+        if eds:
+            out.r(' Edited by ' + _series([ch_name(p) for p in eds]) + '.')
+        if g(c, 'translator'):
+            out.r(' Translated by ' + g(c, 'translator') + '.')
+        if ch_edition(c):
+            e = ch_edition(c)
+            out.r(' ' + e[0].upper() + e[1:])
+        if t == 'book' and g(c, 'volume'):
+            out.r(' Vol. ' + g(c, 'volume') + '.')
+        if t == 'report' and g(c, 'number'):
+            out.r(' ' + g(c, 'number') + '.')
+        pub = g(c, 'publisher')
+        if t == 'report' and pub and len(people(c)) == 1 and people(c)[0].get('literal', '').strip() == pub:
+            pub = ''
+        facts = [pub] + ([] if year_first else [date_full if t == 'report' else year])
+        facts = [x for x in facts if x]
+        if facts:
+            out.r(' ' + ', '.join(facts) + '.')
+    elif t == 'chapter':
+        (out if title_done else _quoted(out, title, '.')).r(' In ')
+        out.extend_runs(ch_italic(ch_title(c, 'book_title')))
+        eds = people(c, 'editors')
+        if eds:
+            out.r(', edited by ' + _series([ch_name(p) for p in eds]))
+        pages = '–'.join(x for x in (g(c, 'first_page'), g(c, 'last_page')) if x)
+        if pages:
+            out.r(', ' + pages)
+        out.r('.')
+        if ch_edition(c):
+            e = ch_edition(c)
+            out.r(' ' + e[0].upper() + e[1:])
+        facts = [x for x in [g(c, 'publisher')] + ([] if year_first else [year]) if x]
+        if facts:
+            out.r(' ' + ', '.join(facts) + '.')
+    elif t == 'journal':
+        (out if title_done else _quoted(out, title, '.')).r(' ').i(g(c, 'journal'))
+        if g(c, 'volume'):
+            out.r(' ' + g(c, 'volume'))
+        if g(c, 'issue'):
+            out.r(', no. ' + g(c, 'issue'))
+        d = parse_date(g(c, 'date'))
+        if year_first:
+            if d and d[1]:
+                out.r(' (' + MONTHS[d[1] - 1] + ')')
+        elif g(c, 'date'):
+            out.r(' (' + date_full + ')')
+        pages = '–'.join(x for x in (g(c, 'first_page'), g(c, 'last_page')) if x)
+        if pages:
+            out.r(': ' + pages)
+        out.r('.')
+    elif t == 'news':
+        (out if title_done else _quoted(out, title, '.')).r(' ').i(g(c, 'publication'))
+        if g(c, 'date'):
+            out.r(', ' + date_full)
+        out.r('.')
+    elif t == 'webpage':
+        if not title_done:
+            _quoted(out, title, '.')
+        if g(c, 'site'):
+            out.r(' ' + g(c, 'site'))
+            if parse_date(g(c, 'date')):
+                out.r(', ' + date_full)
+            out.r('.')
+        elif parse_date(g(c, 'date')):
+            out.r(' ' + date_full + '.')
+        if not parse_date(g(c, 'date')) and g(c, 'last_visited'):
+            out.r(' Accessed ' + ch_date(g(c, 'last_visited')) + '.')
+    link = ch_link(c)
+    if link:
+        out.r(' ' + link + ('' if link.endswith('.') else '.'))
+    return out
+
+
+def chicago_bib(c):
+    """Bibliography entry (with its final period), or None for legal materials (cited in notes only)."""
+    t = c.get('type', 'other')
+    if t == 'other':
+        return _end(md_runs(g(c, 'text_chicago') or g(c, 'text')))
+    if t in LEGAL_TYPES:
+        return None
+    out = Runs()
+    who, _ = ch_who(c, note=False)
+    if who:
+        out.r(who); _end(out); out.r(' ')
+    return _bib_body(c, out)
+
+
+def chicago_ad_reference(c, year_suffix=''):
+    """Author-date reference-list entry: Walker, Matthew. 2017. *Why We Sleep*. Scribner. None for legal materials."""
+    t = c.get('type', 'other')
+    if t == 'other':
+        return _end(md_runs(g(c, 'text_chicago') or g(c, 'text')))
+    if t in LEGAL_TYPES:
+        return None
+    year = (year_of(g(c, 'date')) or 'n.d.') + year_suffix
+    out = Runs()
+    who, _ = ch_who(c, note=False)
+    if who:
+        out.r(who); _end(out); out.r(' ' + year + '. ')
+        return _bib_body(c, out, year_first=True)
+    # no author: the title leads, then the year
+    title = ch_title(c)
+    if t in QUOTED_TITLE:
+        _quoted(out, title, '.')
+    else:
+        out.extend_runs(ch_italic(title)); _end(out)
+    out.r(' ' + year); _end(out)
+    return _bib_body(c, out, year_first=True, title_done=True)
+
+
+def chicago_ad_author_year(c, narrative=False):
+    """(author runs, year) for author-date text citations."""
+    t = c.get('type', 'other')
+    if t == 'other':
+        txt = g(c, 'intext_apa')
+        if txt:
+            m = re.match(r'(.*?),?\s+(\d{4}\w?|n\.d\.)\s*$', txt)
+            if m:
+                return Runs().r(m.group(1)), m.group(2)
+            return Runs().r(txt), ''
+        return md_runs(g(c, 'text_chicago') or g(c, 'text')), ''
+    if t in LEGAL_TYPES:
+        return bluebook(c, 'practitioner'), ''
+    ps = people(c) or (people(c, 'editors') if t == 'book' else [])
+    year = year_of(g(c, 'date')) or 'n.d.'
+    if ps:
+        return Runs().r(ch_ad_names(ps)), year
+    st = _short_title(c)
+    if t in QUOTED_TITLE:
+        return Runs().r('“').extend_runs(st).r('”'), year
+    return ch_italic(st), year
+
+
+def chicago_ad_intext(c, pin='', narrative=False, year_suffix=''):
+    """(Walker 2017, 45) or, narrative, Walker (2017, 45)."""
+    if c.get('type') in LEGAL_TYPES:          # legal citation form, with the pincite in its place
+        r = bluebook(c, 'practitioner', pin)
+        return r if narrative else Runs().r('(').extend_runs(r).r(')')
+    who, year = chicago_ad_author_year(c, narrative)
+    year = (year + year_suffix) if year else ''
+    pin = ch_pin(pin)
+    tail = ', '.join(x for x in (year, pin) if x)
+    out = Runs()
+    if narrative:
+        out.extend_runs(who)
+        if tail:
+            out.r(' (' + tail + ')')
+        return out
+    out.r('(').extend_runs(who)
+    if year:
+        out.r(' ' + year)
+    if pin:
+        out.r(', ' + pin)
+    return out.r(')')
+
+
+def chicago_sort_key(c):
+    who, year = chicago_ad_author_year(c)
+    ps = people(c) or (people(c, 'editors') if c.get('type') == 'book' else [])
+    first = ch_name(ps[0], True) if ps else who.plain()
+    return (re.sub(r'^(the|a|an)\s+', '', first.lower().strip('“”*')), year)
+
+
+def chicago_gaps(c):
+    """Optional fields Chicago uses that this citation leaves empty (labels). The citation still formats."""
+    t = c.get('type', 'other')
+    gaps = []
+    if t == 'other':
+        if not g(c, 'text_chicago'):
+            gaps.append('Chicago form (the Bluebook text is used)')
+        return gaps
+    if t in LEGAL_TYPES:
+        return gaps
+    if not (people(c) or people(c, 'editors')) and t in ('book', 'journal', 'chapter'):
+        gaps.append('authors')
+    if t in ('book', 'chapter') and not g(c, 'publisher'):
+        gaps.append('publisher')
+    if t == 'journal':
+        if not g(c, 'volume'):
+            gaps.append('volume')
+        if not g(c, 'first_page'):
+            gaps.append('page range')
+        elif not g(c, 'last_page'):
+            gaps.append('last page')
+    if t == 'chapter' and not (g(c, 'first_page') and g(c, 'last_page')):
+        gaps.append('page range')
+    if t == 'webpage' and not parse_date(g(c, 'date')) and not g(c, 'last_visited'):
+        gaps.append('date posted or date last visited')
+    if t == 'news' and not parse_date(g(c, 'date')):
+        gaps.append('date')
+    return gaps
+
+
 # ------------------------------------------------------------------ everything for one citation (previews, library)
 
 def describe(c, pin=''):
@@ -1331,6 +1772,12 @@ def describe(c, pin=''):
         'apa_reference': apa_reference(c),
         'apa_intext': apa_intext(c, pin),
         'apa_narrative': apa_intext(c, pin, narrative=True),
+        'chicago_note': chicago_note(c, pin),
+        'chicago_short': chicago_short(c, pin),
+        'chicago_bib': chicago_bib(c) or Runs().r('(not listed: legal materials are cited in notes only)'),
+        'chicago_ad_reference': chicago_ad_reference(c) or Runs().r('(not listed: legal materials are cited in the text only)'),
+        'chicago_ad_intext': chicago_ad_intext(c, pin),
+        'chicago_ad_narrative': chicago_ad_intext(c, pin, narrative=True),
     }
     return {k: {'md': to_md(v), 'html': to_html(v), 'text': v.plain()} for k, v in forms.items()}
 

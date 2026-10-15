@@ -250,7 +250,9 @@
 
     const FORMS = [['bluebook_lawreview', 'Bluebook · law review footnote'], ['bluebook_practitioner', 'Bluebook · brief or memo'],
       ['short_lawreview', 'Short form · law review'], ['short_practitioner', 'Short form · brief or memo'],
-      ['apa_reference', 'APA 7 · reference list'], ['apa_intext', 'APA 7 · in-text'], ['apa_narrative', 'APA 7 · narrative']];
+      ['apa_reference', 'APA 7 · reference list'], ['apa_intext', 'APA 7 · in-text'], ['apa_narrative', 'APA 7 · narrative'],
+      ['chicago_note', 'Chicago · note'], ['chicago_short', 'Chicago · shortened note'], ['chicago_bib', 'Chicago · bibliography'],
+      ['chicago_ad_reference', 'Chicago author-date · reference list'], ['chicago_ad_intext', 'Chicago author-date · in-text']];
     function schedulePreview() {
       if (!type) return;
       clearTimeout(previewTimer);
@@ -259,6 +261,7 @@
         try { r = await post('/api/citation/preview', { type, fields: collect(), pin: pinIn.value }); } catch (e) { return; }
         prevBody.innerHTML = '';
         if (r.missing && r.missing.length) prevBody.appendChild(el('div', 'hint warn', 'Still needed: ' + r.missing.join(', ')));
+        if (r.chicago_missing && r.chicago_missing.length) prevBody.appendChild(el('div', 'hint', 'Chicago would also use: ' + r.chicago_missing.join(', ')));
         FORMS.forEach(([k, label]) => {
           const row = el('div', 'cp-form');
           const v = el('div', 'cp-cite'); v.innerHTML = (r.forms[k] || {}).html || '';

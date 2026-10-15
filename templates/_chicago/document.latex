@@ -1,0 +1,125 @@
+% Chicago-style journal manuscript (LaTeX template for Pandoc), shared by the Chicago notes-and-bibliography
+% and author-date templates. Metadata from metadata.yaml (all optional):
+%   title, subtitle, author (a list), affiliation, contact, date, abstract, keywords
+\documentclass[12pt,letterpaper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{fontspec}
+\setmainfont{texgyretermes}[
+  Extension      = .otf,
+  UprightFont    = *-regular,
+  BoldFont       = *-bold,
+  ItalicFont     = *-italic,
+  BoldItalicFont = *-bolditalic]
+\usepackage{microtype}
+\usepackage{setspace}
+\setstretch{2}
+\frenchspacing
+\setlength{\parindent}{0.5in}
+\setlength{\parskip}{0pt}
+\emergencystretch=3em
+
+% ---- Page number at the top right, on every page -----------------------------------
+\makeatletter
+\def\ps@apa{\let\@oddfoot\@empty\let\@evenfoot\@empty%
+  \def\@oddhead{\hfil\thepage}\let\@evenhead\@oddhead}
+\makeatother
+\pagestyle{apa}
+\thispagestyle{apa}
+
+% ---- Footnotes: superscript numbers in the text, full-size numbers in the notes (Chicago 13.27) ----
+\usepackage[bottom]{footmisc}
+\renewcommand{\footnotelayout}{\setstretch{1}\fontsize{10}{12}\selectfont}
+\setlength{\footnotesep}{8pt}
+\makeatletter
+\renewcommand{\@makefntext}[1]{\noindent\hspace*{0.5in}\normalfont\@thefnmark.\ #1}
+\makeatother
+\interfootnotelinepenalty=10000
+
+% ---- Headings (not numbered): centered bold, then flush-left bold, then flush-left bold italic ----
+%   1 centered bold   2 left bold   3 left bold italic
+%   4 indented bold, ends with a period, text runs on   5 indented bold italic, same
+\usepackage{titlesec}
+\usepackage{indentfirst}   % APA indents the paragraph after a heading too
+\setcounter{secnumdepth}{0}
+\titleformat{\section}{\normalfont\bfseries\centering}{}{0pt}{}
+\titleformat{\subsection}{\normalfont\bfseries}{}{0pt}{}
+\titleformat{\subsubsection}{\normalfont\bfseries\itshape}{}{0pt}{}
+\titleformat{\paragraph}[runin]{\normalfont\bfseries}{}{0pt}{}[.]
+\titleformat{\subparagraph}[runin]{\normalfont\bfseries\itshape}{}{0pt}{}[.]
+\titlespacing*{\section}{0pt}{0pt}{0pt}
+\titlespacing*{\subsection}{0pt}{0pt}{0pt}
+\titlespacing*{\subsubsection}{0pt}{0pt}{0pt}
+\titlespacing*{\paragraph}{0.5in}{0pt}{0.5em}
+\titlespacing*{\subparagraph}{0.5in}{0pt}{0.5em}
+
+% ---- Block quotes: indented 0.5in as a block, no quotation marks ------------------------
+\renewenvironment{quote}{\list{}{\leftmargin=0.5in\rightmargin=0pt\itemindent=0pt\listparindent=0.5in\topsep=0pt\parsep=0pt}\item\relax}{\endlist}
+
+% ---- Bibliography or reference list: hanging indent (used by filters/apa.lua) ----------------------
+\newenvironment{apareflist}{\par\begingroup\raggedright\setlength{\parindent}{-0.5in}\setlength{\leftskip}{0.5in}}{\par\endgroup}
+
+% ---- Pandoc plumbing ---------------------------------------------------------------------
+\usepackage{xcolor}
+\usepackage{graphicx}
+\makeatletter
+\providecommand{\pandocbounded}[1]{#1}
+\makeatother
+\usepackage{longtable,booktabs,array,calc}
+\usepackage{enumitem}
+\setlist{nosep}
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{etoolbox}
+\usepackage[hidelinks]{hyperref}
+\usepackage{bookmark}
+\urlstyle{same}
+\Urlmuskip=0mu plus 1mu
+
+% ---- Redline markup (used by `make redline`) -----------------------------------------------
+\IfFileExists{ulem.sty}{%
+  \usepackage[normalem]{ulem}%
+  \newcommand{\redins}[1]{{\color{blue}\uline{##1}}}%
+  \newcommand{\reddel}[1]{{\color{red}\sout{##1}}}%
+}{%
+  \newcommand{\redins}[1]{{\color{blue}##1}}%
+  \newcommand{\reddel}[1]{{\color{red}[##1]}}%
+}
+\newcommand{\redinsplain}[1]{{\color{blue}#1}}
+\newcommand{\reddelplain}[1]{{\color{red}#1}}
+
+$for(header-includes)$
+$header-includes$
+$endfor$
+
+\begin{document}
+
+% ---- Title page ------------------------------------------------------------------------------
+\begin{center}
+\vspace*{3\baselineskip}
+$if(title)${\bfseries $title$$if(subtitle)$:\\ $subtitle$$endif$}\par$endif$
+\vspace{\baselineskip}
+$if(author)$$for(author)$$author$$sep$, $endfor$\par$endif$
+$if(affiliation)$$for(affiliation)$$affiliation$\par$endfor$$endif$
+$if(contact)$$contact$\par$endif$
+$if(date)$$date$\par$endif$
+\end{center}
+\clearpage
+
+$if(abstract)$
+\begin{center}\bfseries Abstract\end{center}
+\noindent $abstract$
+$if(keywords)$
+
+\noindent\textit{Keywords}: $for(keywords)$$keywords$$sep$, $endfor$
+$endif$
+\clearpage
+$endif$
+
+% ---- The text starts under the title ------------------------------------------------------------
+$if(title)$
+\begin{center}{\bfseries $title$$if(subtitle)$: $subtitle$$endif$}\end{center}
+$endif$
+
+$body$
+
+\end{document}

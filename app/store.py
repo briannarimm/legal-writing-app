@@ -128,7 +128,8 @@ def templates():
             out.append(json.loads(p.read_text(encoding="utf-8")))
         except ValueError:
             continue
-    order = ["article", "assignment", "bibliography", "memo", "brief-federal", "brief-missouri", "email"]
+    order = ["article", "assignment", "journal-apa", "journal-chicago", "journal-chicago-ad", "bibliography", "memo",
+             "brief-federal", "brief-missouri", "email"]
     out.sort(key=lambda t: order.index(t["id"]) if t["id"] in order else 99)
     return out
 
@@ -232,6 +233,118 @@ def set_doc_option(slug, key, value):
     if key == "project" and value:
         assign_document_citations(slug)          # moving a document brings its sources along (add-only)
     return info
+
+
+REFS_HEADING_RE = re.compile(r"^#\s+(References?|Bibliography|Works Cited)\s*(\{[^}]*\})?\s*$", re.I)
+
+
+def _refs_section(slug):
+    """The section that holds the reference list (its first line is a References/Bibliography heading)."""
+    for f in section_paths(slug):
+        first = next((ln for ln in f.read_text(encoding="utf-8").split("\n") if ln.strip()), "")
+        if REFS_HEADING_RE.match(first):
+            return f
+    return None
+
+
+def change_template(slug, tid):
+    """Switch a document to another template, converting it: citations move between footnotes and the text
+    as the new citation system needs (convert.py), the reference list is renamed, added or removed, and the
+    details (metadata.yaml) are rebuilt from the new template with the title, authors and abstract carried
+    over. The files as they were are copied to the document's _trash folder first. Returns a report."""
+    import shutil
+    import cites
+    import convert
+    p = doc_path(slug)
+    info = json.loads((p / "document.json").read_text(encoding="utf-8"))
+    old_t, new_t = template(info.get("template", "article")), template(tid)
+    if old_t["id"] == new_t["id"]:
+        return {"template": tid, "name": new_t["name"], "unchanged": True}
+    if old_t.get("bibliography") or new_t.get("bibliography"):
+        raise StoreError("An annotated bibliography is a list of sources rather than a paper, so it can't switch to or "
+                         "from another template. Start a new document from the template you want instead.")
+    old_style, new_style = cites.style_of(old_t)[0], cites.style_of(new_t)[0]
+    src, dst = convert.placement(old_t, old_style), convert.placement(new_t, new_style)
+
+    # 1. keep a copy of everything as it was
+    backup = p / "_trash" / (time.strftime("%Y%m%d-%H%M%S-") + "before-" + tid)
+    backup.mkdir(parents=True, exist_ok=True)
+    for f in section_paths(slug) + [p / META, p / "document.json"]:
+        if f.exists():
+            shutil.copy2(f, backup / f.name)
+
+    # 2. citations: footnotes <-> text
+    lib = {c["tag"]: c for c in citations()}
+    author_year = citeformat.chicago_ad_author_year if old_style == "chicago-ad" else citeformat.apa_author_year
+
+    def names_for(tag):
+        c = lib.get(tag)
+        return citeformat.to_md(author_year(c, True)[0]) if c else tag
+    sections = [(f.name, f.read_text(encoding="utf-8")) for f in section_paths(slug)]
+    converted, report = convert.convert_sections(sections, src, dst, names_for)
+    for (name, before), (_, after) in zip(sections, converted):
+        if after != before:
+            write_atomic(p / name, after)
+
+    # 3. the reference list
+    heading = cites.REF_HEADING.get(new_style)
+    refs = _refs_section(slug)
+    report["references"] = ""
+    seed_refs = None
+    for f in sorted((CODE / "templates" / tid / "seed").glob("[0-9]*.md")):
+        first = next((ln for ln in f.read_text(encoding="utf-8").split("\n") if ln.strip()), "")
+        if REFS_HEADING_RE.match(first):
+            seed_refs = f
+    if heading and refs:
+        lines = refs.read_text(encoding="utf-8").split("\n")
+        k = next(i for i, ln in enumerate(lines) if ln.strip())
+        m = REFS_HEADING_RE.match(lines[k])
+        typed = re.sub(r"<!--.*?-->", "", "\n".join(lines[k + 1:]), flags=re.S).strip()
+        if not typed and seed_refs:              # only the heading and its note: take the new template's
+            if refs.read_text(encoding="utf-8") != seed_refs.read_text(encoding="utf-8"):
+                write_atomic(refs, seed_refs.read_text(encoding="utf-8"))
+        elif m.group(1) != heading:
+            lines[k] = "# " + heading + (" " + m.group(2) if m.group(2) else "")
+            write_atomic(refs, "\n".join(lines))
+        if m.group(1) != heading:
+            report["references"] = "renamed"
+    elif heading and seed_refs:
+        n = max([int(x.name[:2]) for x in section_paths(slug)] + [0]) + 1
+        if n <= 99:
+            write_atomic(p / ("%02d-%s" % (n, seed_refs.name[3:])), seed_refs.read_text(encoding="utf-8"))
+            report["references"] = "added"
+    elif refs:
+        body = refs.read_text(encoding="utf-8").split("\n", 1)[1:]
+        rest = re.sub(r"<!--.*?-->", "", body[0] if body else "", flags=re.S).strip()
+        if rest:
+            report["references"] = "kept"
+        else:
+            trash(refs, p)
+            report["references"] = "removed"
+
+    # 4. the details: the new template's starter file, with what carries over
+    seed_meta = CODE / "templates" / tid / "seed" / META
+    old_meta = (p / META).read_text(encoding="utf-8") if (p / META).exists() else ""
+    if seed_meta.exists():
+        write_atomic(p / META, convert.convert_metadata(old_meta, seed_meta.read_text(encoding="utf-8"),
+                                                         info.get("title", slug), old_t["name"]))
+    info["template"] = tid
+    write_atomic(p / "document.json", json.dumps(info, indent=2) + "\n")
+
+    # 5. sources Chicago would like more details for (they still format without them)
+    gaps = []
+    if new_style.startswith("chicago"):
+        tags = set()
+        for f in section_paths(slug):
+            tags |= cited_tags(f.read_text(encoding="utf-8"))
+        for t in sorted(tags):
+            if t in lib:
+                missing = citeformat.chicago_gaps(lib[t])
+                if missing:
+                    gaps.append({"tag": t, "missing": missing})
+    report.update({"template": tid, "name": new_t["name"], "from": old_t["name"], "gaps": gaps,
+                   "backup": str(backup.relative_to(ROOT)) if backup.is_relative_to(ROOT) else str(backup)})
+    return report
 
 
 def delete_document(slug):
@@ -388,7 +501,7 @@ def read_citation(p):
               "created": meta.get("created", ""), "updated": meta.get("updated", ""), "mtime": mtime_of(p),
               "projects": [x for x in (meta.get("projects") or []) if isinstance(x, str)],
               "projects_auto": [x for x in (meta.get("projects_auto") or []) if isinstance(x, str)],
-              "forms": citeformat.describe(c), "missing": citeformat.warnings(c)})
+              "forms": citeformat.describe(c), "missing": citeformat.warnings(c), "chicago_missing": citeformat.chicago_gaps(c)})
     return c
 
 
@@ -468,7 +581,8 @@ def preview_citation(data):
     """Formatted forms for a citation that hasn't been saved (the form's live preview)."""
     ctype = data.get("type") if data.get("type") in citeformat.TYPES else "other"
     c = {"type": ctype, "fields": clean_fields(ctype, data.get("fields"))}
-    return {"forms": citeformat.describe(c, (data.get("pin") or "").strip()), "missing": citeformat.warnings(c)}
+    return {"forms": citeformat.describe(c, (data.get("pin") or "").strip()), "missing": citeformat.warnings(c),
+            "chicago_missing": citeformat.chicago_gaps(c)}
 
 
 def delete_citation(tag):
@@ -591,7 +705,7 @@ def write_annotations(tag, name, annotations, mtime=None, force=False):
 # for the ones added because they were cited in that project). Assignment is add-only.
 
 PROJECT_COLORS = ["#3b6fd4", "#2e9e6b", "#c2412d", "#9b51c9", "#d4932b", "#1f8fa6", "#c23b7a", "#6b7280"]
-CITATION_STYLES = ["", "apa", "bluebook", "bluebook-lawreview"]
+CITATION_STYLES = ["", "apa", "bluebook", "bluebook-lawreview", "chicago", "chicago-author-date"]
 
 
 def projects_dir():

@@ -7,7 +7,13 @@ ReWord stores each source once, as structured fields, and formats it three ways:
   court rules, Restatements, committee reports and state code names. Case names are roman in
   full footnote citations and italic in short forms.
 - **Bluebook, practitioner type**: for briefs, memos and email. Italics only, with no small caps.
-- **APA 7th edition**: for the assignment template. It produces a reference-list entry and in-text
+- **Chicago (18th edition)**, notes and bibliography: for the Chicago journal template. Full notes,
+  shortened notes (Author, *Short Title*, page) once a full note has been given (final draft only;
+  Chicago 18 prefers them to ibid.), and a Bibliography with the first author inverted.
+- **Chicago (18th edition)**, author-date: for the Chicago author-date journal template. In-text
+  (Walker 2017, 45) and narrative Walker (2017, 45) forms, and a References list with the year after
+  the author.
+- **APA 7th edition**: for the assignment and APA journal templates. It produces a reference-list entry and in-text
   forms, both parenthetical (Walker, 2017, p. 12) and narrative, Walker (2017). For legal
   materials, APA uses legal citation form, so ReWord gives the practitioner Bluebook form with
   the case name in italics.
@@ -52,6 +58,19 @@ The code is `app/citeformat.py`, and its checks are in `tests/test_citeformat.py
 
 Every citation also has **manual overrides** under "Exceptions" in the form (Bluebook full, short,
 APA). They are for the source that the rules don't produce correctly.
+
+## Chicago
+
+Chicago uses the same fields as Bluebook and APA. Chicago 18 dropped the place of publication, so
+nothing new is needed. Legal materials (cases, statutes, rules, regulations, the record…) follow legal
+citation form in Chicago (CMOS 14.269 ff.), so ReWord uses the practitioner Bluebook form for them and
+leaves them out of the bibliography and reference list. An "Other" source can have a typed Chicago note;
+otherwise its Bluebook text is used. `chicago_gaps()` lists the optional fields Chicago uses that a source
+lacks (a book's publisher, a journal's pages, a web page's date or access date); the citation form shows
+them, and switching a document to a Chicago template reports them.
+
+Not covered: ibid., season dates for journals (type the month), and the place of publication (optional
+in Chicago 18). The formatter was written from knowledge of the manual, not checked against the book.
 
 ## Not covered (yet)
 

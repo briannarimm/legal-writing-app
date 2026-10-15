@@ -1,6 +1,8 @@
 -- Word-output front and back matter for memos and briefs (the PDF templates do this in LaTeX).
 --   doctype: memo   -> MEMORANDUM header with To / From / Date / Re
 --   doctype: apa    -> APA 7th student title page, then the title again above the paper
+--   doctype: apa-journal -> APA 7th professional title page (author note), abstract page, then the paper
+--   doctype: chicago -> Chicago manuscript title page, optional abstract page, then the paper
 --   doctype: brief  -> cover page, table of contents, signature block, certificates
 -- Set from each template's docx.yaml. Word fills in the table of contents when the file is
 -- opened (choose "Update field" if Word asks). A table of authorities is not generated for
@@ -75,6 +77,72 @@ local function apa(doc)
   return doc
 end
 
+-- APA 7th professional paper (journal submission): title page with author note, abstract page, title again
+local function apa_journal(doc)
+  local m = doc.meta
+  local title = m.title and s(m.title) or ''
+  local out = pandoc.List{}
+  if m['running-head'] then out:insert(plain(s(m['running-head']):upper())) end
+  for _ = 1, 3 do out:insert(centered('')) end
+  if title ~= '' then out:insert(centered(title, true)) end
+  out:insert(centered(''))
+  local names = list(m.author)
+  if #names > 0 then out:insert(centered(table.concat(names, ', '))) end
+  for _, a in ipairs(list(m.affiliation)) do out:insert(centered(a)) end
+  if m['author-note'] then
+    for _ = 1, 4 do out:insert(centered('')) end
+    out:insert(centered('Author Note', true))
+    if pandoc.utils.type(m['author-note']) == 'Blocks' then out:extend(m['author-note'])
+    else out:insert(pandoc.Para(pandoc.Inlines(s(m['author-note'])))) end
+  end
+  out:insert(pagebreak)
+  if m.abstract then
+    out:insert(centered('Abstract', true))
+    out:insert(plain(s(m.abstract)))
+    local kw = list(m.keywords)
+    if #kw > 0 then
+      out:insert(pandoc.Para({ pandoc.Emph(pandoc.Inlines('Keywords:')), pandoc.Space(), table.unpack(pandoc.Inlines(table.concat(kw, ', '))) }))
+    end
+    out:insert(pagebreak)
+  end
+  if title ~= '' then out:insert(centered(title, true)) end
+  out:extend(doc.blocks)
+  doc.blocks = out
+  doc.meta.title = nil; doc.meta.author = nil; doc.meta.date = nil; doc.meta.abstract = nil
+  return doc
+end
+
+-- Chicago journal manuscript: title page (title, authors, affiliation, contact), optional abstract, then the text
+local function chicago(doc)
+  local m = doc.meta
+  local title = m.title and s(m.title) or ''
+  if m.subtitle then title = title .. ': ' .. s(m.subtitle) end
+  local out = pandoc.List{}
+  for _ = 1, 3 do out:insert(centered('')) end
+  if title ~= '' then out:insert(centered(title, true)) end
+  out:insert(centered(''))
+  local names = list(m.author)
+  if #names > 0 then out:insert(centered(table.concat(names, ', '))) end
+  for _, a in ipairs(list(m.affiliation)) do out:insert(centered(a)) end
+  if m.contact then out:insert(centered(s(m.contact))) end
+  if m.date then out:insert(centered(s(m.date))) end
+  out:insert(pagebreak)
+  if m.abstract then
+    out:insert(centered('Abstract', true))
+    out:insert(plain(s(m.abstract)))
+    local kw = list(m.keywords)
+    if #kw > 0 then
+      out:insert(pandoc.Para({ pandoc.Emph(pandoc.Inlines('Keywords:')), pandoc.Space(), table.unpack(pandoc.Inlines(table.concat(kw, ', '))) }))
+    end
+    out:insert(pagebreak)
+  end
+  if title ~= '' then out:insert(centered(title, true)) end
+  out:extend(doc.blocks)
+  doc.blocks = out
+  doc.meta.title = nil; doc.meta.subtitle = nil; doc.meta.author = nil; doc.meta.date = nil; doc.meta.abstract = nil
+  return doc
+end
+
 local function brief(doc)
   local m = doc.meta
   local out = pandoc.List{}
@@ -126,4 +194,6 @@ function Pandoc(doc)
   if kind == 'memo' then return memo(doc) end
   if kind == 'brief' then return brief(doc) end
   if kind == 'apa' then return apa(doc) end
+  if kind == 'apa-journal' then return apa_journal(doc) end
+  if kind == 'chicago' then return chicago(doc) end
 end

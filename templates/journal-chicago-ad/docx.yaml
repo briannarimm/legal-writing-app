@@ -1,0 +1,9 @@
+to: docx
+reference-doc: templates/journal-chicago-ad/reference.docx
+filters:
+  - filters/docx.lua
+  - filters/apa.lua
+  - filters/docx-frontmatter.lua
+metadata:
+  doctype: chicago
+  heading-levels: [none, none, none, none]

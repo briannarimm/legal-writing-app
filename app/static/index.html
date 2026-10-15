@@ -312,6 +312,8 @@
       <div id="meta-wrap" hidden>
         <div class="row proj-row"><label class="inline-label">Project <span id="doc-project"></span></label>
           <span class="hint">Sources you cite here are added to the project automatically.</span></div>
+        <div class="row proj-row"><label class="inline-label">Template <select id="doc-template"></select></label>
+          <span class="hint" id="doc-template-hint">Switching converts the document: citations take the new template’s style.</span></div>
         <p class="hint" id="meta-hint">Document details, as YAML: keep the quotes and the indentation.</p>
         <textarea id="meta-editor" spellcheck="false"></textarea>
       </div>
@@ -491,6 +493,8 @@
       <option value="lawreview">Bluebook · law review</option>
       <option value="practitioner">Bluebook · brief or memo</option>
       <option value="apa">APA 7th</option>
+      <option value="chicago">Chicago · notes</option>
+      <option value="chicago-ad">Chicago · author-date</option>
     </select>
   </div>
   <div id="cp-list" class="cp-list"></div>

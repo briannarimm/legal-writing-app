@@ -1,11 +1,14 @@
--- APA 7th reference list: the "References" heading starts a new page, and the entries after it
--- (up to the next top-level heading) get a hanging indent. Used by templates/assignment.
+-- APA 7th reference list (and the Chicago bibliography or reference list): the "References" (or
+-- "Bibliography") heading starts a new page, and the entries after it (up to the next top-level heading)
+-- get a hanging indent. Used by the APA and Chicago templates.
 --   PDF:  \clearpage, then the entries inside the apareflist environment (document.latex)
 --   Word: a page break, then the entries in the "Bibliography" style (hanging indent)
 
 local function is_refs(b)
   return b.t == 'Header' and b.level == 1
-    and pandoc.utils.stringify(b.content):lower():match('^%s*references?%s*$') ~= nil
+    and (pandoc.utils.stringify(b.content):lower():match('^%s*references?%s*$') ~= nil
+         or pandoc.utils.stringify(b.content):lower():match('^%s*bibliography%s*$') ~= nil
+         or pandoc.utils.stringify(b.content):lower():match('^%s*works cited%s*$') ~= nil)
 end
 
 function Pandoc(doc)

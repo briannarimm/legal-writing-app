@@ -1,0 +1,12 @@
+# Title page. Remove any line you don't need.
+title: "{{title}}"
+# subtitle: ""
+author:
+  - "Your Name"
+affiliation: "University Name"
+contact: "you@example.com"
+# abstract: |
+#   One paragraph, if the journal asks for one.
+# keywords: [first keyword, second keyword]
+# date: "October 15, 2026"
+lang: en-US

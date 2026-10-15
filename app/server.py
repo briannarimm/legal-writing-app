@@ -904,7 +904,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return self.guarded(self.api_attach)
         routes = {
             "/api/doc/new": self.api_doc_new, "/api/doc/rename": self.api_doc_rename, "/api/doc/option": self.api_doc_option,
-            "/api/doc/delete": self.api_doc_delete,
+            "/api/doc/delete": self.api_doc_delete, "/api/doc/template": self.api_doc_template,
             "/api/section/new": self.api_section_new, "/api/section/move": self.api_section_move,
             "/api/section/delete": self.api_section_delete,
             "/api/run": self.api_run, "/api/tag": self.api_tag,
@@ -950,6 +950,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def api_doc_option(self, b):
         info = store.set_doc_option(b.get("slug"), b.get("key"), b.get("value"))
         self.send_json({"ok": True, "info": info})
+
+    def api_doc_template(self, b):
+        """Switch a document to another template, converting its citations and details (store.change_template)."""
+        self.send_json(store.change_template(b.get("slug"), b.get("template")))
 
     def api_doc_delete(self, b):
         store.delete_document(b.get("slug"))
@@ -1177,7 +1181,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         for k, v in (meta or {}).items():
             if v:
                 doc.setdefault("meta", {})[k] = {"t": "MetaInlines", "c": citeformat.to_pandoc(citeformat.md_runs(v))}
-        style, typeface = ("apa", "practitioner") if fmt == "apa" else ("bluebook", fmt if fmt in ("lawreview", "practitioner") else "practitioner")
+        if fmt in ("apa", "chicago", "chicago-ad"):
+            style, typeface = fmt, "practitioner"
+        else:
+            style, typeface = "bluebook", fmt if fmt in ("lawreview", "practitioner") else "practitioner"
         doc, _ = cites.resolve(doc, self._library(), mode="draft", typeface=typeface, style=style, references=False)
         return pandoc, json.dumps(doc)
 
@@ -1226,9 +1233,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_json({"path": "_notes/%s.%s" % (n["id"], fmt)})
 
     def api_cite_render(self, b):
-        """Chip text for live citations: {format: lawreview|practitioner|apa, items: [{tag, pin, signal, paren, narrative, note}]}."""
+        """Chip text for live citations: {format: lawreview|practitioner|apa|chicago|chicago-ad, items: [{tag, pin, signal, paren, narrative, note}]}."""
         fmt = b.get("format") or "practitioner"
-        style, typeface = ("apa", "practitioner") if fmt == "apa" else ("bluebook", fmt)
+        style, typeface = (fmt, "practitioner") if fmt in ("apa", "chicago", "chicago-ad") else ("bluebook", fmt)
         lib = {}
         for c in store.citations():
             lib[c["tag"]] = {"type": c["type"], "fields": c["fields"], "tag": c["tag"]}

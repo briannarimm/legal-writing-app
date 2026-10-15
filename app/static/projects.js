@@ -124,7 +124,8 @@
   dlg.addEventListener('mousedown', e => { if (e.target === dlg) dlg.close(); });
   let editing = null;
 
-  const STYLES = [['', 'Template default'], ['apa', 'APA 7th'], ['bluebook', 'Bluebook (briefs, memos)'], ['bluebook-lawreview', 'Bluebook (law review)']];
+  const STYLES = [['', 'Template default'], ['apa', 'APA 7th'], ['bluebook', 'Bluebook (briefs, memos)'], ['bluebook-lawreview', 'Bluebook (law review)'],
+    ['chicago', 'Chicago (notes and bibliography)'], ['chicago-author-date', 'Chicago (author-date)']];
   function render() {
     dlg.innerHTML = '';
     dlg.appendChild(el('h2', '', 'Projects'));
