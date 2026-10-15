@@ -40,7 +40,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = Path.home() / "Library" / "Caches" / "ReWord Build"
-VERSION = "1.0.0"          # also the name of the download in distro/
+VERSION = "1.1.0"          # also the name of the download in distro/
 DIST = ROOT / "distro"
 
 # Pinned versions. Pandoc matches the Docker image, so output is the same either way.
