@@ -44,7 +44,7 @@
     $$('.rb-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     $$('.rb-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === name));
     try { localStorage.setItem('ribbonTab', name); } catch (e) { /* ignore */ }
-    if (name === 'publish' && App.git) App.git.refresh();
+    if (name === 'view' && App.git) App.git.refresh();
   }
   $$('.rb-tab').forEach(t => t.addEventListener('click', () => {
     ribbon.classList.remove('collapsed'); $('#rb-collapse').textContent = '▴';

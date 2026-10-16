@@ -39,7 +39,7 @@ documents. It does not need other software on the computer.
 | Function | Description |
 |---|---|
 | Write | Write in a rich-text editor with italics, bold, small caps, headings, lists, block quotes and footnotes. |
-| Format | Make a formatted PDF and Word file from a template. The **Run** button does this. |
+| Format | Make a formatted PDF and Word file from a template. The **Save** button (⌘S) does this. |
 | Cite | Keep each source one time in a library. ReWord formats the source in Bluebook or APA 7 style. |
 | Shorten citations | Make a final draft that uses *Id.*, short forms and *supra* where the rules permit them. |
 | Compare versions | Save a version. Make a "redline" that shows the changes since that version (Word tracked changes and a color PDF). |
@@ -108,7 +108,7 @@ ReWord/
 ```
 
 Your work is kept in `~/Library/Application Support/ReWord`: documents, notes, sources, attached
-PDFs and finished files, all in one folder. **Publish → Show data folder** (or **File → Open Data
+PDFs and finished files, all in one folder. **View → Files → Data folder** (or **File → Open Data
 Folder**) opens it in Finder. ReWord 1.1.2 copies the folder that earlier versions used
 (`ReWord Data`) to this location the first time it starts. It does not delete the old folder; it
 leaves a note in it that says where your work went.
@@ -216,7 +216,8 @@ An annotated bibliography can't switch templates.
 
 ### 7.3 Make the finished files
 
-1. Click **Run** (⇧⌘R).
+1. Click **Save** (⌘S). Save also builds the document, copies its finished files into `outputs/`, and
+   syncs with GitHub.
 2. Wait until the Preview tab shows the PDF.
 3. Use the links above the preview to download the PDF or Word file.
 
@@ -225,14 +226,14 @@ An annotated bibliography can't switch templates.
 The draft shows each citation in full. A final draft uses short citation forms.
 
 1. Click **Final draft** (⌥⌘D). The button stays on for this document.
-2. Click **Run**.
+2. Click **Save** (⌘S).
 3. In the Preview tab, select **Final** in the **Viewing** menu.
 
 ### 7.5 Compare versions
 
 1. Click **Tag version** (⇧⌘T) when you send a draft to another person.
 2. Continue to write.
-3. Click **Run**. ReWord makes a redline against the last version: a Word file with tracked changes and
+3. Click **Save** (⌘S). ReWord makes a redline against the last version: a Word file with tracked changes and
    a PDF with blue insertions and red deletions.
 
 ## 8. Sources and citations
@@ -296,12 +297,12 @@ The page view at the right shows the note as it will print. To save the note as 
 
 All your work is one folder and one GitHub repository, which must be private: documents, notes,
 sources, attached PDFs, highlights, and the finished PDF and Word files in
-`outputs/<project>/<document>/`. **Publish → Publish** (⇧⌘P) copies a document's finished files
-into `outputs/`. **Publish → Sync** (⌃⌘Y) sends everything to GitHub and brings in changes made
-elsewhere.
+`outputs/<project>/<document>/`. One button does everything: **Home → Save** (⌘S) saves, builds
+the open document, copies its finished files into `outputs/`, and syncs with GitHub (outside
+Writing, it saves and syncs). **View → Files** has buttons that open the data folder (the folder
+that is your GitHub repository), the repository on GitHub, and the backup folder.
 
-ReWord syncs by itself when it starts, after every Run, every 10 minutes while it is open, and
-when you quit. Each sync saves a commit, takes GitHub's changes, then pushes. Files that changed on
+ReWord also syncs by itself when it starts, every 10 minutes while it is open, and when you quit. Each sync saves a commit, takes GitHub's changes, then pushes. Files that changed on
 only one side are simply combined, and a file deleted on one side but changed on the other is kept.
 
 If the same file changed both on this computer and on GitHub, this computer's version stays in
@@ -314,8 +315,8 @@ start (for example, after the data folder was set up again).
 
 After every successful sync, ReWord copies new and changed files into a backup folder beside the
 data folder: `~/Library/Application Support/ReWord Backup`. The backup is not a git repository and
-is never uploaded. Files deleted from your data folder stay in the backup. The Publish tab shows
-where the backup is and when it was last updated; **Show backups** opens it in Finder.
+is never uploaded. Files deleted from your data folder stay in the backup. **View → Files** shows
+where the backup is and when it was last updated; **Backups** opens it in Finder.
 
 Data folders from before 1.1.2 kept the finished files in a separate git repository inside
 `outputs/`. On the first start, ReWord merges that history into your work repository and keeps the
@@ -332,7 +333,7 @@ result on its next sync.
 2. Type `brew install gh` and push Return.
 3. Type `gh auth login` and push Return.
 4. Select **GitHub.com** and **HTTPS**, then follow the instructions.
-5. In ReWord, click **Publish → Connect…**.
+5. In ReWord, click **View → Files → Connect…**.
 
 ReWord does not ask for or keep passwords or tokens. It uses the sign-in that `gh` keeps on the Mac.
 
@@ -381,7 +382,7 @@ to the app on the drive instead of in Application Support.
 | Problem | Cause | Action |
 |---|---|---|
 | macOS says it cannot verify the application. | The application came from a download or AirDrop. | Right-click `ReWord.app`. Click **Open**. Click **Open** again. |
-| **Run** fails. | An error in the document or template. | Open the **Run log** tab. Read the last lines. |
+| **Save** says the build failed. | An error in the document or template. | Open the **Run log** tab. Read the last lines. |
 | A citation shows `[missing citation: …]`. | The source is not in the library. | Add the source, or remove the citation. |
 | **Sync** says "offline". | The Mac has no `git`, no GitHub sign-in, or no internet connection. | Work continues. Sync again on a Mac that is set up for GitHub. |
 | **Look up** fails. | The site does not permit automatic access. | Type the data in the fields. |

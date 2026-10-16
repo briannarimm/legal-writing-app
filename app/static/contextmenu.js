@@ -546,7 +546,7 @@
       { label: isOpen ? 'Open (already open)' : 'Open', icon: 'open', disabled: isOpen, run: () => W.open(slug) },
       { label: 'Rename…', icon: 'edit', run: () => W.rename(slug) },
       projectItems(d.project || '', pid => W.move(slug, pid)),
-      isOpen ? cmd('Run (Build PDF and Word)', 'run', { icon: 'run', kbd: '⇧⌘R', run: () => $('#btn-run').click(), disabled: $('#btn-run').disabled }) : null,
+      isOpen ? cmd('Save (Build, Publish and Sync)', 'run', { icon: 'run', kbd: '⌘S', run: () => App.saveAll(), disabled: $('#btn-run').disabled }) : null,
       '-',
       { label: 'New Document…', icon: 'plus', kbd: '⌘N', run: () => App.cmd.global.newDoc() },
       '-',
@@ -703,7 +703,7 @@
       { label: 'Fit Width', icon: 'fit', run: () => $('#pz-val').click() },
       '-',
       { label: 'Open in Its Own Tab', icon: 'open', run: () => App.openPreviewInTab && App.openPreviewInTab() },
-      { label: 'Run (Build Again)', icon: 'run', kbd: '⇧⌘R', disabled: $('#btn-run').disabled, run: () => $('#btn-run').click() },
+      { label: 'Save (Build Again)', icon: 'run', kbd: '⌘S', disabled: $('#btn-run').disabled, run: () => App.saveAll() },
     ];
   }
 
@@ -810,7 +810,7 @@
     if (t.closest('#log-view')) {
       return [...selItems,
         { label: 'Copy the Whole Log', icon: 'copy', run: () => copyText($('#log-view').innerText) },
-        { label: 'Run (Build Again)', icon: 'run', kbd: '⇧⌘R', disabled: $('#btn-run').disabled, run: () => $('#btn-run').click() }];
+        { label: 'Save (Build Again)', icon: 'run', kbd: '⌘S', disabled: $('#btn-run').disabled, run: () => App.saveAll() }];
     }
     if (t.closest('#tab-pdf')) return [...selItems, ...previewItems()];
 

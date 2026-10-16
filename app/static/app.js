@@ -95,13 +95,21 @@
     });
   });
   document.addEventListener('keydown', e => {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); saver.flush(true); }
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); window.App.saveAll(); }
   });
-  $('#btn-save').onclick = () => saver.flush(true);
+  $('#btn-save').onclick = () => window.App.saveAll();
 
   /* ---------------------------------------------------------- views */
   const App = window.App = {
     $, $$, el, api, post, put, toast, saver,
+    // Save (button or ⌘S) does everything: save, and in Writing build the open document, copy its finished
+    // files into outputs/ and sync with GitHub (the Run pipeline does all three); elsewhere save and sync.
+    async saveAll() {
+      if (!(await saver.flush(true))) return;
+      const w = App.views.writing;
+      if (App.view === 'writing' && w && w.current() && w.runAll) { w.runAll(); return; }
+      if (App.sync && App.git && App.git.project && App.git.project.remote) App.sync('save', false);
+    },
     esc: s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'),
     state: { templates: [], documents: [], citations: [], citeTypes: [], status: null },
     views: {},

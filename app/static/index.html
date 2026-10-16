@@ -47,7 +47,6 @@
     <button class="rb-tab active" data-tab="home">Home</button>
     <button class="rb-tab" data-tab="insert">Insert</button>
     <button class="rb-tab" data-tab="view">View</button>
-    <button class="rb-tab" data-tab="publish">Publish</button>
     <button class="rb-tab ctx" data-tab="research" data-for-view="research">Research</button>
     <button class="rb-tab ctx" data-tab="library" data-for-view="citations">Library</button>
     <span class="spacer"></span>
@@ -59,8 +58,8 @@
     <div class="rb-panel active" data-panel="home">
       <div class="rb-group">
         <div class="rb-items">
-          <button class="rb-btn" id="btn-save" data-ic="save" title="Save now (⌘S)"><span class="lbl">Save</span></button>
-          <button class="rb-btn primary writing-only" id="btn-run" data-ic="run" title="Commit, then build this document and make its redline"><span class="lbl">Run</span></button>
+          <button class="rb-btn primary" id="btn-save" data-ic="save" title="Save (⌘S): save, build this document, copy its finished files into outputs/, and sync with GitHub"><span class="lbl">Save</span></button>
+          <button class="rb-btn writing-only" id="btn-run" hidden aria-hidden="true" tabindex="-1"><span class="lbl">Run</span></button>
           <button class="rb-btn writing-only" id="btn-tag" data-ic="tag" title="Mark this draft as a version. The next redline compares against it."><span class="lbl">Tag version</span></button>
           <button class="rb-btn writing-only toggle" id="btn-final" data-ic="final" title="Final draft: Run also builds a copy with short forms, Id. and supra (the draft keeps every citation in full)"><span class="lbl">Final draft</span></button>
         </div>
@@ -175,69 +174,28 @@
         </div>
         <div class="rb-label">Editor text size</div>
       </div>
-    </div>
-
-    <div class="rb-panel" data-panel="publish">
       <div class="rb-group">
-        <div class="rb-items col">
-          <div class="rb-path" id="out-path" title="">…</div>
-          <div class="rb-row">
-            <button class="rb-btn sm" data-cmd="openOutput" data-ic-sm="folder" title="Show the output folder in Finder">Open</button>
-            <button class="rb-btn sm" data-cmd="changeOutput" title="Choose a different output folder">Change…</button>
-          </div>
-        </div>
-        <div class="rb-label">Output folder</div>
-      </div>
-      <div class="rb-group">
+        <div class="rb-items">
         <div class="rb-items col">
           <div class="rb-path" id="data-path" title="">…</div>
           <div class="rb-row">
-            <button class="rb-btn sm" data-cmd="openData" data-ic-sm="folder" title="Show the folder that holds all your work (documents, research, library and finished files) in Finder">Show data folder</button>
+            <button class="rb-btn sm" data-cmd="openData" data-ic-sm="folder" title="Show the folder that is your GitHub repository (documents, research, library and finished files) in Finder">Data folder</button>
+            <button class="rb-btn sm" data-cmd="webWork" id="gh-work-web" title="Open the repository on GitHub">View on GitHub</button>
+            <button class="rb-btn sm" data-cmd="connectWork" id="gh-work-connect" title="Connect your work to a private GitHub repository">Connect…</button>
           </div>
+          <div class="gh-status" id="gh-work-status">…</div>
         </div>
-        <div class="rb-label">Data folder</div>
-      </div>
-      <div class="rb-group" id="gh-out-group">
-        <div class="rb-items">
-          <button class="rb-btn primary" data-cmd="publish" data-ic="upload" title="Copy this document's latest build into the output folder, commit it, and push it to GitHub (once connected)"><span class="lbl">Publish</span></button>
-          <div class="rb-items col">
-            <div class="rb-path" id="backup-path" title="">…</div>
-            <div class="rb-row">
-              <button class="rb-btn sm" data-cmd="openBackup" data-ic-sm="folder" title="Show the backup folder in Finder: a plain copy of your work (not on GitHub), updated after every successful sync">Show backups</button>
-              <span class="hint" id="backup-when"></span>
-            </div>
-          </div>
-          <div class="rb-items col wide">
-            <div class="gh-status" id="gh-out-status">…</div>
-            <div class="rb-row">
-              <button class="rb-btn sm" data-cmd="connectOutputs" title="Connect the output folder to a GitHub repository">Connect…</button>
-              <button class="rb-btn sm" data-cmd="webOutputs" id="gh-out-web" title="Open the repository on GitHub">View on GitHub</button>
-            </div>
-          </div>
-        </div>
-        <div class="rb-label">Outputs → GitHub</div>
-      </div>
-      <div class="rb-group">
-        <div class="rb-items">
-          <button class="rb-btn primary" data-cmd="syncWork" data-ic="sync" title="Save your documents, research, citations and their files to GitHub, and bring in changes made on your other computers"><span class="lbl">Sync</span></button>
-          <div class="rb-items col wide">
-            <div class="gh-status" id="gh-work-status">…</div>
-            <div class="rb-row">
-              <button class="rb-btn sm" data-cmd="connectWork" title="Connect your work (documents, research, library) to a private GitHub repository">Connect…</button>
-              <button class="rb-btn sm" data-cmd="webWork" id="gh-work-web" title="Open the repository on GitHub">View on GitHub</button>
-            </div>
-          </div>
-        </div>
-        <div class="rb-label">Your work → GitHub</div>
-      </div>
-      <div class="rb-group">
         <div class="rb-items col">
-          <label class="rb-check" title="After every Run, also push the output folder to GitHub"><input type="checkbox" id="pub-auto"> Push outputs after every Run</label>
+          <div class="rb-path" id="backup-path" title="">…</div>
+          <div class="rb-row">
+            <button class="rb-btn sm" data-cmd="openBackup" data-ic-sm="folder" title="Show the backup folder in Finder: a plain copy of your work (not on GitHub), updated after every successful sync">Backups</button>
+          </div>
+          <div class="gh-status" id="backup-when"></div>
         </div>
-        <div class="rb-label">Automatic</div>
+        </div>
+        <div class="rb-label">Files</div>
       </div>
     </div>
-
 
     <div class="rb-panel" data-panel="research">
       <div class="rb-group">

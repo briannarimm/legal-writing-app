@@ -22,15 +22,12 @@
 
   const S = [
     // Document
-    { g: 'Document', d: 'Save now', mods: 'm', code: 'KeyS', key: 'S', on: '#btn-save', builtin: true },
-    { g: 'Document', d: 'Run (build PDF and Word)', mods: 'sm', code: 'KeyR', key: 'R', click: '#btn-run', on: '#btn-run', views: 'writing' },
+    { g: 'Document', d: 'Save, build, publish and sync', mods: 'm', code: 'KeyS', key: 'S', on: '#btn-save', builtin: true },
     { g: 'Document', d: 'Final draft on or off', mods: 'am', code: 'KeyD', key: 'D', click: '#btn-final', on: '#btn-final', views: 'writing' },
     { g: 'Document', d: 'Tag version', mods: 'sm', code: 'KeyT', key: 'T', click: '#btn-tag', on: '#btn-tag', views: 'writing' },
-    { g: 'Document', d: 'Publish to the output folder', mods: 'sm', code: 'KeyP', key: 'P', cmd: 'publish', on: '[data-cmd="publish"]' },
     { g: 'Document', d: 'Manage projects', mods: 'cm', code: 'KeyJ', key: 'J', cmd: 'manageProjects', on: '[data-cmd="manageProjects"]' },
     { g: 'Document', d: 'New project', mods: 'acm', code: 'KeyJ', key: 'J', cmd: 'newProject', on: '[data-cmd="newProject"]' },
-    { g: 'Document', d: 'Sync your work with GitHub', mods: 'cm', code: 'KeyY', key: 'Y', cmd: 'syncWork', on: '[data-cmd="syncWork"]' },
-    { g: 'Document', d: 'Show output folder', mods: 'sm', code: 'KeyO', key: 'O', cmd: 'openOutput', on: '[data-cmd="openOutput"]' },
+    { g: 'Document', d: 'Show data folder', mods: 'sm', code: 'KeyO', key: 'O', cmd: 'openData', on: '[data-cmd="openData"]' },
     // Text
     { g: 'Text', d: 'Italic', mods: 'm', code: 'KeyI', key: 'I', cmd: 'italic', on: '[data-cmd="italic"]' },
     { g: 'Text', d: 'Bold', mods: 'm', code: 'KeyB', key: 'B', cmd: 'bold', on: '[data-cmd="bold"]' },
@@ -120,7 +117,7 @@
   });
 
   function exec(k) {
-    if (k.builtin) { App.saver.flush(true); return; }
+    if (k.builtin) { App.saveAll(); return; }
     if (k.fn) { k.fn(); return; }
     if (k.click) { const b = $(k.click); if (b && !b.disabled) b.click(); return; }
     const b = $('#ribbon [data-cmd="' + k.cmd + '"]');
@@ -174,7 +171,7 @@
     S.forEach(k => { if (available(k)) out.push({ label: k.d, group: k.g, hint: glyphs(k), run: () => exec(k) }); });
     [['light', 'Light'], ['dark', 'Dark'], ['dark-paper', 'Dark with white page']].forEach(([id, n]) =>
       out.push({ label: 'Theme: ' + n, group: 'View', run: () => { const b = $('[data-theme-btn="' + id + '"]'); if (b) b.click(); } }));
-    [['home', 'Home'], ['insert', 'Insert'], ['view', 'View'], ['publish', 'Publish']].forEach(([id, n]) =>
+    [['home', 'Home'], ['insert', 'Insert'], ['view', 'View']].forEach(([id, n]) =>
       out.push({ label: 'Ribbon tab: ' + n, group: 'View', run: () => { const b = $('.rb-tab[data-tab="' + id + '"]'); if (b) b.click(); } }));
     out.push({ label: 'Show all projects', group: 'Projects', run: () => App.projects.setScope('all') });
     (App.projects.list || []).forEach(p => out.push({ label: 'Project: ' + p.name, group: 'Projects', run: () => App.projects.setScope(p.id) }));
