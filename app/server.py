@@ -1142,6 +1142,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/citations": lambda: self.send_json({"citations": store.citations(), "types": store.CITE_TYPES, "schema": citeformat.schema()}),
             "/api/settings": lambda: self.send_json(self.settings_out()),
             "/api/conflicts": lambda: self.send_json({"conflicts": list_conflicts()}),
+            "/api/highlights": lambda: self.send_json({"colors": store.read_highlights()}),
             "/api/git": lambda: self.send_json(git_status(q.get("repo"))),
             "/api/gh": lambda: self.send_json(gh_info()),
             "/api/ping": lambda: self.send_json({"ok": True, "since": LIFE.ping()}),
@@ -1160,7 +1161,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                   "/api/project": lambda b: self.send_json(store.update_project(b.get("id"), b)),
                   "/api/annotations": lambda b: self.send_json(store.write_annotations(b.get("tag"), b.get("name"), b.get("annotations"),
                                                                                        b.get("mtime"), b.get("force"))),
-                  "/api/settings": self.api_save_settings}
+                  "/api/settings": self.api_save_settings,
+                  "/api/highlights": lambda b: self.send_json({"colors": store.write_highlights(b.get("labels"))})}
         fn = routes.get(self.path)
         if not fn:
             return self.send_error(404)

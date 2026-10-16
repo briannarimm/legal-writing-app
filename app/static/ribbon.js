@@ -70,7 +70,7 @@
     const fn = (App.cmd[App.view] || {})[cmd] || App.cmd.global[cmd];
     if (fn) fn(); else toast('That isn’t available here.', true);
   }
-  $$('#ribbon [data-cmd]').forEach(b => {
+  $$('#ribbon [data-cmd], #inspector [data-cmd]').forEach(b => {
     b.addEventListener('mousedown', e => e.preventDefault());      // keep the text selection
     b.addEventListener('click', () => run(b.dataset.cmd));
   });
@@ -114,6 +114,8 @@
     document.documentElement.dataset.theme = t;
     try { localStorage.setItem('theme', t); } catch (e) { /* ignore */ }
     $$('[data-theme-btn]').forEach(b => b.classList.toggle('active', b.dataset.themeBtn === t));
+    // the Mac window's title bar follows (main.swift); nothing happens in a browser
+    try { window.webkit.messageHandlers.reword.postMessage({ action: 'theme', theme: t }).catch(() => {}); } catch (e) { /* not the Mac app */ }
   }
   $$('[data-theme-btn]').forEach(b => b.addEventListener('click', () => setTheme(b.dataset.themeBtn)));
   setTheme(document.documentElement.dataset.theme || 'light');
@@ -191,7 +193,7 @@
     e.preventDefault();
     document.body.classList.add('dragging');
     const rect = writingView.getBoundingClientRect();
-    const side = $('#tree-pane').getBoundingClientRect().width;
+    const side = writingView.contains($('#tree-pane')) ? $('#tree-pane').getBoundingClientRect().width : 0;
     const move = ev => setSplit(((ev.clientX - rect.left - side) / (rect.width - side - 6)) * 100);
     const up = () => { document.body.classList.remove('dragging'); document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
     document.addEventListener('mousemove', move);

@@ -108,7 +108,7 @@ ReWord/
 ```
 
 Your work is kept in `~/Library/Application Support/ReWord`: documents, notes, sources, attached
-PDFs and finished files, all in one folder. **View → Files → Data folder** (or **File → Open Data
+PDFs and finished files, all in one folder. **View → Show Data Folder in Finder** (or **File → Open Data
 Folder**) opens it in Finder. ReWord 1.1.2 copies the folder that earlier versions used
 (`ReWord Data`) to this location the first time it starts. It does not delete the old folder; it
 leaves a note in it that says where your work went.
@@ -125,7 +125,17 @@ ReWord saves automatically approximately 1.5 seconds after you stop typing. To s
 
 ## 5. The three work areas
 
-Use the tabs at the top of the window to change the work area.
+The window has three parts:
+
+- **The sidebar** on the left: Writing, Research and Citations, the project menu, and the list for
+  the current work area (documents, notes or sources). ⌥⌘S hides or shows it.
+- **The toolbar** at the top: Save, formatting, Cite, Footnote, and the layout (Editor, Split,
+  Preview). In Research and Citations it also has that area's commands.
+- **The inspector** on the right (⌥⌘I, or the button at the right end of the toolbar): the open
+  document's template, project, version and word count, Final draft, Details, the finished files,
+  and a **Files** tab with the data folder, GitHub and backups.
+
+Use the sidebar to change the work area.
 
 | Tab | Shortcut | Contents |
 |---|---|---|
@@ -133,7 +143,10 @@ Use the tabs at the top of the window to change the work area.
 | Research | ⌘2 | Your notes. Each note can link to a source. |
 | Citations | ⌘3 | Your source library, with attached PDFs and highlights. |
 
-The ribbon below the tabs has the commands. Each button shows its keyboard shortcut.
+The Mac menu bar has everything else: **Insert** (citation, footnote, section, new document, note
+or citation), **Format** (bold, italic, small caps, lists, block quote) and **View** (layout, rich
+text or Markdown, Files, **Appearance**: Light, Dark, or Dark with a white page). ⌘K searches every
+command, and ⌘/ lists the keyboard shortcuts.
 
 ## 6. Projects
 
@@ -142,16 +155,17 @@ or a class.
 
 ### 6.1 Make a project
 
-1. Click **Home → New project**.
+1. Click the project menu in the sidebar, then **New project…**.
 2. Type a name.
 3. Select a color.
 4. (Optional) Type a description.
 5. (Optional) Select a default template and a citation style.
-6. Click **Create project**.
+6. (Optional) Name your highlight colors (see section 8.4).
+7. Click **Create project**.
 
 ### 6.2 Select a project
 
-Use the project menu at the top of the window.
+Use the project menu in the sidebar.
 
 | Selection | Result |
 |---|---|
@@ -212,7 +226,8 @@ An annotated bibliography can't switch templates.
 | Block quote | ⌥⌘Q |
 | Footnote | ⌥⌘F |
 | Citation | ⌃⌘C |
-| Edit the Markdown text | View → Edit as → Markdown (⌃⌘M) |
+| Edit the Markdown text | View → Markdown (⌃⌘M) |
+| Editor and preview side by side | View → Editor and Preview (⌃⌘2) |
 
 ### 7.3 Make the finished files
 
@@ -282,6 +297,18 @@ If you change a source in the library, all chips for that source change.
 ReWord keeps highlights in a separate file next to the PDF. It does not change the PDF. To make a copy of
 the PDF with the highlights in it, click **Export annotated**.
 
+### 8.4 Highlight colors and labels
+
+There are twelve highlight colors. You can give each color a label, for example *Holding*, *Dicta*
+or *Quote to use*:
+
+1. Open the project menu in the sidebar and click **Manage projects…** (or make a new project).
+2. Under **Highlight labels**, type a label next to each color you use.
+3. Click **Save**.
+
+The labels are shared by all your projects and are kept in `library/highlights.json`, so they sync
+with your library. The color bar in the reader and the highlight list show the labels.
+
 ## 9. Research notes
 
 1. Go to the Research tab.
@@ -297,10 +324,11 @@ The page view at the right shows the note as it will print. To save the note as 
 
 All your work is one folder and one GitHub repository, which must be private: documents, notes,
 sources, attached PDFs, highlights, and the finished PDF and Word files in
-`outputs/<project>/<document>/`. One button does everything: **Home → Save** (⌘S) saves, builds
+`outputs/<project>/<document>/`. One button does everything: **Save** (⌘S) saves, builds
 the open document, copies its finished files into `outputs/`, and syncs with GitHub (outside
-Writing, it saves and syncs). **View → Files** has buttons that open the data folder (the folder
-that is your GitHub repository), the repository on GitHub, and the backup folder.
+Writing, it saves and syncs). A small panel under Save shows each step as it happens. **View →
+Files** in the menu bar opens the data folder (the folder that is your GitHub repository), the
+repository on GitHub, and the backup folder.
 
 ReWord also syncs by itself when it starts, every 10 minutes while it is open, and when you quit. Each sync saves a commit, takes GitHub's changes, then pushes. Files that changed on
 only one side are simply combined, and a file deleted on one side but changed on the other is kept.
@@ -315,8 +343,9 @@ start (for example, after the data folder was set up again).
 
 After every successful sync, ReWord copies new and changed files into a backup folder beside the
 data folder: `~/Library/Application Support/ReWord Backup`. The backup is not a git repository and
-is never uploaded. Files deleted from your data folder stay in the backup. **View → Files** shows
-where the backup is and when it was last updated; **Backups** opens it in Finder.
+is never uploaded. Files deleted from your data folder stay in the backup. The inspector's **Files**
+tab shows where the backup is and when it was last updated; **Backups** (or **View → Show Backups in
+Finder**) opens it.
 
 Data folders from before 1.1.2 kept the finished files in a separate git repository inside
 `outputs/`. On the first start, ReWord merges that history into your work repository and keeps the
@@ -333,7 +362,7 @@ result on its next sync.
 2. Type `brew install gh` and push Return.
 3. Type `gh auth login` and push Return.
 4. Select **GitHub.com** and **HTTPS**, then follow the instructions.
-5. In ReWord, click **View → Files → Connect…**.
+5. In ReWord, open the inspector's **Files** tab and click **Connect…**.
 
 ReWord does not ask for or keep passwords or tokens. It uses the sign-in that `gh` keeps on the Mac.
 

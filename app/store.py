@@ -692,7 +692,7 @@ def write_annotations(tag, name, annotations, mtime=None, force=False):
         rects = [[round(float(v), 5) for v in r[:4]] for r in (x.get("rects") or []) if isinstance(r, list) and len(r) >= 4]
         clean.append({"id": str(x.get("id") or "")[:40], "page": int(x.get("page") or 1), "rects": rects,
                       "text": str(x.get("text") or "")[:5000], "comment": str(x.get("comment") or "")[:20000],
-                      "color": x.get("color") if x.get("color") in ("yellow", "green", "blue", "pink") else "yellow",
+                      "color": x.get("color") if x.get("color") in HIGHLIGHT_IDS else "yellow",
                       "created": x.get("created") or now(), "updated": now() if x.get("dirty") else (x.get("updated") or now())})
     clean.sort(key=lambda x: (x["page"], (x["rects"] or [[0, 0]])[0][1], (x["rects"] or [[0, 0]])[0][0]))
     write_atomic(a, json.dumps({"file": p.name, "annotations": clean}, indent=1, ensure_ascii=False) + "\n")
@@ -942,3 +942,30 @@ def delete_note(nid):
     if not p.exists():
         raise StoreError("no such note", 404)
     trash(p, notes_dir())
+
+# ---------------------------------------------------------------- highlight colors and their labels
+# Twelve colors; you name what each one means (Holding, Dicta, Quote…). The names live in
+# library/highlights.json, so every project, note and source shares them and they sync with the library.
+HIGHLIGHT_COLORS = [('yellow', '#ffd60a'), ('green', '#5fcf7a'), ('blue', '#6aaeff'), ('pink', '#ff7fbf'), ('orange', '#ffa043'), ('red', '#ff6161'), ('purple', '#a98bff'), ('teal', '#2fc7bf'), ('lime', '#b5e655'), ('brown', '#c79a6b'), ('gray', '#a7b0ba'), ('indigo', '#6f86ff')]
+HIGHLIGHT_IDS = tuple(c for c, _ in HIGHLIGHT_COLORS)
+
+
+def highlights_path():
+    return ROOT / "library" / "highlights.json"
+
+
+def read_highlights():
+    try:
+        labels = json.loads(highlights_path().read_text(encoding="utf-8")).get("labels", {})
+    except (OSError, ValueError, AttributeError):
+        labels = {}
+    return [{"id": c, "hex": h, "label": str(labels.get(c) or "")[:40]} for c, h in HIGHLIGHT_COLORS]
+
+
+def write_highlights(labels):
+    if not isinstance(labels, dict):
+        raise StoreError("labels must be an object")
+    clean = {c: " ".join(str(labels.get(c) or "").split())[:40] for c in HIGHLIGHT_IDS}
+    highlights_path().parent.mkdir(parents=True, exist_ok=True)
+    write_atomic(highlights_path(), json.dumps({"labels": clean}, indent=2, ensure_ascii=False) + "\n")
+    return read_highlights()

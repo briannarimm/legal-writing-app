@@ -164,6 +164,10 @@
       STYLES.forEach(([v, l]) => { const o = el('option', '', l); o.value = v; st.appendChild(o); });
       st.value = p.citation_style || '';
       field('Citation style', st, 'Used by annotated bibliographies and research notes in this project.');
+      const hl = App.highlights.editor();
+      const hlBox = el('div', 'block-label');
+      hlBox.append('Highlight labels', hl, el('div', 'hint', 'Name what each highlight color means, like Holding, Dicta or Quote to use. The labels are shared by all your projects.'));
+      form.appendChild(hlBox);
       const err = el('div', 'error'); err.hidden = true; form.appendChild(err);
       const row = el('div', 'dlg-actions');
       if (editing !== '+') {
@@ -183,6 +187,7 @@
         if (!data.name) { err.textContent = 'Give the project a name.'; err.hidden = false; return; }
         try {
           const r = editing === '+' ? await post('/api/project/new', data) : await put('/api/project', Object.assign({ id: editing }, data));
+          await App.highlights.save(hl.values());
           const created = editing === '+';
           editing = r.id; await P.load(); render();
           if (created) { P.setScope(r.id); toast('Created “' + r.name + '”. New documents, notes and sources go into it while it’s selected.'); }

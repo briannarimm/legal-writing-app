@@ -138,6 +138,14 @@ server.backup_now()
 check('backup keeps deleted files', (bk / 'research' / 'gh-only.md').exists())
 check('last backup time recorded', bool(server.last_backup()))
 
+# 6) twelve highlight colors with shared labels
+store.set_root(data)
+cols = store.write_highlights({'yellow': '  Holding ', 'teal': 'Dicta', 'bogus': 'x'})
+check('twelve colors', len(cols) == 12 and len({c['id'] for c in cols}) == 12)
+check('labels saved and trimmed', store.read_highlights()[0]['label'] == 'Holding' and next(c for c in cols if c['id'] == 'teal')['label'] == 'Dicta')
+check('labels file in the library', (data / 'library' / 'highlights.json').exists())
+check('new colors accepted on highlights', 'teal' in store.HIGHLIGHT_IDS and 'indigo' in store.HIGHLIGHT_IDS)
+
 for label, ok, detail in CASES:
     print(('ok   ' if ok else 'FAIL ') + label + ('' if ok else '  ' + str(detail)))
 print('%d/%d passed' % (sum(ok for _, ok, _ in CASES), len(CASES)))

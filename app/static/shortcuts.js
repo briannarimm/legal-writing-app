@@ -68,6 +68,8 @@
     { g: 'Go to', d: 'Writing', mods: 'm', code: 'Digit1', key: '1', fn: goView('writing'), on: '#nav [data-view="writing"]' },
     { g: 'Go to', d: 'Research', mods: 'm', code: 'Digit2', key: '2', fn: goView('research'), on: '#nav [data-view="research"]' },
     { g: 'Go to', d: 'Citations', mods: 'm', code: 'Digit3', key: '3', fn: goView('citations'), on: '#nav [data-view="citations"]' },
+    { g: 'Go to', d: 'Show or hide the sidebar', mods: 'am', code: 'KeyS', key: 'S', fn: () => App.menu('sidebar') },
+    { g: 'Go to', d: 'Show or hide the inspector', mods: 'am', code: 'KeyI', key: 'I', fn: () => App.menu('inspector') },
     { g: 'Go to', d: 'Editor only', mods: 'cm', code: 'Digit1', key: '1', click: '[data-layout="editor"]', on: '[data-layout="editor"]', views: 'writing research' },
     { g: 'Go to', d: 'Editor and preview', mods: 'cm', code: 'Digit2', key: '2', click: '[data-layout="split"]', on: '[data-layout="split"]', views: 'writing research' },
     { g: 'Go to', d: 'Preview only', mods: 'cm', code: 'Digit3', key: '3', click: '[data-layout="preview"]', on: '[data-layout="preview"]', views: 'writing research' },
@@ -171,8 +173,9 @@
     S.forEach(k => { if (available(k)) out.push({ label: k.d, group: k.g, hint: glyphs(k), run: () => exec(k) }); });
     [['light', 'Light'], ['dark', 'Dark'], ['dark-paper', 'Dark with white page']].forEach(([id, n]) =>
       out.push({ label: 'Theme: ' + n, group: 'View', run: () => { const b = $('[data-theme-btn="' + id + '"]'); if (b) b.click(); } }));
-    [['home', 'Home'], ['insert', 'Insert'], ['view', 'View']].forEach(([id, n]) =>
-      out.push({ label: 'Ribbon tab: ' + n, group: 'View', run: () => { const b = $('.rb-tab[data-tab="' + id + '"]'); if (b) b.click(); } }));
+    [['sidebar', 'Show or hide the sidebar'], ['inspector', 'Show or hide the inspector'], ['openData', 'Show data folder in Finder'],
+      ['webWork', 'Open repository on GitHub'], ['openBackup', 'Show backups in Finder']].forEach(([id, n]) =>
+      out.push({ label: n, group: 'View', run: () => App.menu(id) }));
     out.push({ label: 'Show all projects', group: 'Projects', run: () => App.projects.setScope('all') });
     (App.projects.list || []).forEach(p => out.push({ label: 'Project: ' + p.name, group: 'Projects', run: () => App.projects.setScope(p.id) }));
     out.push({ label: 'Show items with no project', group: 'Projects', run: () => App.projects.setScope('none') });

@@ -13,7 +13,8 @@ import * as pdfjs from '/static/vendor/pdfjs/pdf.min.mjs';
 
 pdfjs.GlobalWorkerOptions.workerSrc = '/static/vendor/pdfjs/pdf.worker.min.mjs';
 
-const COLORS = ['yellow', 'green', 'blue', 'pink'];
+const HL = () => window.App.highlights;             // twelve colors with your labels (highlights.js)
+const COLORS = () => HL().colors.map(c => c.id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 
@@ -23,16 +24,22 @@ class Reader {
     this.doc = null; this.task = null; this.anns = []; this.scale = 'fit'; this.drawId = 0; this.pages = [];
     view.reader = this;       // the right-click menu (contextmenu.js) finds the reader from its element
     this.bar = el('div', 'hl-bar'); this.bar.hidden = true;
-    COLORS.forEach(c => {
-      const b = el('button', 'hl-swatch ' + c); b.type = 'button'; b.title = 'Highlight (' + c + ')';
-      b.addEventListener('mousedown', e => e.preventDefault());
-      b.onclick = () => this.highlight(c);
-      this.bar.appendChild(b);
-    });
-    const cm = el('button', 'hl-note', 'Comment'); cm.type = 'button'; cm.title = 'Highlight and add a comment';
-    cm.addEventListener('mousedown', e => e.preventDefault());
-    cm.onclick = () => { const a = this.highlight('yellow'); if (a) this.editAnn(a); };
-    this.bar.appendChild(cm);
+    this.lastColor = 'yellow';
+    const paintBar = () => {
+      this.bar.innerHTML = '';
+      HL().colors.forEach(c => {
+        const b = el('button', 'hl-swatch ' + c.id); b.type = 'button'; b.title = 'Highlight: ' + HL().name(c.id);
+        b.addEventListener('mousedown', e => e.preventDefault());
+        b.onclick = () => { this.lastColor = c.id; this.highlight(c.id); };
+        this.bar.appendChild(b);
+      });
+      const cm = el('button', 'hl-note', 'Comment'); cm.type = 'button'; cm.title = 'Highlight and add a comment';
+      cm.addEventListener('mousedown', e => e.preventDefault());
+      cm.onclick = () => { const a = this.highlight(this.lastColor); if (a) this.editAnn(a); };
+      this.bar.appendChild(cm);
+    };
+    paintBar();
+    HL().onChange(() => { paintBar(); this.renderList && this.renderList(); });
     document.body.appendChild(this.bar);
     view.addEventListener('mouseup', () => setTimeout(() => this.selectionBar(), 0));
     document.addEventListener('selectionchange', () => { if (getSelection().isCollapsed) this.bar.hidden = true; });
@@ -171,7 +178,8 @@ class Reader {
     this.anns.slice().sort((a, b) => a.page - b.page || a.rects[0][1] - b.rects[0][1]).forEach(a => {
       const item = el('div', 'ann-item ' + (a.color || 'yellow'));
       item.dataset.id = a.id;
-      item.appendChild(el('div', 'ann-page', 'p. ' + a.page));
+      const lbl = (HL().get(a.color || 'yellow') || {}).label;
+      item.appendChild(el('div', 'ann-page', 'p. ' + a.page + (lbl ? ' · ' + lbl : '')));
       item.appendChild(el('div', 'ann-text', '“' + (a.text.length > 220 ? a.text.slice(0, 220) + '…' : a.text) + '”'));
       if (a.comment) item.appendChild(el('div', 'ann-comment', a.comment));
       item.onclick = () => this.reveal(a);
@@ -202,8 +210,8 @@ class Reader {
     ta.addEventListener('input', () => { a.comment = ta.value; a.dirty = true; this.paintHighlights(a.page); this.changed(); });
     pop.appendChild(ta);
     const row = el('div', 'row');
-    COLORS.forEach(c => {
-      const b = el('button', 'hl-swatch ' + c + (a.color === c ? ' on' : '')); b.type = 'button'; b.title = c;
+    COLORS().forEach(c => {
+      const b = el('button', 'hl-swatch ' + c + (a.color === c ? ' on' : '')); b.type = 'button'; b.title = HL().name(c);
       b.onclick = () => { a.color = c; a.dirty = true; this.paintHighlights(a.page); this.changed(); row.querySelectorAll('.hl-swatch').forEach(x => x.classList.toggle('on', x === b)); };
       row.appendChild(b);
     });
