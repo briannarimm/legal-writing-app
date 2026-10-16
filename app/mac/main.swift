@@ -233,6 +233,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         completionHandler(a.runModal() == .alertFirstButtonReturn ? field.stringValue : nil)
     }
 
+    // <input type="file"> (e.g. Attach PDF…): a web view shows no file chooser unless we show one
+    func webView(_ w: WKWebView, runOpenPanelWith parameters: WKOpenPanelParameters, initiatedByFrame f: WKFrameInfo, completionHandler: @escaping ([URL]?) -> Void) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = parameters.allowsDirectories
+        panel.allowsMultipleSelection = parameters.allowsMultipleSelection
+        panel.beginSheetModal(for: window) { r in completionHandler(r == .OK ? panel.urls : nil) }
+    }
+
     // window.open and links to other sites go to the default browser
     func webView(_ w: WKWebView, createWebViewWith c: WKWebViewConfiguration, for a: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         if let u = a.request.url { NSWorkspace.shared.open(u) }
