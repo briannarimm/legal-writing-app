@@ -37,6 +37,7 @@
 
   function noteRow(n) {
     const row = el('div', 'list-item' + (cur && cur.id === n.id ? ' active' : ''));
+    row.dataset.id = n.id;
     row.appendChild(el('div', 'li-title', n.title));
     if (n.citation) row.appendChild(el('div', 'li-sub', n.citation));
     row.onclick = () => select(n.id);
@@ -196,14 +197,16 @@
   topicIn.addEventListener('input', changed);
   body.addEventListener('input', changed);
 
-  $('#note-delete').onclick = async () => {
-    if (!cur || !confirm('Delete the note “' + cur.title + '”?\n\nThe file moves to research/_trash.')) return;
-    const id = cur.id;
-    saver.unregister(regKey); regKey = null; cur = null;
+  async function deleteNote(id) {
+    const n = cur && cur.id === id ? cur : notes.find(x => x.id === id);
+    if (!n || !confirm('Delete the note “' + n.title + '”?\n\nThe file moves to research/_trash.')) return;
+    const open = cur && cur.id === id;
+    if (open) { saver.unregister(regKey); regKey = null; cur = null; }
     try { await post('/api/note/delete', { id }); } catch (e) { toast(e.message, true); return; }
     await loadList();
-    select('');
-  };
+    if (open) select('');
+  }
+  $('#note-delete').onclick = () => { if (cur) deleteNote(cur.id); };
 
   /* ------------------------------------------------------------ the source card */
   function renderSource() {
@@ -378,6 +381,11 @@
       if (cur) renderSource();
     },
     async open(id) { await App.showView('research'); await loadList(); await select(id); },
+    // for the right-click menu (contextmenu.js)
+    current: () => (cur ? cur.id : null),
+    note: id => notes.find(x => x.id === id) || null,
+    remove: id => deleteNote(id),
+    move: (id, pid) => moveNote('note:' + id, pid),
     newNote,
     afterSave() { renderList(); },
   };

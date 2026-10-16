@@ -56,6 +56,7 @@
   P.heading = function (g, view, onDrop) {
     const key = view + ':' + (g.id || '_none');
     const h = el('div', 'proj-head' + (collapsed.has(key) ? ' folded' : ''));
+    h.dataset.project = g.id;
     h.append(el('span', 'caret', collapsed.has(key) ? '▸' : '▾'), P.dot(g.id), el('span', 'proj-name', g.name), el('span', 'proj-count muted', String(g.items.length)));
     h.onclick = () => {
       if (collapsed.has(key)) collapsed.delete(key); else collapsed.add(key);

@@ -330,6 +330,7 @@
     }
     items.forEach(c => {
       const row = el('div', 'list-item' + (c.tag === selected ? ' active' : ''));
+      row.dataset.tag = c.tag;
       const top = el('div', 'li-top'); top.append(el('span', 'chip', App.typeLabel(c.type)), el('code', '', c.tag));
       if (c.missing && c.missing.length) top.appendChild(el('span', 'warn small', '•'));
       const dots = el('span', 'proj-dots');
@@ -416,14 +417,7 @@
     form.onChange(() => saver.touch());
 
     const del = el('button', 'btn small danger', 'Delete citation');
-    del.onclick = async () => {
-      if (!confirm('Delete the citation “' + c.tag + '”?\n\nText already written keeps its citations as typed. Notes linked to it will show the source as missing. The file moves to library/citations/_trash.')) return;
-      saver.unregister(regKey); regKey = null;
-      try { await post('/api/citation/delete', { tag: c.tag }); } catch (e) { toast(e.message, true); return; }
-      await App.loadCitations();
-      toast('Deleted ' + c.tag + '.');
-      select('');
-    };
+    del.onclick = () => deleteCitation(c.tag);
     $('#cite-actions').appendChild(del);
     renderLinkedNotes(c);
     renderList();
@@ -443,11 +437,24 @@
       box.appendChild(a);
     });
     const start = el('button', 'btn small', '+ Start a note about this source');
-    start.onclick = async () => {
+    start.onclick = () => startNote(c);
+    box.appendChild(start);
+  }
+
+  async function startNote(c) {
+    try {
       const n = await post('/api/note/new', { title: App.citeText(c).slice(0, 80) || c.tag, citation: c.tag, project: App.projects.current() });
       App.views.research.open(n.id);
-    };
-    box.appendChild(start);
+    } catch (e) { toast(e.message, true); }
+  }
+
+  async function deleteCitation(tag) {
+    if (!confirm('Delete the citation “' + tag + '”?\n\nText already written keeps its citations as typed. Notes linked to it will show the source as missing. The file moves to library/citations/_trash.')) return;
+    if (selected === tag && regKey) { saver.unregister(regKey); regKey = null; }
+    try { await post('/api/citation/delete', { tag }); } catch (e) { toast(e.message, true); return; }
+    await App.loadCitations();
+    toast('Deleted ' + tag + '.');
+    if (selected === tag) select(''); else renderList();
   }
 
   $('#btn-newcite').onclick = () => select('+');
@@ -462,6 +469,8 @@
       if (selected === null || selected === '') { editor.hidden = true; empty.hidden = false; }
     },
     open(tag) { return select(tag); },
+    remove: tag => deleteCitation(tag),
+    startNote: tag => { const c = App.citation(tag); if (c) startNote(c); },
     async reload() { await this.show(); if (selected && selected !== '+') await select(selected); },
     afterSave() { renderList(); },
     renderList() { renderList(); },
