@@ -24,10 +24,18 @@ guard args.count >= 3 else { fail("usage: rwpdf snapshot <url> <out.pdf> | annot
 
 // ------------------------------------------------------------------ annotate
 let colors: [String: NSColor] = [
-    "yellow": NSColor(calibratedRed: 1.0, green: 0.86, blue: 0.2, alpha: 0.45),
-    "green": NSColor(calibratedRed: 0.45, green: 0.85, blue: 0.4, alpha: 0.45),
-    "blue": NSColor(calibratedRed: 0.4, green: 0.7, blue: 1.0, alpha: 0.45),
-    "pink": NSColor(calibratedRed: 1.0, green: 0.5, blue: 0.7, alpha: 0.45),
+    "yellow": NSColor(calibratedRed: 1.00, green: 0.84, blue: 0.04, alpha: 0.45),
+    "green": NSColor(calibratedRed: 0.37, green: 0.81, blue: 0.48, alpha: 0.45),
+    "blue": NSColor(calibratedRed: 0.42, green: 0.68, blue: 1.00, alpha: 0.45),
+    "pink": NSColor(calibratedRed: 1.00, green: 0.50, blue: 0.75, alpha: 0.45),
+    "orange": NSColor(calibratedRed: 1.00, green: 0.63, blue: 0.26, alpha: 0.45),
+    "red": NSColor(calibratedRed: 1.00, green: 0.38, blue: 0.38, alpha: 0.45),
+    "purple": NSColor(calibratedRed: 0.66, green: 0.55, blue: 1.00, alpha: 0.45),
+    "teal": NSColor(calibratedRed: 0.18, green: 0.78, blue: 0.75, alpha: 0.45),
+    "lime": NSColor(calibratedRed: 0.71, green: 0.90, blue: 0.33, alpha: 0.45),
+    "brown": NSColor(calibratedRed: 0.78, green: 0.60, blue: 0.42, alpha: 0.45),
+    "gray": NSColor(calibratedRed: 0.65, green: 0.69, blue: 0.73, alpha: 0.45),
+    "indigo": NSColor(calibratedRed: 0.44, green: 0.53, blue: 1.00, alpha: 0.45),
 ]
 
 func annotate(_ input: String, _ annPath: String, _ output: String) {

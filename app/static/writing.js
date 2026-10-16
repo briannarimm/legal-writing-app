@@ -740,6 +740,7 @@
     $('#btn-run').disabled = on;
     $('#btn-save .lbl').textContent = on ? 'Saving…' : 'Save';
     $('#run-step').innerHTML = on ? '<span class="spinner"></span>' + (step || 'Working') : '';
+    if (App.saveProgress) App.saveProgress(on, step);
   }
 
   async function poll(fresh) {
@@ -759,6 +760,7 @@
 
   function finishRun(s) {
     setRunning(false);
+    if (App.saveProgress) App.saveProgress(false, null, s);
     if (App.afterRun) App.afterRun();
     if (W.info) api('/api/status?doc=' + encodeURIComponent(W.info.slug)).then(applyStatus).catch(() => {});
     const here = W.info && s.doc === W.info.slug;
@@ -834,7 +836,6 @@
   async function runAll() {
     if (running || !W.info) return;
     if (!(await saver.flush(false))) { toast('Fix the save problem first, then press Save.', true); return; }
-    showTab('log');
     try { await post('/api/run', { doc: W.info.slug }); } catch (e) { toast(e.message, true); return; }
     poll(true);
   }
@@ -863,6 +864,10 @@
     },
     open: slug => openDoc(slug),
     runAll: () => runAll(),
+    info: () => W.info,
+    outputs: () => W.outputs || [],
+    status: () => W.status,
+    showLog: () => showTab('log'),
     current: () => (W.info ? W.info.slug : null),
     // for the right-click menu (contextmenu.js)
     rename: slug => { const d = App.state.documents.find(x => x.slug === slug); if (d) renameDoc(d); },
@@ -889,7 +894,7 @@
     afterSave() { renderTree(); },
     async resumeJob() {
       const job = await api('/api/job?since=0');
-      if (job.running) { showTab('log'); poll(true); }
+      if (job.running) poll(true);
     },
   };
 })();

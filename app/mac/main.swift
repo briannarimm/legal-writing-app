@@ -225,6 +225,11 @@ final class MenuBridge: NSObject, WKScriptMessageHandlerWithReply {
         case "learn":
             if !word.isEmpty { NSSpellChecker.shared.learnWord(word) }
             replyHandler(true, nil)
+        case "theme":
+            // the window frame follows the app's theme (1.2: the title bar is transparent over the glass)
+            let dark = (body["theme"] as? String ?? "light") != "light"
+            if let win = web?.window { styleWindow(win, dark: dark) }
+            replyHandler(true, nil)
         case "lookUp":
             if let q = word.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed), let u = URL(string: "dict://" + q) {
                 NSWorkspace.shared.open(u)
@@ -234,6 +239,15 @@ final class MenuBridge: NSObject, WKScriptMessageHandlerWithReply {
             replyHandler(nil, "Unknown action")
         }
     }
+}
+
+/// 1.2: a transparent title bar over the app's glass background, matching its light or dark theme.
+func styleWindow(_ win: NSWindow, dark: Bool) {
+    win.titlebarAppearsTransparent = true
+    win.titleVisibility = .hidden
+    win.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+    win.backgroundColor = dark ? NSColor(calibratedRed: 0.09, green: 0.11, blue: 0.15, alpha: 1)
+                               : NSColor(calibratedRed: 0.87, green: 0.89, blue: 0.93, alpha: 1)
 }
 
 // MARK: - the app
@@ -279,6 +293,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1360, height: 900),
                           styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "ReWord"
+        styleWindow(window, dark: false)
         window.minSize = NSSize(width: 900, height: 600)
         window.delegate = self
         window.setFrameAutosaveName("ReWordMain")
@@ -441,6 +456,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     func setZoom(_ z: CGFloat) { web.pageZoom = max(0.5, min(2.5, z)); UserDefaults.standard.set(Double(web.pageZoom), forKey: "pageZoom") }
 
     @objc func openDataFolder(_ s: Any?) { NSWorkspace.shared.open(dataFolder()) }
+    /// Menu items that run an app command (Insert, View, Format): App.menu('<name>') in glass.js.
+    @objc func jsMenu(_ s: Any?) {
+        guard let item = s as? NSMenuItem, let name = item.representedObject as? String,
+              let data = try? JSONSerialization.data(withJSONObject: [name]), let arr = String(data: data, encoding: .utf8) else { return }
+        web.evaluateJavaScript("window.App && App.menu && App.menu(\(arr)[0])", completionHandler: nil)
+    }
     @objc func showLog(_ s: Any?) { NSWorkspace.shared.open(logURL) }
     @objc func chooseDataFolder(_ s: Any?) {
         let panel = NSOpenPanel()
@@ -477,7 +498,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         app.addItem(.separator())
         add(app, "Quit ReWord", #selector(NSApplication.terminate(_:)), "q")
 
+        func js(_ menu: NSMenu, _ title: String, _ name: String, _ key: String = "", _ mods: NSEvent.ModifierFlags = .command) {
+            let i = NSMenuItem(title: title, action: #selector(jsMenu(_:)), keyEquivalent: key)
+            i.keyEquivalentModifierMask = mods
+            i.target = self
+            i.representedObject = name
+            menu.addItem(i)
+        }
+        func submenu(_ parent: NSMenu, _ title: String) -> NSMenu {
+            let item = NSMenuItem(title: title, action: nil, keyEquivalent: ""); parent.addItem(item)
+            let m = NSMenu(title: title); item.submenu = m
+            return m
+        }
         let file = sub("File")
+        js(file, "Save, Build and Sync", "save", "s")
+        js(file, "New Document…", "newDoc")
+        js(file, "New Research Note", "newNote")
+        js(file, "New Citation", "newCite")
+        file.addItem(.separator())
         add(file, "Open Data Folder", #selector(openDataFolder(_:)), "", [], target: self)
         add(file, "Choose Data Folder…", #selector(chooseDataFolder(_:)), "", [], target: self)
         add(file, "Show Log", #selector(showLog(_:)), "", [], target: self)
@@ -498,7 +536,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         add(spellMenu, "Check Spelling While Typing", Selector(("toggleContinuousSpellChecking:")))
         add(spellMenu, "Show Spelling and Grammar", #selector(NSText.showGuessPanel(_:)), ":")
 
+        let insert = sub("Insert")
+        js(insert, "Citation…", "cite")
+        js(insert, "Footnote", "footnote")
+        js(insert, "Sources for a Bibliography…", "bibAdd")
+        insert.addItem(.separator())
+        js(insert, "Section", "addSection")
+        js(insert, "Document…", "newDoc")
+        js(insert, "Research Note", "newNote")
+        js(insert, "Citation in the Library", "newCite")
+
+        let format = sub("Format")
+        js(format, "Bold", "bold")
+        js(format, "Italic", "italic")
+        js(format, "Small Caps", "smallcaps")
+        format.addItem(.separator())
+        js(format, "Bulleted List", "ul")
+        js(format, "Numbered List", "ol")
+        js(format, "Block Quote", "quote")
+
         let view = sub("View")
+        js(view, "Writing", "view:writing", "1")
+        js(view, "Research", "view:research", "2")
+        js(view, "Citations", "view:citations", "3")
+        view.addItem(.separator())
+        js(view, "Editor Only", "layout:editor", "1", [.command, .control])
+        js(view, "Editor and Preview", "layout:split", "2", [.command, .control])
+        js(view, "Preview Only", "layout:preview", "3", [.command, .control])
+        view.addItem(.separator())
+        js(view, "Rich Text", "edit:rich")
+        js(view, "Markdown", "edit:md")
+        view.addItem(.separator())
+        let filesHead = NSMenuItem(title: "Files", action: nil, keyEquivalent: ""); filesHead.isEnabled = false; view.addItem(filesHead)
+        js(view, "Show Data Folder in Finder", "openData")
+        js(view, "Open Repository on GitHub", "webWork")
+        js(view, "Show Backups in Finder", "openBackup")
+        view.addItem(.separator())
+        let appearance = submenu(view, "Appearance")
+        js(appearance, "Light", "theme:light")
+        js(appearance, "Dark", "theme:dark")
+        js(appearance, "Dark, White Page", "theme:dark-paper")
+        js(view, "Show or Hide Sidebar", "sidebar", "s", [.command, .option])
+        js(view, "Show or Hide Inspector", "inspector", "i", [.command, .option])
+        view.addItem(.separator())
+        js(view, "Bigger Text", "textBigger")
+        js(view, "Smaller Text", "textSmaller")
+        js(view, "Normal Text Size", "textReset")
+        view.addItem(.separator())
         add(view, "Actual Size", #selector(zoomReset(_:)), "0", target: self)
         add(view, "Zoom In", #selector(zoomIn(_:)), "+", target: self)
         add(view, "Zoom Out", #selector(zoomOut(_:)), "-", target: self)

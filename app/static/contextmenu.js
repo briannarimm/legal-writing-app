@@ -632,8 +632,7 @@
   }
 
   /* the PDF reader in Citations */
-  const COLORS = [['yellow', 'Yellow'], ['green', 'Green'], ['blue', 'Blue'], ['pink', 'Pink']];
-  const colorItems = (r, a) => COLORS.map(([c, n]) => ({ label: n, swatch: c, checked: (a.color || 'yellow') === c, run: () => r.recolor(a, c) }));
+  const colorItems = (r, a) => App.highlights.colors.map(c => ({ label: App.highlights.name(c.id), swatch: c.id, checked: (a.color || 'yellow') === c.id, run: () => r.recolor(a, c.id) }));
   function readerItems(view, t) {
     const r = view.reader;
     const hl = t.closest('.hl');

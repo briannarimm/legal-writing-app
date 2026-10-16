@@ -4,8 +4,21 @@ This folder contains the ready-to-use ReWord program for Mac.
 
 | File | Description |
 |---|---|
-| `ReWord-1.1.4-mac-arm64.zip` | The program. Download this file. |
-| `ReWord-1.1.4-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
+| `ReWord-1.2.0-mac-arm64.zip` | The program. Download this file. |
+| `ReWord-1.2.0-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
+
+## What's new in 1.2
+
+- **A new look.** A floating glass sidebar holds Writing, Research, Citations, the project menu and
+  your documents. One toolbar has Save, formatting, Cite, Footnote and the layout. An inspector on
+  the right shows the document's settings, finished files, data folder and backups. Three
+  appearances: Light, Dark, and Dark with a white page (View → Appearance).
+- **The menu bar does the rest.** Insert, Format and View menus replace the old Insert and View
+  tabs. View → Files opens the data folder, the repository on GitHub, and the backups.
+- **Split view** shows the editor beside the preview (the preview is now the first tab).
+- **Twelve highlight colors with your own labels**, set in project setup and shared by all projects.
+- **Citations** shows the PDF in the middle and the citation's fields on the right.
+- **Save shows its progress**: saved, built, copied to outputs, synced.
 
 ## What's new in 1.1.4
 
@@ -62,7 +75,7 @@ You do not need other software. ReWord contains its own copies of Python, Pandoc
 
 ## Install
 
-1. Click `ReWord-1.1.4-mac-arm64.zip` in the file list above.
+1. Click `ReWord-1.2.0-mac-arm64.zip` in the file list above.
 2. Click **View raw** or the **Download raw file** button (the arrow icon, top right of the
    file view). The download starts. The file is about 90 MB.
 3. Open your Downloads folder. Double-click the zip file. A folder named `ReWord` appears.
@@ -88,16 +101,16 @@ You do this one time only.
 Open Terminal, go to the folder that contains the zip file, and run:
 
 ```bash
-shasum -a 256 -c ReWord-1.1.4-mac-arm64.zip.sha256
+shasum -a 256 -c ReWord-1.2.0-mac-arm64.zip.sha256
 ```
 
-The result must be `ReWord-1.1.4-mac-arm64.zip: OK`. If the result is different, delete the file
+The result must be `ReWord-1.2.0-mac-arm64.zip: OK`. If the result is different, delete the file
 and download it again.
 
 ## Your data
 
 ReWord saves your documents, notes, sources and finished files in
-`~/Library/Application Support/ReWord`. **View → Files → Data folder** opens it. When ReWord runs
+`~/Library/Application Support/ReWord`. **View → Show Data Folder in Finder** opens it. When ReWord runs
 from a USB drive, it uses a `ReWord Data` folder next to the app instead. ReWord does not send your
 work to the internet unless you connect GitHub (see section 10 of the
 [main README](../README.md)).
