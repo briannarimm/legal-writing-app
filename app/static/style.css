@@ -653,3 +653,9 @@ select.proj-select { width: auto; }
 .ctx-swatch.yellow { background: #ffd633; } .ctx-swatch.green { background: #6ed264; }
 .ctx-swatch.blue { background: #64aaff; } .ctx-swatch.pink { background: #ff78af; }
 .ctx-swatch.on { box-shadow: 0 0 0 2px var(--panel), 0 0 0 3.5px currentColor; }
+
+/* sync conflicts: one row per file, three choices */
+#dlg-conflicts { max-width: 720px; }
+#conflict-list .conflict-row { align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+#conflict-list .grow { flex: 1; min-width: 200px; }
+#conflict-list .conflict-row span { font-family: ui-monospace, Menlo, monospace; font-size: 12px; overflow-wrap: anywhere; }

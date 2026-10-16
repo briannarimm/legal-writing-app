@@ -200,6 +200,13 @@
       <div class="rb-group" id="gh-out-group">
         <div class="rb-items">
           <button class="rb-btn primary" data-cmd="publish" data-ic="upload" title="Copy this document's latest build into the output folder, commit it, and push it to GitHub (once connected)"><span class="lbl">Publish</span></button>
+          <div class="rb-items col">
+            <div class="rb-path" id="backup-path" title="">…</div>
+            <div class="rb-row">
+              <button class="rb-btn sm" data-cmd="openBackup" data-ic-sm="folder" title="Show the backup folder in Finder: a plain copy of your work (not on GitHub), updated after every successful sync">Show backups</button>
+              <span class="hint" id="backup-when"></span>
+            </div>
+          </div>
           <div class="rb-items col wide">
             <div class="gh-status" id="gh-out-status">…</div>
             <div class="rb-row">
@@ -509,6 +516,17 @@
   <div id="cp-list" class="cp-list"></div>
   <div class="dlg-actions">
     <button class="btn" data-close>Cancel</button>
+  </div>
+</dialog>
+
+<dialog id="dlg-conflicts">
+  <h2>Changed here and on GitHub</h2>
+  <p class="hint">These files were changed both on this computer and on GitHub. This computer's version is in
+    place now, and GitHub's version is kept until you choose. Nothing is lost either way: "Keep both" adds
+    GitHub's version as a copy whose name ends in "-github".</p>
+  <div id="conflict-list"></div>
+  <div class="dlg-actions">
+    <button class="btn" data-close>Decide later</button>
   </div>
 </dialog>
 

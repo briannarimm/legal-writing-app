@@ -436,6 +436,7 @@ def _sync_work(reason="sync", log=None):
         return {"ok": False, "message": "Couldn't save a snapshot for syncing: %s" % e}
     st = git_status("project")
     if not st.get("remote"):
+        backup_after_sync()
         return {"ok": True, "message": "Saved on this computer (no GitHub repository connected)."}
     branch = st.get("branch") or "main"
     rc, out = git_in(d, "fetch", "origin", noninteractive=True, timeout=90)
@@ -444,35 +445,29 @@ def _sync_work(reason="sync", log=None):
         say(msg)
         return {"ok": False, "offline": True, "message": msg}
     pulled = 0
+    rc = 0
     note = ""
     has_remote_branch = git_in(d, "rev-parse", "--verify", "-q", "origin/" + branch)[0] == 0
     if has_remote_branch:
         rc, cnt = git_in(d, "rev-list", "--count", "HEAD..origin/" + branch)
         pulled = int(cnt) if rc == 0 and cnt.isdigit() else 0
         related = git_in(d, "merge-base", "HEAD", "origin/" + branch)[0] == 0
-        if pulled and not related:
-            # This folder's history and GitHub's don't share a starting point (the folder was set up again
-            # from scratch, or connected to a repository that already had work in it). Join the two
-            # histories instead of refusing: nothing on either side is dropped.
-            rc, out = git_in(d, "merge", "--allow-unrelated-histories", "-X", "ours", "--no-edit",
-                             "-m", "Sync: join this computer's history with GitHub's (%s)" % host, "origin/" + branch)
-            if rc != 0:
-                git_in(d, "merge", "--abort")
-                say(out)
-                return {"ok": False, "message": "This folder and GitHub have separate histories that ReWord can't combine on its own. "
-                                                "Nothing was lost; open the folder in GitHub Desktop or Terminal to finish (git status)."}
-            note = " This computer's history and GitHub's were joined; where both had a file, this computer's version was kept."
-        elif pulled:
+        if pulled and related:
             rc, out = git_in(d, "rebase", "origin/" + branch)
             if rc != 0:
                 git_in(d, "rebase", "--abort")
-                rc, out = git_in(d, "merge", "-X", "ours", "--no-edit", "-m", "Sync: merge GitHub changes (%s)" % host, "origin/" + branch)
-                if rc != 0:
-                    git_in(d, "merge", "--abort")
-                    say(out)
-                    return {"ok": False, "message": "GitHub and this computer changed the same files in a way ReWord can't combine. "
-                                                    "Nothing was lost; open the folder in GitHub Desktop or Terminal to finish (git status)."}
-                note = " Some lines were changed both here and on GitHub; this computer's version was kept (GitHub's is in the history)."
+        if pulled and not (related and rc == 0):
+            # The same file changed here and on GitHub (or the two histories don't share a start): merge,
+            # keep everything, and set aside GitHub's version of each clashing file for you to choose.
+            try:
+                found = merge_keep_everything(d, "origin/" + branch, host, unrelated=not related)
+            except RuntimeError as e:
+                say(str(e))
+                return {"ok": False, "message": "ReWord couldn't combine GitHub's changes with this computer's. "
+                                                "Nothing was lost; open the folder in GitHub Desktop or Terminal to finish (git status).\n\n%s" % e}
+            if found:
+                note = (" %d file%s changed both here and on GitHub. This computer's version is in place for now; "
+                        "choose which to keep." % (len(found), "" if len(found) == 1 else "s"))
     rc, ahead = git_in(d, "rev-list", "--count", ("origin/" + branch + "..HEAD") if has_remote_branch else "HEAD")
     pushed = int(ahead) if rc == 0 and ahead.isdigit() else 0
     if pushed:
@@ -485,7 +480,168 @@ def _sync_work(reason="sync", log=None):
                          ("%d sent" % pushed) if pushed else "") if x]
     msg = ("Synced with GitHub: " + ", ".join(parts) if parts else "Up to date with GitHub") + "." + note
     say(msg)
-    return {"ok": True, "pulled": pulled, "pushed": pushed, "message": msg, "changed": bool(pulled)}
+    backup_after_sync()
+    return {"ok": True, "pulled": pulled, "pushed": pushed, "message": msg, "changed": bool(pulled), "conflicts": list_conflicts()}
+
+
+# ---------------------------------------------------------------- conflicts and backups
+
+def git_blob(d, spec):
+    """A file's bytes at a git revision or index stage (":2:path" = this computer, ":3:path" = GitHub), or None."""
+    g = find_git()
+    try:
+        p = subprocess.run([g, "-C", str(d), "show", spec], env=env(), capture_output=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return p.stdout if p.returncode == 0 else None
+
+
+def conflicts_dir():
+    return root() / ".git" / "reword-conflicts"          # inside .git: never committed, never synced
+
+
+def list_conflicts():
+    try:
+        items = json.loads((conflicts_dir() / "conflicts.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    return [c for c in items if (conflicts_dir() / c["id"]).exists()]
+
+
+def save_conflicts(items):
+    conflicts_dir().mkdir(parents=True, exist_ok=True)
+    store.write_atomic(conflicts_dir() / "conflicts.json", json.dumps(items, indent=2) + "\n")
+
+
+def merge_keep_everything(d, ref, host, unrelated=False):
+    """Merge GitHub's branch into this one and keep everything: files changed on only one side merge as
+    usual; a file deleted on one side and changed on the other is kept; a file whose lines clash keeps this
+    computer's version for now, and GitHub's version is set aside (conflicts_dir) for you to choose:
+    this computer's, GitHub's, or both. Returns the set-aside conflicts. Raises RuntimeError if git can't merge."""
+    args = ["merge", "--no-edit", "-m", "Sync: combine GitHub's changes (%s)" % host]
+    if unrelated:
+        args.append("--allow-unrelated-histories")
+    rc, out = git_in(d, *(args + [ref]))
+    if rc == 0:
+        return []
+    unmerged = [x for x in git_in(d, "diff", "--name-only", "--diff-filter=U")[1].splitlines() if x.strip()]
+    if not unmerged:
+        git_in(d, "merge", "--abort")
+        raise RuntimeError(out)
+    items, found = list_conflicts(), []
+    stamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    for path in unmerged:
+        mine, theirs = git_blob(d, ":2:" + path), git_blob(d, ":3:" + path)
+        target = d / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if mine is None and theirs is None:
+            git_in(d, "rm", "-q", "--cached", "--", path)
+            continue
+        target.write_bytes(mine if mine is not None else theirs)
+        if mine is not None and theirs is not None and mine != theirs:
+            cid = "%s-%d" % (datetime.datetime.now().strftime("%Y%m%d%H%M%S"), len(items) + 1)
+            (conflicts_dir() / cid).mkdir(parents=True, exist_ok=True)
+            (conflicts_dir() / cid / "github").write_bytes(theirs)
+            c = {"id": cid, "path": path, "when": stamp}
+            items.append(c)
+            found.append(c)
+        git_in(d, "add", "--", path)
+    save_conflicts(items)
+    rc, out = git_in(d, "commit", "-q", "--no-edit")
+    if rc != 0:
+        raise RuntimeError("git commit failed: " + out)
+    return found
+
+
+def both_name(path):
+    """research/note.md -> research/note-github.md (then -github-2, ...), so ReWord lists the copy too."""
+    p = Path(path)
+    for n in range(1, 100):
+        cand = p.with_name("%s-github%s%s" % (p.stem, "" if n == 1 else "-%d" % n, p.suffix))
+        if not (root() / cand).exists():
+            return cand
+    raise store.StoreError("Too many copies of %s." % path)
+
+
+def resolve_conflict(cid, choice):
+    """choice: "mine" (keep this computer's), "github" (use GitHub's), "both" (keep this computer's, add GitHub's as a copy)."""
+    items = list_conflicts()
+    c = next((x for x in items if x["id"] == cid), None)
+    if not c:
+        raise store.StoreError("That conflict was already resolved.", 404)
+    if choice not in ("mine", "github", "both"):
+        raise store.StoreError("Choose mine, github or both.")
+    d, path = root(), c["path"]
+    theirs = (conflicts_dir() / cid / "github").read_bytes()
+    if choice == "github":
+        (d / path).parent.mkdir(parents=True, exist_ok=True)
+        (d / path).write_bytes(theirs)
+        commit_repo(d, "Keep GitHub's version of %s" % path)
+    elif choice == "both":
+        copy = both_name(path)
+        (d / copy).write_bytes(theirs)
+        commit_repo(d, "Keep both versions of %s (GitHub's is %s)" % (path, copy.name))
+    shutil.rmtree(conflicts_dir() / cid, ignore_errors=True)
+    save_conflicts([x for x in items if x["id"] != cid])
+    return list_conflicts()
+
+
+BACKUP_SKIP = {".git", "build", ".tex-cache", ".DS_Store"}
+BACKUP_LOCK = threading.Lock()
+
+
+def backup_dir():
+    """A plain copy of the data folder beside it (not a git repository): ~/Library/Application Support/ReWord Backup."""
+    return root().parent / (root().name + " Backup")
+
+
+def last_backup():
+    try:
+        return (backup_dir() / ".last-backup").read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+def backup_now():
+    """Copy every new or changed file into the backup folder. Files are never deleted from the backup, so
+    something removed (or lost) in the data folder is still there."""
+    if not BACKUP_LOCK.acquire(blocking=False):
+        return 0
+    try:
+        src, dst = root(), backup_dir()
+        dst.mkdir(parents=True, exist_ok=True)
+        copied = 0
+        for here, dirs, files in os.walk(src):
+            dirs[:] = [x for x in dirs if x not in BACKUP_SKIP]
+            rel = Path(here).relative_to(src)
+            for f in files:
+                if f in BACKUP_SKIP:
+                    continue
+                a, b = Path(here) / f, dst / rel / f
+                try:
+                    sa = a.stat()
+                    if b.exists():
+                        sb = b.stat()
+                        if sb.st_size == sa.st_size and int(sb.st_mtime) == int(sa.st_mtime):
+                            continue
+                    b.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(a, b)
+                    copied += 1
+                except OSError as e:
+                    print("Backup skipped %s: %s" % (a, e))
+        readme = dst / "README.txt"
+        if not readme.exists():
+            readme.write_text("ReWord backup\n\nA plain copy of your ReWord data folder (%s), updated after every "
+                              "successful sync. It is not a git repository and is never uploaded. Files deleted from "
+                              "the data folder stay here.\n" % src, encoding="utf-8")
+        (dst / ".last-backup").write_text(datetime.datetime.now().strftime("%Y-%m-%d %H:%M") + "\n", encoding="utf-8")
+        return copied
+    finally:
+        BACKUP_LOCK.release()
+
+
+def backup_after_sync():
+    threading.Thread(target=backup_now, daemon=True).start()
 
 
 def web_url(remote):
@@ -985,6 +1141,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/note": lambda: self.send_json(store.read_note(store.note_path(q.get("id")))),
             "/api/citations": lambda: self.send_json({"citations": store.citations(), "types": store.CITE_TYPES, "schema": citeformat.schema()}),
             "/api/settings": lambda: self.send_json(self.settings_out()),
+            "/api/conflicts": lambda: self.send_json({"conflicts": list_conflicts()}),
             "/api/git": lambda: self.send_json(git_status(q.get("repo"))),
             "/api/gh": lambda: self.send_json(gh_info()),
             "/api/ping": lambda: self.send_json({"ok": True, "since": LIFE.ping()}),
@@ -1030,7 +1187,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/citation/projects": self.api_citation_projects, "/api/file/delete": self.api_file_delete,
             "/api/snapshot": self.api_snapshot, "/api/annotations/export": self.api_annotations_export, "/api/render": self.api_render, "/api/note/export": self.api_note_export,
             "/api/git/connect": self.api_git_connect, "/api/git/create": self.api_git_create,
-            "/api/git/push": self.api_git_push, "/api/sync": lambda b: self.send_json(sync_work(b.get("reason") or "sync")), "/api/publish": self.api_publish, "/api/open": self.api_open,
+            "/api/git/push": self.api_git_push, "/api/sync": lambda b: self.send_json(sync_work(b.get("reason") or "sync")),
+            "/api/conflict/resolve": lambda b: self.send_json({"conflicts": resolve_conflict(b.get("id"), b.get("choice"))}), "/api/publish": self.api_publish, "/api/open": self.api_open,
             "/api/bye": lambda b: (LIFE.bye(), self.send_json({"ok": True}))[1],
         }
         fn = routes.get(self.path)
@@ -1124,7 +1282,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def settings_out(self):
         s = get_settings()
         return {"outputDir": str(output_dir()), "outputDirIsDefault": not s["outputDir"], "autoPush": bool(s["autoPush"]),
-                "dataDir": str(root()), "outputsInWork": outputs_in_work()}
+                "dataDir": str(root()), "outputsInWork": outputs_in_work(),
+                "backupDir": str(backup_dir()), "lastBackup": last_backup()}
 
     def api_save_settings(self, b):
         s = get_settings()
@@ -1197,6 +1356,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if not url:
                 raise store.StoreError("No GitHub repository is connected yet.")
             run_quiet(["open", url])
+        elif which == "backup":
+            backup_dir().mkdir(parents=True, exist_ok=True)
+            run_quiet(["open", str(backup_dir())])
         else:
             path = ensure_output_repo() if which == "outputs" else repo_path(which)
             run_quiet(["open", str(path)])

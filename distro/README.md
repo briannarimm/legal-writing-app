@@ -4,8 +4,17 @@ This folder contains the ready-to-use ReWord program for Mac.
 
 | File | Description |
 |---|---|
-| `ReWord-1.1.2-mac-arm64.zip` | The program. Download this file. |
-| `ReWord-1.1.2-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
+| `ReWord-1.1.3-mac-arm64.zip` | The program. Download this file. |
+| `ReWord-1.1.3-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
+
+## What's new in 1.1.3
+
+- **You choose when a file changed in two places.** ReWord gets GitHub's changes when it starts and
+  keeps everything. If the same file was changed on this Mac and on GitHub, ReWord asks you to keep
+  this Mac's version, GitHub's, or both.
+- **Automatic backups.** After every successful sync, ReWord copies your work into
+  `~/Library/Application Support/ReWord Backup`, a plain folder that is not on GitHub. The Publish
+  tab shows where it is; **Show backups** opens it in Finder.
 
 ## What's new in 1.1.2
 
@@ -45,7 +54,7 @@ You do not need other software. ReWord contains its own copies of Python, Pandoc
 
 ## Install
 
-1. Click `ReWord-1.1.2-mac-arm64.zip` in the file list above.
+1. Click `ReWord-1.1.3-mac-arm64.zip` in the file list above.
 2. Click **View raw** or the **Download raw file** button (the arrow icon, top right of the
    file view). The download starts. The file is about 90 MB.
 3. Open your Downloads folder. Double-click the zip file. A folder named `ReWord` appears.
@@ -71,10 +80,10 @@ You do this one time only.
 Open Terminal, go to the folder that contains the zip file, and run:
 
 ```bash
-shasum -a 256 -c ReWord-1.1.2-mac-arm64.zip.sha256
+shasum -a 256 -c ReWord-1.1.3-mac-arm64.zip.sha256
 ```
 
-The result must be `ReWord-1.1.2-mac-arm64.zip: OK`. If the result is different, delete the file
+The result must be `ReWord-1.1.3-mac-arm64.zip: OK`. If the result is different, delete the file
 and download it again.
 
 ## Your data
