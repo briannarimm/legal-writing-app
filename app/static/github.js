@@ -1,5 +1,5 @@
-/* GitHub and the output folder (the Publish tab).
- * One git folder is managed: "outputs" (finished PDFs/Word files, one subfolder per document).
+/* GitHub, the data folder and backups (View → Files). Save (⌘S) runs, publishes and syncs.
+ * One git folder is managed: the data folder, which also holds outputs/ (finished files).
  * The server runs git and the GitHub CLI with the sign-in you already have on this Mac; the app
  * never sees a password or token. */
 (function () {
@@ -31,27 +31,17 @@
       const [s, o, w] = await Promise.all([api('/api/settings'), api('/api/git?repo=outputs'), api('/api/git?repo=project')]);
       G.settings = s; G.outputs = o; G.project = w;
     } catch (e) { return; }
-    const path = G.settings.outputDir;
-    $('#out-path').textContent = path.replace(/^.*\/(Library\/CloudStorage\/[^/]+\/)?/, '…/') || path;
-    $('#out-path').title = path;
-    $('#gh-out-status').innerHTML = statusHtml(G.outputs, 'outputs');
-    $('#gh-out-web').disabled = !G.outputs.web;
-    $('#gh-work-status').innerHTML = G.project.gitAvailable === false ? 'Offline here: this computer has no git'
-      : !G.project.isRepo || !G.project.remote ? '<span class="warn">Not connected to GitHub</span>' : statusHtml(G.project, 'project');
-    $('#gh-work-web').disabled = !G.project.web;
-    $('#pub-auto').checked = !!G.settings.autoPush;
-    const data = G.settings.dataDir || '';
-    $('#data-path').textContent = data.replace(/^.*\/(Application Support\/)/, '…/$1').replace(/^\/Users\/[^/]+/, '~');
-    $('#data-path').title = data;
-    // finished files are part of the work repository: its Sync covers them, so hide the separate GitHub controls
-    const sep = !G.settings.outputsInWork;
-    $('#gh-out-status').closest('.rb-items.col').hidden = !sep;
-    $('#gh-out-group .rb-label').textContent = sep ? 'Outputs → GitHub' : 'Publish';
-    $('#pub-auto').closest('.rb-group').hidden = !sep;    // Run already syncs the whole repository
-    const bk = G.settings.backupDir || '';
-    $('#backup-path').textContent = 'Backups: ' + bk.replace(/^.*\/(Application Support\/)/, '…/$1').replace(/^\/Users\/[^/]+/, '~');
-    $('#backup-path').title = bk;
-    $('#backup-when').textContent = G.settings.lastBackup ? 'last ' + G.settings.lastBackup : 'after your next sync';
+    const short = x => (x || '').replace(/^.*\/(Application Support\/)/, '…/$1').replace(/^\/Users\/[^/]+/, '~');
+    const set = (id, fn) => { const e = $(id); if (e) fn(e); };
+    set('#gh-work-status', e => {
+      e.innerHTML = G.project.gitAvailable === false ? 'Offline here: this computer has no git'
+        : !G.project.isRepo || !G.project.remote ? '<span class="warn">Not connected to GitHub</span>' : statusHtml(G.project, 'project');
+    });
+    set('#gh-work-web', e => { e.disabled = !G.project.web; e.hidden = !G.project.web; });
+    set('#gh-work-connect', e => { e.hidden = !!G.project.remote; });
+    set('#data-path', e => { e.textContent = short(G.settings.dataDir); e.title = G.settings.dataDir || ''; });
+    set('#backup-path', e => { e.textContent = short(G.settings.backupDir); e.title = G.settings.backupDir || ''; });
+    set('#backup-when', e => { e.textContent = G.settings.lastBackup ? 'Last backup ' + G.settings.lastBackup : 'Backs up after your next sync'; });
   }
   G.refresh = refresh;
 
@@ -75,10 +65,6 @@
     try { await put('/api/settings', { outputDir: v.trim() }); toast('Output folder updated.'); } catch (e) { toast(e.message, true); }
     refresh();
   };
-  $('#pub-auto').addEventListener('change', async e => {
-    try { await put('/api/settings', { autoPush: e.target.checked }); } catch (err) { toast(err.message, true); }
-    refresh();
-  });
 
   C.webOutputs = () => post('/api/open', { repo: 'outputs', what: 'github' }).catch(e => toast(e.message, true));
 

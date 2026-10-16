@@ -315,7 +315,8 @@
     $('#tb-unnumbered').hidden = t.heading_scheme !== 'article';
     $('#tb-block').hidden = t.heading_scheme === 'none';
     $('#email-tools').hidden = t.id !== 'email';
-    $('#btn-run').title = 'Commit, then build ' + t.outputs.map(o => o.toUpperCase()).join(' and ') + (t.redline ? ' and the redline' : '');
+    $('#btn-save').title = 'Save (⌘S): save, build ' + t.outputs.map(o => o.toUpperCase()).join(' and ') + (t.redline ? ' and the redline' : '')
+      + ', copy the finished files into outputs/, and sync with GitHub';
     $('#meta-hint').textContent = t.id === 'email'
       ? 'Recipients and subject, as YAML. “Copy email” and “Open in Mail” use these.'
       : 'Document details (cover page, header, certificates), as YAML: keep the quotes and the indentation.';
@@ -737,7 +738,7 @@
   function setRunning(on, step) {
     running = on;
     $('#btn-run').disabled = on;
-    $('#btn-run .lbl').textContent = on ? 'Running…' : 'Run';
+    $('#btn-save .lbl').textContent = on ? 'Saving…' : 'Save';
     $('#run-step').innerHTML = on ? '<span class="spinner"></span>' + (step || 'Working') : '';
   }
 
@@ -766,8 +767,13 @@
       const limit = W.tmpl && W.tmpl.word_limit;
       $('#wordcount').textContent = s.words.replace(/^Words:\s*/, '') + (limit && m ? ' (limit ' + limit.toLocaleString() + ')' : '');
     }
-    if (!s.ok) { if (here) showTab('log'); toast('Run failed: ' + s.message, true); return; }
-    if (here) { renderOutputs(s.outputs); showTab('pdf'); toast('Done. ' + (s.words || '')); }
+    if (!s.ok) {
+      if (here) showTab('log');
+      toast('Saved, but the build failed: ' + s.message, true);
+      if (App.sync && App.git.project && App.git.project.remote) App.sync('save', true);   // still get the work to GitHub
+      return;
+    }
+    if (here) { renderOutputs(s.outputs); showTab('pdf'); toast('Saved' + (App.git.project && App.git.project.remote ? ' and synced' : '') + '. ' + (s.words || '')); }
     else toast('Finished building “' + s.doc + '”.');
   }
 
@@ -797,7 +803,7 @@
     }
   }
   App.reloadPreview = loadPreview;
-  App.openPreviewInTab = () => { if (previewSel) window.open(buildUrl(previewSel.value) + App.previewFragment(), '_blank'); else toast('Nothing to preview yet. Press Run.', true); };
+  App.openPreviewInTab = () => { if (previewSel) window.open(buildUrl(previewSel.value) + App.previewFragment(), '_blank'); else toast('Nothing to preview yet. Press Save (⌘S).', true); };
   App.showPreview = () => showTab('pdf');
 
   function renderOutputs(outputs) {
@@ -824,13 +830,14 @@
     });
   }
 
-  $('#btn-run').onclick = async () => {
+  $('#btn-run').onclick = () => runAll();
+  async function runAll() {
     if (running || !W.info) return;
-    if (!(await saver.flush(false))) { toast('Fix the save problem first, then press Run.', true); return; }
+    if (!(await saver.flush(false))) { toast('Fix the save problem first, then press Save.', true); return; }
     showTab('log');
     try { await post('/api/run', { doc: W.info.slug }); } catch (e) { toast(e.message, true); return; }
     poll(true);
-  };
+  }
 
   /* ---------------------------------------------------------- view hooks */
 
@@ -855,6 +862,7 @@
       if (f && f.kind === 'section') (m === 'md' ? docMd : doc).focus();
     },
     open: slug => openDoc(slug),
+    runAll: () => runAll(),
     current: () => (W.info ? W.info.slug : null),
     // for the right-click menu (contextmenu.js)
     rename: slug => { const d = App.state.documents.find(x => x.slug === slug); if (d) renameDoc(d); },

@@ -40,7 +40,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = Path.home() / "Library" / "Caches" / "ReWord Build"
-VERSION = "1.1.3"          # also the name of the download in distro/
+VERSION = "1.1.4"          # also the name of the download in distro/
 DIST = ROOT / "distro"
 
 # Pinned versions. Pandoc matches the Docker image, so output is the same either way.
@@ -208,9 +208,9 @@ README = """REWORD
 Double-click "ReWord.app" to start. Nothing else needs to be installed.
 
 * Your work (documents, research notes, your citation library, and the finished PDF and Word
-  files) is kept in one folder: ~/Library/Application Support/ReWord. Publish > Show data folder
+  files) is kept in one folder: ~/Library/Application Support/ReWord. View > Files > Data folder
   opens it. Run from a USB drive, ReWord keeps it in a "ReWord Data" folder next to the app
-  instead, so your work goes wherever the drive goes. Back it up (the Publish tab can sync it to a
+  instead, so your work goes wherever the drive goes. Back it up (Save also syncs it to a
   private GitHub repository).
 * It runs on Apple Silicon Macs (M1 or newer).
 * The first time on a new computer, macOS may ask permission to use files on this drive: choose
