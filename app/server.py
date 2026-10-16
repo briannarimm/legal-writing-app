@@ -230,9 +230,16 @@ def check_output_dir(text):
     return p
 
 
+def outputs_in_work():
+    """Since 1.1.2 the default output folder is part of the work repository: one repository holds the
+    documents, research, library and finished files. A custom output folder, or an outputs/ folder that
+    is still its own repository (the developer's project folder), stays separate."""
+    return not get_settings()["outputDir"] and not (root() / "outputs" / ".git").exists()
+
+
 def repo_path(which):
     if which == "outputs":
-        return output_dir()
+        return root() if outputs_in_work() else output_dir()
     if which == "project":
         return root()
     raise store.StoreError("unknown repository")
@@ -270,6 +277,9 @@ def ensure_output_repo():
     d.mkdir(parents=True, exist_ok=True)
     if not find_git():
         return d
+    if outputs_in_work():
+        ensure_work_repo()
+        return d
     if not (d / ".git").exists():
         rc, out = git_in(d, "init", "-q", "-b", "main")
         if rc != 0:
@@ -288,10 +298,9 @@ def ensure_output_repo():
 
 # ---------------------------------------------------------------- the work repo (documents, research, library)
 
-WORK_GITIGNORE = """# ReWord work repository: documents, research notes, citations, attached files and annotations.
-# Finished files go to the separate outputs repository.
+WORK_GITIGNORE = """# ReWord data repository: documents, research notes, citations, attached files, annotations,
+# and the finished files in outputs/.
 build/
-outputs/
 .tex-cache/
 settings.local.json
 _trash/
@@ -322,7 +331,87 @@ def ensure_work_repo():
     return d
 
 
+def combine_outputs_repo(log=print):
+    """Data folders from before 1.1.2 keep outputs/ as a separate git repository that the work repository
+    ignores. Fold it in once: the outputs history is merged into the work repository's history (so every
+    earlier version stays reachable), outputs/ becomes ordinary tracked files, and the old repository is
+    kept, never deleted, in .git/reword-outputs-repo. Returns True if anything was combined."""
+    d, o = root(), root() / "outputs"
+    if get_settings()["outputDir"] or not find_git() or not (o / ".git").is_dir():
+        return False
+    ensure_work_repo()
+    commit_repo(o, "Before combining with the work repository")
+    commit_repo(d, "Before combining with the outputs repository")
+    has_history = git_in(o, "rev-parse", "-q", "--verify", "HEAD")[0] == 0
+    if has_history:
+        rc, out = git_in(d, "fetch", "-q", "--no-tags", str(o / ".git"), "+HEAD:refs/reword/outputs-history")
+        if rc != 0:
+            raise RuntimeError("Couldn't read the outputs history: " + out)
+    head = git_in(d, "rev-parse", "-q", "--verify", "HEAD")[0] == 0
+    if has_history and head:          # start the merge first: if it fails, nothing has been moved yet
+        rc, out = git_in(d, "merge", "-s", "ours", "--no-commit", "--allow-unrelated-histories", "refs/reword/outputs-history")
+        if rc != 0:
+            git_in(d, "merge", "--abort")
+            raise RuntimeError("Couldn't join the outputs history: " + out)
+    keep = d / ".git" / "reword-outputs-repo"
+    n = 1
+    while keep.exists():
+        n += 1
+        keep = d / ".git" / ("reword-outputs-repo-%d" % n)
+    shutil.move(str(o / ".git"), str(keep))
+    gi = d / ".gitignore"
+    if gi.exists():
+        lines = gi.read_text(encoding="utf-8").splitlines()
+        drop = {"outputs/", "/outputs/", "outputs", "# Finished files go to the separate outputs repository."}
+        gi.write_text("\n".join(l for l in lines if l.strip() not in drop) + "\n", encoding="utf-8")
+    git_in(d, "add", "-A")
+    rc, out = git_in(d, "commit", "-q", "-m", "Combine the outputs repository into the work repository")
+    if rc != 0 and "nothing to commit" not in out:
+        raise RuntimeError("git commit failed: " + out)
+    log("Combined outputs/ into the work repository (old repository kept in %s)" % keep)
+    return True
+
+
+def finish_interrupted_git(d):
+    """A rebase or merge left half done (ReWord was quit mid-sync, or someone ran git by hand) blocks every
+    later sync. Finish or undo it without losing anything typed since. Returns a message if it can't."""
+    g = d / ".git"
+    rebasing = (g / "rebase-merge").exists() or (g / "rebase-apply").exists()
+    merging = (g / "MERGE_HEAD").exists()
+    if not (rebasing or merging):
+        return None
+    if git_in(d, "diff", "--name-only", "--diff-filter=U")[1].strip():
+        return ("A sync was interrupted and some files still have conflicting changes. Nothing was lost; "
+                "open the folder in GitHub Desktop or Terminal to finish (git status).")
+    if merging:
+        git_in(d, "add", "-A")
+        git_in(d, "commit", "-q", "--no-edit")
+        return None
+    def stashes():
+        return len(git_in(d, "stash", "list")[1].splitlines())
+    before = stashes()
+    git_in(d, "stash", "push", "-u", "-m", "ReWord: edits made during an unfinished sync")
+    stashed = stashes() > before
+    git_in(d, "rebase", "--abort")
+    if stashed:
+        git_in(d, "stash", "pop")     # if this conflicts, the edits stay safe in the stash
+    return None
+
+
+SYNC_LOCK = threading.Lock()
+
+
 def sync_work(reason="sync", log=None):
+    """One sync at a time (the timer, Run and the Sync button can overlap)."""
+    if not SYNC_LOCK.acquire(blocking=False):
+        return {"ok": True, "message": "Already syncing."}
+    try:
+        return _sync_work(reason, log)
+    finally:
+        SYNC_LOCK.release()
+
+
+def _sync_work(reason="sync", log=None):
     """Save everything, then bring the work repository and GitHub in step: commit, fetch, rebase onto
     GitHub's version (if the same lines changed on both sides: merge, keeping this computer's lines;
     GitHub's version stays in the history), push. Never asks for a password; never raises."""
@@ -336,6 +425,10 @@ def sync_work(reason="sync", log=None):
     for k, v in (("user.name", "ReWord"), ("user.email", "noreply@reword.local")):
         if not git_in(d, "config", k)[1]:             # a borrowed Mac where nobody set up git
             git_in(d, "config", k, v)
+    stuck = finish_interrupted_git(d)
+    if stuck:
+        say(stuck)
+        return {"ok": False, "message": stuck}
     try:
         commit_repo(d, "Sync from %s %s (%s)" % (host, datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), reason))
     except RuntimeError as e:
@@ -356,7 +449,20 @@ def sync_work(reason="sync", log=None):
     if has_remote_branch:
         rc, cnt = git_in(d, "rev-list", "--count", "HEAD..origin/" + branch)
         pulled = int(cnt) if rc == 0 and cnt.isdigit() else 0
-        if pulled:
+        related = git_in(d, "merge-base", "HEAD", "origin/" + branch)[0] == 0
+        if pulled and not related:
+            # This folder's history and GitHub's don't share a starting point (the folder was set up again
+            # from scratch, or connected to a repository that already had work in it). Join the two
+            # histories instead of refusing: nothing on either side is dropped.
+            rc, out = git_in(d, "merge", "--allow-unrelated-histories", "-X", "ours", "--no-edit",
+                             "-m", "Sync: join this computer's history with GitHub's (%s)" % host, "origin/" + branch)
+            if rc != 0:
+                git_in(d, "merge", "--abort")
+                say(out)
+                return {"ok": False, "message": "This folder and GitHub have separate histories that ReWord can't combine on its own. "
+                                                "Nothing was lost; open the folder in GitHub Desktop or Terminal to finish (git status)."}
+            note = " This computer's history and GitHub's were joined; where both had a file, this computer's version was kept."
+        elif pulled:
             rc, out = git_in(d, "rebase", "origin/" + branch)
             if rc != 0:
                 git_in(d, "rebase", "--abort")
@@ -451,6 +557,12 @@ def push_repo(which, log=None):
     """Commit pending work and push to origin. Raises with a plain-language message on failure."""
     need_git()
     path = repo_path(which)
+    if which == "outputs" and outputs_in_work():
+        ensure_output_repo()
+        r = sync_work("publish")       # pull first, so a push never fails on changes made elsewhere
+        if not r.get("ok"):
+            raise store.StoreError(r.get("message") or "Couldn't sync with GitHub.", 502)
+        return r.get("message", "")
     if which == "outputs":
         ensure_output_repo()
         commit_repo(path, "Publish " + datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
@@ -507,7 +619,7 @@ def publish_document(slug, push=False):
     if not copied:
         raise store.StoreError("There's nothing built for this document yet. Press Run first.")
     tname = store.template(info["template"])["name"]
-    made = commit_repo(output_dir(), "%s (%s): %s" % (slug, tname, datetime.datetime.now().strftime("%Y-%m-%d %H:%M")))
+    made = commit_repo(repo_path("outputs"), "%s (%s): %s" % (slug, tname, datetime.datetime.now().strftime("%Y-%m-%d %H:%M")))
     return copied, made
 
 
@@ -692,7 +804,7 @@ def pipeline(slug):
                 JOB.step = "Syncing your work with GitHub"
                 JOB.log("== Sync ==")
                 sync_work("run", JOB.log)
-            if get_settings().get("autoPush") and git_status("outputs").get("remote"):
+            if get_settings().get("autoPush") and not outputs_in_work() and git_status("outputs").get("remote"):
                 JOB.step = "Pushing to GitHub"
                 push_repo("outputs")
                 JOB.log("Pushed the output folder to GitHub.")
@@ -1011,7 +1123,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
     # --- settings, output folder, GitHub
     def settings_out(self):
         s = get_settings()
-        return {"outputDir": str(output_dir()), "outputDirIsDefault": not s["outputDir"], "autoPush": bool(s["autoPush"])}
+        return {"outputDir": str(output_dir()), "outputDirIsDefault": not s["outputDir"], "autoPush": bool(s["autoPush"]),
+                "dataDir": str(root()), "outputsInWork": outputs_in_work()}
 
     def api_save_settings(self, b):
         s = get_settings()
@@ -1274,6 +1387,11 @@ def main():
         store.set_root(a.root)
     if a.code:
         store.set_code(a.code)
+    if a.app_mode:                     # never in the developer's project folder, where outputs/ stays separate
+        try:
+            combine_outputs_repo()
+        except Exception as e:         # the app still opens; the next start tries again
+            print("Couldn't combine outputs/ into the work repository: %s" % e)
     server = None
     for port in range(a.port, a.port + 10):
         try:

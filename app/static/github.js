@@ -40,6 +40,14 @@
       : !G.project.isRepo || !G.project.remote ? '<span class="warn">Not connected to GitHub</span>' : statusHtml(G.project, 'project');
     $('#gh-work-web').disabled = !G.project.web;
     $('#pub-auto').checked = !!G.settings.autoPush;
+    const data = G.settings.dataDir || '';
+    $('#data-path').textContent = data.replace(/^.*\/(Application Support\/)/, '…/$1').replace(/^\/Users\/[^/]+/, '~');
+    $('#data-path').title = data;
+    // finished files are part of the work repository: its Sync covers them, so hide the separate GitHub controls
+    const sep = !G.settings.outputsInWork;
+    $('#gh-out-group').querySelectorAll('.rb-items.col, [data-cmd="connectOutputs"]').forEach(el => { el.hidden = !sep; });
+    $('#gh-out-group .rb-label').textContent = sep ? 'Outputs → GitHub' : 'Publish';
+    $('#pub-auto').closest('.rb-group').hidden = !sep;    // Run already syncs the whole repository
   }
   G.refresh = refresh;
 
@@ -53,6 +61,7 @@
   /* ------------------------------------------------------------ commands */
   const C = App.cmd.global;
 
+  C.openData = () => post('/api/open', { repo: 'project', what: 'folder' }).catch(e => toast(e.message, true));
   C.openOutput = () => api('/api/open', { method: 'POST', body: JSON.stringify({ repo: 'outputs', what: 'folder' }) }).catch(e => toast(e.message, true));
   C.changeOutput = async () => {
     const now = (G.settings && G.settings.outputDir) || '';
@@ -89,6 +98,9 @@
   C.syncWork = () => sync('sync', false);
   App.sync = sync;
   App.syncOnQuit = async () => { if (G.project && G.project.remote) await sync('quit', true); };
+  // Keep this computer and GitHub in step while ReWord is open, not only on open, Run and quit, so a
+  // change made elsewhere (another Mac, a Claude session's merged pull request) never sits unpulled for long.
+  setInterval(() => { if (G.project && G.project.remote && !document.hidden) sync('auto', true); }, 10 * 60 * 1000);
 
   C.publish = () => {
     const slug = App.views.writing.current();
@@ -115,7 +127,7 @@
       ? 'Finished PDF, Word, HTML and text files go here, in one folder per document. This folder is its own git repository, separate from your writing.'
       : 'Your documents, research notes, citation library and the files attached to it (PDFs, snapshots, highlights). Sync brings them to any Mac where you are signed in to GitHub. Keep this repository private: it holds copies of copyrighted sources.';
     $('#gh-url').value = (st && st.remote) || '';
-    $('#gh-name').value = w === 'outputs' ? 'reword-outputs' : 'reword-work';
+    $('#gh-name').value = w === 'outputs' ? 'reword-outputs' : 'reword-data';
     if (w === 'project') $('#gh-private').checked = true;
     $('#gh-error').hidden = true;
     $('#gh-create').disabled = true;
