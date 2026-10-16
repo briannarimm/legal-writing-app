@@ -48,6 +48,7 @@
     await App.git.refresh();
     // pull what changed on your other computers (only when the work repo is connected to GitHub)
     if (App.git.project && App.git.project.remote) App.sync('open', true);
+    App.showConflicts();          // choices left open from an earlier sync
   } catch (e) {
     document.getElementById('save-status').textContent = 'Couldn’t reach the app server';
     App.toast('Couldn’t load: ' + e.message, true);

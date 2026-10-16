@@ -45,9 +45,13 @@
     $('#data-path').title = data;
     // finished files are part of the work repository: its Sync covers them, so hide the separate GitHub controls
     const sep = !G.settings.outputsInWork;
-    $('#gh-out-group').querySelectorAll('.rb-items.col, [data-cmd="connectOutputs"]').forEach(el => { el.hidden = !sep; });
+    $('#gh-out-status').closest('.rb-items.col').hidden = !sep;
     $('#gh-out-group .rb-label').textContent = sep ? 'Outputs → GitHub' : 'Publish';
     $('#pub-auto').closest('.rb-group').hidden = !sep;    // Run already syncs the whole repository
+    const bk = G.settings.backupDir || '';
+    $('#backup-path').textContent = 'Backups: ' + bk.replace(/^.*\/(Application Support\/)/, '…/$1').replace(/^\/Users\/[^/]+/, '~');
+    $('#backup-path').title = bk;
+    $('#backup-when').textContent = G.settings.lastBackup ? 'last ' + G.settings.lastBackup : 'after your next sync';
   }
   G.refresh = refresh;
 
@@ -61,6 +65,7 @@
   /* ------------------------------------------------------------ commands */
   const C = App.cmd.global;
 
+  C.openBackup = () => post('/api/open', { repo: 'backup', what: 'folder' }).catch(e => toast(e.message, true));
   C.openData = () => post('/api/open', { repo: 'project', what: 'folder' }).catch(e => toast(e.message, true));
   C.openOutput = () => api('/api/open', { method: 'POST', body: JSON.stringify({ repo: 'outputs', what: 'folder' }) }).catch(e => toast(e.message, true));
   C.changeOutput = async () => {
@@ -91,10 +96,43 @@
       const r = await post('/api/sync', { reason });
       if (!quiet || !r.ok) toast(r.message, !r.ok && !r.offline);
       if (r.changed) await App.reloadAll();
+      if (r.conflicts && r.conflicts.length) showConflicts(r.conflicts);
       return r;
     } catch (e) { if (!quiet) toast(e.message, true); return null; }
     finally { syncing = false; refresh(); }
   }
+  // A file changed both here and on GitHub: keep this computer's, GitHub's, or both.
+  function showConflicts(list) {
+    const dlg = $('#dlg-conflicts'), box = $('#conflict-list');
+    if (!list.length) { if (dlg.open) dlg.close(); return; }
+    box.innerHTML = '';
+    list.forEach(c => {
+      const row = document.createElement('div');
+      row.className = 'row conflict-row';
+      const name = document.createElement('span');
+      name.className = 'grow'; name.textContent = c.path; name.title = 'Synced ' + c.when;
+      row.appendChild(name);
+      [['mine', 'Keep this Mac’s'], ['github', 'Keep GitHub’s'], ['both', 'Keep both']].forEach(([choice, label]) => {
+        const b = document.createElement('button');
+        b.className = 'btn' + (choice === 'both' ? ' primary' : ''); b.textContent = label;
+        b.addEventListener('click', async () => {
+          try {
+            await App.saver.flush(false);
+            const r = await post('/api/conflict/resolve', { id: c.id, choice });
+            if (choice !== 'mine') await App.reloadAll();
+            showConflicts(r.conflicts);
+            if (!r.conflicts.length) sync('resolved', true);
+          } catch (e) { toast(e.message, true); }
+        });
+        row.appendChild(b);
+      });
+      box.appendChild(row);
+    });
+    if (!dlg.open) dlg.showModal();
+  }
+  App.showConflicts = async () => {
+    try { const r = await api('/api/conflicts'); showConflicts(r.conflicts || []); } catch (e) { /* ignore */ }
+  };
   C.syncWork = () => sync('sync', false);
   App.sync = sync;
   App.syncOnQuit = async () => { if (G.project && G.project.remote) await sync('quit', true); };

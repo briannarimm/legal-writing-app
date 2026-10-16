@@ -301,9 +301,21 @@ into `outputs/`. **Publish → Sync** (⌃⌘Y) sends everything to GitHub and b
 elsewhere.
 
 ReWord syncs by itself when it starts, after every Run, every 10 minutes while it is open, and
-when you quit. Each sync saves a commit, takes GitHub's changes first (rebase), then pushes. If this
-computer's history and GitHub's have no common start (for example, after the data folder was set
-up again), ReWord joins the two histories instead of refusing, so nothing on either side is lost.
+when you quit. Each sync saves a commit, takes GitHub's changes, then pushes. Files that changed on
+only one side are simply combined, and a file deleted on one side but changed on the other is kept.
+
+If the same file changed both on this computer and on GitHub, this computer's version stays in
+place and ReWord asks what to keep for each file: **Keep this Mac's**, **Keep GitHub's**, or **Keep
+both** (GitHub's version is added as a copy whose name ends in `-github`). **Decide later** keeps
+GitHub's version aside until the next start. The same applies when the two histories have no common
+start (for example, after the data folder was set up again).
+
+### 10.2 Backups
+
+After every successful sync, ReWord copies new and changed files into a backup folder beside the
+data folder: `~/Library/Application Support/ReWord Backup`. The backup is not a git repository and
+is never uploaded. Files deleted from your data folder stay in the backup. The Publish tab shows
+where the backup is and when it was last updated; **Show backups** opens it in Finder.
 
 Data folders from before 1.1.2 kept the finished files in a separate git repository inside
 `outputs/`. On the first start, ReWord merges that history into your work repository and keeps the

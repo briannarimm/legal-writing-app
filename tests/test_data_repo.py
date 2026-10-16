@@ -93,6 +93,51 @@ check('edit kept', (data / 'research' / 'typed.md').exists())
 r = server.sync_work('test')
 check('sync works afterwards', r.get('ok'), r.get('message'))
 
+# 4) the same file changed here and on GitHub: this computer's version stays, GitHub's waits for a choice
+other = tmp / 'other'
+subprocess.run(['git', 'clone', '-q', str(remote), str(other)])
+git(other, 'config', 'user.name', 'O'); git(other, 'config', 'user.email', 'o@o')
+(other / 'research' / 'a.md').write_text('github text\n')
+(other / 'research' / 'gh-only.md').write_text('new on github\n')
+(other / 'research' / 'b-del.md').write_text('x\n')
+git(other, 'add', '-A'); git(other, 'commit', '-qm', 'github edit'); git(other, 'push', '-q')
+store.set_root(data)
+(data / 'research' / 'a.md').write_text('mac text\n')
+r = server.sync_work('test')
+check('conflicting sync still ok', r.get('ok'), r.get('message'))
+check('one conflict listed', [c['path'] for c in r.get('conflicts', [])] == ['research/a.md'], r.get('conflicts'))
+check('this computer kept for now', (data / 'research' / 'a.md').read_text() == 'mac text\n')
+check('non-clashing GitHub file arrived', (data / 'research' / 'gh-only.md').exists())
+check('pushed after merge', git(remote, 'rev-parse', 'main') == git(data, 'rev-parse', 'HEAD'))
+cid = r['conflicts'][0]['id']
+left = server.resolve_conflict(cid, 'both')
+check('keep both: copy added', (data / 'research' / 'a-github.md').read_text() == 'github text\n' and left == [])
+check('keep both: original stays', (data / 'research' / 'a.md').read_text() == 'mac text\n')
+
+# GitHub's version chosen
+git(other, 'fetch', '-q'); git(other, 'reset', '-q', '--hard', 'origin/main')
+(other / 'research' / 'a.md').write_text('github 2\n'); git(other, 'commit', '-qam', 'gh2'); git(other, 'push', '-q')
+(data / 'research' / 'a.md').write_text('mac 2\n')
+r = server.sync_work('test')
+server.resolve_conflict(r['conflicts'][0]['id'], 'github')
+check('use GitHub: file replaced', (data / 'research' / 'a.md').read_text() == 'github 2\n')
+check('use GitHub: committed', git(data, 'status', '--porcelain') == '', git(data, 'status', '--porcelain'))
+
+# 5) backups: a plain copy beside the data folder, not a repository, never deleting
+import time
+for _ in range(50):
+    if (server.backup_dir() / '.last-backup').exists():
+        break
+    time.sleep(0.1)
+server.backup_now()
+bk = server.backup_dir()
+check('backup folder made', (bk / 'research' / 'a.md').read_text() == 'github 2\n')
+check('backup has no git', not (bk / '.git').exists())
+(data / 'research' / 'gh-only.md').unlink()
+server.backup_now()
+check('backup keeps deleted files', (bk / 'research' / 'gh-only.md').exists())
+check('last backup time recorded', bool(server.last_backup()))
+
 for label, ok, detail in CASES:
     print(('ok   ' if ok else 'FAIL ') + label + ('' if ok else '  ' + str(detail)))
 print('%d/%d passed' % (sum(ok for _, ok, _ in CASES), len(CASES)))
