@@ -324,6 +324,12 @@ stays in the GitHub history.
 
 - Push ⌘/ to see all shortcuts.
 - Push ⌘K to search all commands, documents, notes and sources.
+- Right-click anything for the commands that fit it. In your text: spelling suggestions, Cut, Copy,
+  Paste, italic, bold, small caps, paragraph styles, and Insert citation or footnote. On a live
+  citation: edit, open, copy or remove it. On a document, section, note or source in a side bar: open,
+  rename, move to a project, move up or down, copy a citation in any style, or delete. In the PDF
+  reader: highlight the selected text in a color, comment, or copy it as a quote. Hold ⌥ Option while
+  you right-click to get the standard Mac menu instead.
 
 Most text shortcuts are the same as in Microsoft Word for Mac.
 

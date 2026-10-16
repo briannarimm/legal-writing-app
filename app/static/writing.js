@@ -44,6 +44,7 @@
   function docRow(d) {
     const open = W.info && d.slug === W.info.slug;
     const row = el('div', 'doc-row' + (open ? ' open' : ''));
+    row.dataset.slug = d.slug;
     row.appendChild(el('span', 'caret', open ? '▾' : '▸'));
     row.appendChild(el('span', 'name', d.title));
     const ctl = el('span', 'ctl');
@@ -148,6 +149,7 @@
     const box = el('ul', 'sections');
     W.files.forEach(f => {
       const li = el('li', f.file === W.cur ? 'active' : '');
+      li.dataset.file = f.file;
       li.appendChild(el('span', 'name', titleOf(f)));
       if (dirty(f)) { const d = el('span', 'dot'); d.title = 'Unsaved'; li.appendChild(d); }
       if (f.kind === 'section' && W.tmpl.multi_section) {
@@ -854,6 +856,17 @@
     },
     open: slug => openDoc(slug),
     current: () => (W.info ? W.info.slug : null),
+    // for the right-click menu (contextmenu.js)
+    rename: slug => { const d = App.state.documents.find(x => x.slug === slug); if (d) renameDoc(d); },
+    remove: slug => { const d = App.state.documents.find(x => x.slug === slug); if (d) deleteDoc(d); },
+    move: (slug, pid) => moveDoc('doc:' + slug, pid),
+    sections: () => W.files.map(f => ({ file: f.file, kind: f.kind, title: titleOf(f) })),
+    multiSection: () => !!(W.tmpl && W.tmpl.multi_section),
+    headingScheme: () => (W.tmpl && W.tmpl.heading_scheme) || 'none',
+    selectSection: file => selectFile(file),
+    moveSection: (file, dir) => { const f = W.files.find(x => x.file === file); if (f) moveSection(f, dir); },
+    removeSection: file => { const f = W.files.find(x => x.file === file); if (f) deleteSection(f); },
+    addSection: () => { if (W.info && W.tmpl.multi_section) addSection(); },
     async show() {
       try { await refreshDocs(); } catch (e) { toast('Couldn’t load documents: ' + e.message, true); return; }
       if (W.info && !App.state.documents.find(d => d.slug === W.info.slug)) { W.info = null; }

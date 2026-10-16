@@ -150,7 +150,8 @@
   });
   const foot = el('div', 'dlg-actions'); const close = el('button', 'btn', 'Close'); close.dataset.close = '';
   close.onclick = () => dlg.close(); foot.appendChild(close);
-  dlg.append(grid, el('div', 'hint', 'Also built in: ⌘Z undo, ⇧⌘Z redo, ⌘C/⌘X/⌘V, ⌘A select all, ⌘+ ⌘− ⌘0 zoom the window, ⌘Q quit.'), foot);
+  dlg.append(grid, el('div', 'hint', 'Also built in: ⌘Z undo, ⇧⌘Z redo, ⌘C/⌘X/⌘V, ⌘A select all, ⌘+ ⌘− ⌘0 zoom the window, ⌘Q quit. ' +
+    'Right-click anything for the commands that fit it; hold ⌥ Option while you right-click for the system menu.'), foot);
   document.body.appendChild(dlg);
   dlg.addEventListener('mousedown', e => { if (e.target === dlg) dlg.close(); });
   function toggleSheet() { if (dlg.open) dlg.close(); else dlg.showModal(); }
@@ -235,4 +236,6 @@
     else if (e.key === 'Escape') { e.preventDefault(); closePalette(true); }
   });
   pal.addEventListener('mousedown', e => { if (e.target === pal) closePalette(true); });
+  App.togglePalette = togglePalette;
+  App.toggleShortcuts = toggleSheet;
 })();

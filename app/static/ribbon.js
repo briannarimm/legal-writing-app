@@ -92,6 +92,7 @@
   }
 
   App.ribbon = {
+    run,                    // run a ribbon command by name (the right-click menu uses it too)
     textEditing: true,      // false while the Writing view shows a document's Details box
     refresh() {
       const view = App.view;

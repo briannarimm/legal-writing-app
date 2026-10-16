@@ -21,6 +21,7 @@ class Reader {
   constructor(view, list, opts) {
     this.view = view; this.list = list; this.opts = opts || {};
     this.doc = null; this.task = null; this.anns = []; this.scale = 'fit'; this.drawId = 0; this.pages = [];
+    view.reader = this;       // the right-click menu (contextmenu.js) finds the reader from its element
     this.bar = el('div', 'hl-bar'); this.bar.hidden = true;
     COLORS.forEach(c => {
       const b = el('button', 'hl-swatch ' + c); b.type = 'button'; b.title = 'Highlight (' + c + ')';
@@ -169,6 +170,7 @@ class Reader {
     }
     this.anns.slice().sort((a, b) => a.page - b.page || a.rects[0][1] - b.rects[0][1]).forEach(a => {
       const item = el('div', 'ann-item ' + (a.color || 'yellow'));
+      item.dataset.id = a.id;
       item.appendChild(el('div', 'ann-page', 'p. ' + a.page));
       item.appendChild(el('div', 'ann-text', '“' + (a.text.length > 220 ? a.text.slice(0, 220) + '…' : a.text) + '”'));
       if (a.comment) item.appendChild(el('div', 'ann-comment', a.comment));
@@ -187,6 +189,10 @@ class Reader {
   }
 
   closePop() { if (this.pop) { this.pop.remove(); this.pop = null; } }
+
+  annotation(id) { return this.anns.find(a => a.id === id) || null; }
+  recolor(a, color) { a.color = color; a.dirty = true; this.paintHighlights(a.page); this.changed(); }
+  remove(a) { this.anns = this.anns.filter(x => x !== a); this.paintHighlights(a.page); this.closePop(); this.changed(); }
 
   editAnn(a) {
     this.closePop();

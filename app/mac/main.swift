@@ -123,6 +123,51 @@ final class ServerController {
     }
 }
 
+// MARK: - the bridge for the page's own right-click menu (app/static/contextmenu.js)
+
+/// The page replaces the system's right-click menu with its own, so the things only the Mac can do go
+/// through here: Cut, Copy, Paste and Select All (sent like the Edit menu sends them, so Paste behaves
+/// exactly like ⌘V), spelling suggestions, and Look Up in the Dictionary.
+final class MenuBridge: NSObject, WKScriptMessageHandlerWithReply {
+    weak var web: WKWebView?
+
+    func userContentController(_ controller: WKUserContentController, didReceive message: WKScriptMessage,
+                               replyHandler: @escaping (Any?, String?) -> Void) {
+        guard let body = message.body as? [String: Any], let action = body["action"] as? String else {
+            replyHandler(nil, "Unknown message"); return
+        }
+        let word = (body["word"] as? String) ?? ""
+        switch action {
+        case "edit":
+            let selectors: [String: Selector] = [
+                "cut": #selector(NSText.cut(_:)), "copy": #selector(NSText.copy(_:)),
+                "paste": #selector(NSText.paste(_:)), "selectAll": #selector(NSText.selectAll(_:)),
+            ]
+            guard let name = body["command"] as? String, let sel = selectors[name] else { replyHandler(false, nil); return }
+            if let w = web, let win = w.window, win.firstResponder !== w { win.makeFirstResponder(w) }
+            replyHandler(NSApp.sendAction(sel, to: nil, from: nil), nil)
+        case "spell":
+            let checker = NSSpellChecker.shared
+            let miss = checker.checkSpelling(of: word, startingAt: 0)
+            if word.isEmpty || miss.location == NSNotFound { replyHandler(["misspelled": false] as [String: Any], nil); return }
+            let range = NSRange(location: 0, length: (word as NSString).length)
+            let guesses = checker.guesses(forWordRange: range, in: word, language: nil, inSpellDocumentWithTag: 0) ?? []
+            let reply: [String: Any] = ["misspelled": true, "guesses": Array(guesses.prefix(6))]
+            replyHandler(reply, nil)
+        case "learn":
+            if !word.isEmpty { NSSpellChecker.shared.learnWord(word) }
+            replyHandler(true, nil)
+        case "lookUp":
+            if let q = word.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed), let u = URL(string: "dict://" + q) {
+                NSWorkspace.shared.open(u)
+            }
+            replyHandler(true, nil)
+        default:
+            replyHandler(nil, "Unknown action")
+        }
+    }
+}
+
 // MARK: - the app
 
 final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, NSWindowDelegate {
@@ -131,6 +176,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     var web: WKWebView!
     var status: NSTextField!
     var downloadDestinations: [ObjectIdentifier: URL] = [:]
+    let menuBridge = MenuBridge()
 
     func applicationDidFinishLaunching(_ n: Notification) {
         UserDefaults.standard.register(defaults: ["WebContinuousSpellCheckingEnabled": true, "pageZoom": 1.0])
@@ -149,7 +195,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     func buildWindow() {
         let cfg = WKWebViewConfiguration()
         cfg.websiteDataStore = .default()
+        cfg.userContentController.addScriptMessageHandler(menuBridge, contentWorld: .page, name: "reword")
         web = WKWebView(frame: .zero, configuration: cfg)
+        menuBridge.web = web
         web.navigationDelegate = self
         web.uiDelegate = self
         web.pageZoom = CGFloat(UserDefaults.standard.double(forKey: "pageZoom"))
