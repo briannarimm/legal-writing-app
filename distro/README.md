@@ -4,8 +4,16 @@ This folder contains the ready-to-use ReWord program for Mac.
 
 | File | Description |
 |---|---|
-| `ReWord-1.1.0-mac-arm64.zip` | The program. Download this file. |
-| `ReWord-1.1.0-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
+| `ReWord-1.1.1-mac-arm64.zip` | The program. Download this file. |
+| `ReWord-1.1.1-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
+
+## What's new in 1.1.1
+
+- **Attach PDF… works in the Mac app.** The **Attach PDF…** button in Citations now opens a file
+  chooser so you can pick the PDF.
+- **A right-click menu that fits what you click.** Text, citations, footnotes, the document tree,
+  research notes, the citation library and the PDF reader each have their own menu. Hold Option
+  while you right-click to see the standard Mac menu.
 
 ## What's new in 1.1
 
@@ -27,7 +35,7 @@ You do not need other software. ReWord contains its own copies of Python, Pandoc
 
 ## Install
 
-1. Click `ReWord-1.1.0-mac-arm64.zip` in the file list above.
+1. Click `ReWord-1.1.1-mac-arm64.zip` in the file list above.
 2. Click **View raw** or the **Download raw file** button (the arrow icon, top right of the
    file view). The download starts. The file is about 90 MB.
 3. Open your Downloads folder. Double-click the zip file. A folder named `ReWord` appears.
@@ -54,10 +62,10 @@ You do this one time only.
 Open Terminal, go to the folder that contains the zip file, and run:
 
 ```bash
-shasum -a 256 -c ReWord-1.1.0-mac-arm64.zip.sha256
+shasum -a 256 -c ReWord-1.1.1-mac-arm64.zip.sha256
 ```
 
-The result must be `ReWord-1.1.0-mac-arm64.zip: OK`. If the result is different, delete the file
+The result must be `ReWord-1.1.1-mac-arm64.zip: OK`. If the result is different, delete the file
 and download it again.
 
 ## Your data
