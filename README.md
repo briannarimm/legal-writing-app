@@ -104,9 +104,14 @@ The command makes this folder in your home folder:
 ```
 ReWord/
   ReWord.app          the application
-  ReWord Data/        your documents, notes, sources and finished files
   READ ME FIRST.txt
 ```
+
+Your work is kept in `~/Library/Application Support/ReWord`: documents, notes, sources, attached
+PDFs and finished files, all in one folder. **Publish → Show data folder** (or **File → Open Data
+Folder**) opens it in Finder. ReWord 1.1.2 copies the folder that earlier versions used
+(`ReWord Data`) to this location the first time it starts. It does not delete the old folder; it
+leaves a note in it that says where your work went.
 
 To copy existing work from this folder into the new data folder, add `--import-data .` to the command.
 The command copies files. It does not move or delete them.
@@ -289,12 +294,25 @@ The page view at the right shows the note as it will print. To save the note as 
 
 ## 10. Finished files and GitHub
 
-ReWord uses two folders that can connect to GitHub. Both repositories must be private.
+All your work is one folder and one GitHub repository, which must be private: documents, notes,
+sources, attached PDFs, highlights, and the finished PDF and Word files in
+`outputs/<project>/<document>/`. **Publish → Publish** (⇧⌘P) copies a document's finished files
+into `outputs/`. **Publish → Sync** (⌃⌘Y) sends everything to GitHub and brings in changes made
+elsewhere.
 
-| Folder | Contents | Command |
-|---|---|---|
-| Your work (`ReWord Data`) | Documents, notes, sources, attached PDFs, highlights | **Publish → Sync** (⌃⌘Y) |
-| Outputs | Finished PDF and Word files, in `outputs/<project>/<document>/` | **Publish → Publish** (⇧⌘P) |
+ReWord syncs by itself when it starts, after every Run, every 10 minutes while it is open, and
+when you quit. Each sync saves a commit, takes GitHub's changes first (rebase), then pushes. If this
+computer's history and GitHub's have no common start (for example, after the data folder was set
+up again), ReWord joins the two histories instead of refusing, so nothing on either side is lost.
+
+Data folders from before 1.1.2 kept the finished files in a separate git repository inside
+`outputs/`. On the first start, ReWord merges that history into your work repository and keeps the
+old repository in `.git/reword-outputs-repo`. If you chose your own output folder (**Change…**), it
+stays a separate repository with its own **Connect…** button.
+
+If Claude or another person edits your work from a clone, they should work on a branch and open a
+pull request instead of changing `main` or the data folder directly. ReWord pulls the merged
+result on its next sync.
 
 ### 10.1 Set up GitHub (one time)
 
@@ -302,7 +320,7 @@ ReWord uses two folders that can connect to GitHub. Both repositories must be pr
 2. Type `brew install gh` and push Return.
 3. Type `gh auth login` and push Return.
 4. Select **GitHub.com** and **HTTPS**, then follow the instructions.
-5. In ReWord, click **Publish → Connect…** for each folder.
+5. In ReWord, click **Publish → Connect…**.
 
 ReWord does not ask for or keep passwords or tokens. It uses the sign-in that `gh` keeps on the Mac.
 
@@ -339,7 +357,8 @@ Most text shortcuts are the same as in Microsoft Word for Mac.
 2. On the other Mac, double-click `ReWord.app` on the drive.
 3. If macOS asks for permission to use files on the drive, click **Allow**.
 
-Your work stays in `ReWord Data` on the drive.
+When ReWord runs from a drive (anything under `/Volumes`), your work stays in `ReWord Data` next
+to the app on the drive instead of in Application Support.
 
 - Before you remove the drive, stop ReWord (⌘Q). Then eject the drive in Finder.
 - The drive can contain the only copy of your work. Make a backup regularly.
@@ -380,7 +399,7 @@ projects/            projects (not committed)
 
 This repository contains the program only. Git ignores the data folders (`documents/`, `research/`,
 `library/`, `projects/`) in the source folder, so personal work is not published with the code.
-Keep your work in the application's `ReWord Data` folder.
+Keep your work in the application's data folder (`~/Library/Application Support/ReWord`).
 
 ### 14.2 Run from the source folder
 

@@ -8,7 +8,7 @@ The result is one folder you can copy to a USB drive (or anywhere):
 
     ReWord/
         ReWord.app      the program: its own window, Python, Pandoc and TeX engine
-        ReWord Data/    your documents, research, citations and finished files
+    Your work lives in ~/Library/Application Support/ReWord (on a USB drive: "ReWord Data" next to the app)
         READ ME FIRST.txt
 
 Nothing else needs to be installed on the computer you plug it into: no Python, no Docker, no
@@ -40,7 +40,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = Path.home() / "Library" / "Caches" / "ReWord Build"
-VERSION = "1.1.1"          # also the name of the download in distro/
+VERSION = "1.1.2"          # also the name of the download in distro/
 DIST = ROOT / "distro"
 
 # Pinned versions. Pandoc matches the Docker image, so output is the same either way.
@@ -207,10 +207,11 @@ README = """REWORD
 
 Double-click "ReWord.app" to start. Nothing else needs to be installed.
 
-* Your work is in the "ReWord Data" folder next to the app: documents, research notes,
-  your citation library, and the finished PDF and Word files. Keep the two together, and
-  your work goes wherever the drive goes. This drive is the only copy until you back it up
-  (the Publish tab can push a copy to GitHub).
+* Your work (documents, research notes, your citation library, and the finished PDF and Word
+  files) is kept in one folder: ~/Library/Application Support/ReWord. Publish > Show data folder
+  opens it. Run from a USB drive, ReWord keeps it in a "ReWord Data" folder next to the app
+  instead, so your work goes wherever the drive goes. Back it up (the Publish tab can sync it to a
+  private GitHub repository).
 * It runs on Apple Silicon Macs (M1 or newer).
 * The first time on a new computer, macOS may ask permission to use files on this drive: choose
   Allow. If macOS says it can't verify the app, right-click the app, choose Open, then Open.
@@ -249,7 +250,6 @@ def make_dist(app, versions):
         top = Path(tmp) / "ReWord"
         top.mkdir()
         sh(["ditto", str(app), str(top / "ReWord.app")])            # ditto keeps the signature and symlinks
-        (top / "ReWord Data").mkdir()                                # empty: the app fills it on first start
         (top / "READ ME FIRST.txt").write_text(README, encoding="utf-8")
         tools = "".join("  * %-9s %-9s sha256 %s\n" % (n, v, h) for n, (v, h) in versions.items())
         (top / "THIRD-PARTY NOTICES.txt").write_text(
@@ -329,10 +329,10 @@ def main():
         sh(["codesign", "--force", "--deep", "-s", "-", str(app)], capture_output=True)
         sh(["codesign", "--verify", "--deep", "--strict", str(app)], capture_output=True)
 
-        data = out / "ReWord Data"
-        data.mkdir(exist_ok=True)
+        data = out / "ReWord Data"        # only for --import-data; ReWord moves it to Application Support on first start
         (out / "READ ME FIRST.txt").write_text(README, encoding="utf-8")
         if a.import_data:
+            data.mkdir(exist_ok=True)
             src = Path(a.import_data).expanduser()
             for name in ("documents", "research", "library"):
                 if (src / name).is_dir() and not (data / name).exists():

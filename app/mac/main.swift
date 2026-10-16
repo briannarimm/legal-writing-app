@@ -3,8 +3,8 @@
 // A small AppKit program that (1) starts the bundled Python server with the bundled Pandoc and
 // Tectonic, (2) shows the app in a real window using the Mac's own WebKit (no Chrome or any other
 // browser needed), and (3) stops the server when you quit. Everything it needs is inside the app,
-// so it runs on any Apple Silicon Mac. Your documents live in a "ReWord Data" folder
-// next to the app (on a USB drive, that means they travel with it).
+// so it runs on any Apple Silicon Mac. Your documents live in ~/Library/Application Support/ReWord
+// (on a USB drive: a "ReWord Data" folder next to the app, so they travel with it).
 import AppKit
 import WebKit
 
@@ -18,21 +18,89 @@ let logURL = URL(fileURLWithPath: home).appendingPathComponent("Library/Logs/ReW
 
 // MARK: - where the data lives
 
-func dataFolder() -> URL {
-    if let d = env["LT_DATA_DIR"] { return URL(fileURLWithPath: d) }
-    if let saved = UserDefaults.standard.string(forKey: "dataFolder"), fm.fileExists(atPath: saved) {
-        return URL(fileURLWithPath: saved)
-    }
-    // next to the app (the USB-drive case), unless the app is installed somewhere you can't or shouldn't write
-    let parent = Bundle.main.bundleURL.deletingLastPathComponent()
-    let p = parent.path
-    let installed = p.hasPrefix("/Applications") || p == home || p.hasPrefix(home + "/Applications")
-        || p.hasPrefix("/System") || p.contains("/AppTranslocation/")
-    if !installed && fm.isWritableFile(atPath: p) {
-        return parent.appendingPathComponent("ReWord Data")
-    }
-    return URL(fileURLWithPath: home).appendingPathComponent("Documents/ReWord Data")
+/// Since 1.1.2 your work lives in ~/Library/Application Support/ReWord: documents, research, the library
+/// and the finished files, all in one git repository. Running from a USB drive still keeps the data
+/// next to the app, so it travels with the drive.
+let appSupportData = URL(fileURLWithPath: home).appendingPathComponent("Library/Application Support/ReWord")
+let dataLayout = 2                       // bump when the default location changes again
+
+func runningFromRemovableDrive() -> Bool {
+    let p = Bundle.main.bundleURL.deletingLastPathComponent().path
+    return p.hasPrefix("/Volumes/") && fm.isWritableFile(atPath: p)
 }
+
+/// Data folders used before 1.1.2, most specific first.
+func legacyDataFolders() -> [URL] {
+    var out: [URL] = []
+    if let saved = UserDefaults.standard.string(forKey: "dataFolder") { out.append(URL(fileURLWithPath: saved)) }
+    out.append(Bundle.main.bundleURL.deletingLastPathComponent().appendingPathComponent("ReWord Data"))
+    out.append(URL(fileURLWithPath: home).appendingPathComponent("ReWord/ReWord Data"))
+    out.append(URL(fileURLWithPath: home).appendingPathComponent("Documents/ReWord Data"))
+    return out
+}
+
+func hasWork(_ u: URL) -> Bool {
+    let names = (try? fm.contentsOfDirectory(atPath: u.path)) ?? []
+    return names.contains { [".git", "documents", "research", "library", "outputs"].contains($0) }
+}
+
+/// First launch of 1.1.2: copy the old data folder into Application Support. The old folder is left
+/// exactly as it was, plus a note saying where the work went.
+func migrateLegacyData(to dest: URL) -> String? {
+    if hasWork(dest) { return nil }
+    guard let old = legacyDataFolders().first(where: { $0.standardizedFileURL != dest.standardizedFileURL && hasWork($0) }) else { return nil }
+    let tmp = dest.deletingLastPathComponent().appendingPathComponent("ReWord.migrating")
+    do {
+        try fm.createDirectory(at: dest.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? fm.removeItem(at: tmp)
+        try fm.copyItem(at: old, to: tmp)
+        if fm.fileExists(atPath: dest.path) {                 // an empty folder from an earlier start
+            for n in (try? fm.contentsOfDirectory(atPath: dest.path)) ?? [] {
+                let src = dest.appendingPathComponent(n), dst = tmp.appendingPathComponent(n)
+                if !fm.fileExists(atPath: dst.path) { try? fm.moveItem(at: src, to: dst) }
+            }
+            try fm.removeItem(at: dest)
+        }
+        try fm.moveItem(at: tmp, to: dest)
+    } catch {
+        return "ReWord couldn't copy your work from \(old.path) to \(dest.path): \(error.localizedDescription). Nothing was changed in the old folder."
+    }
+    let note = """
+        ReWord 1.1.2 moved your work to:
+            \(dest.path)
+
+        This folder is the copy ReWord used before. It was left exactly as it was, so nothing is lost,
+        but ReWord no longer reads or saves it. Use File > Open Data Folder in ReWord to see the new
+        location. You can delete this folder once you are happy everything is there.
+
+        """
+    try? note.write(to: old.appendingPathComponent("MOVED TO APPLICATION SUPPORT.txt"), atomically: true, encoding: .utf8)
+    print("Migrated data from \(old.path) to \(dest.path)")
+    return nil
+}
+
+var migrationError: String?
+
+/// Decided once per launch (and after Choose Data Folder…, which restarts the app).
+let currentDataFolder: URL = {
+    if let d = env["LT_DATA_DIR"] { return URL(fileURLWithPath: d) }
+    let ud = UserDefaults.standard
+    if ud.integer(forKey: "dataLayout") >= dataLayout, let saved = ud.string(forKey: "dataFolder"), fm.fileExists(atPath: saved) {
+        return URL(fileURLWithPath: saved)                    // chosen with File > Choose Data Folder…
+    }
+    if runningFromRemovableDrive() {
+        return Bundle.main.bundleURL.deletingLastPathComponent().appendingPathComponent("ReWord Data")
+    }
+    migrationError = migrateLegacyData(to: appSupportData)
+    if migrationError != nil, let old = legacyDataFolders().first(where: hasWork) {
+        return old                                            // keep working where the data is; try again next launch
+    }
+    ud.removeObject(forKey: "dataFolder")
+    ud.set(dataLayout, forKey: "dataLayout")
+    return appSupportData
+}()
+
+func dataFolder() -> URL { currentDataFolder }
 
 // MARK: - the Python server
 
@@ -184,6 +252,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         buildWindow()
         server.onRestart = { [weak self] url in self?.web.load(URLRequest(url: url)) }
         status.stringValue = "Starting ReWord…"
+        if let m = migrationError {
+            let a = NSAlert(); a.messageText = "Your work wasn't moved"; a.informativeText = m + " ReWord is using the old folder for now."
+            a.runModal()
+        }
         server.launch { [weak self] url, err in
             guard let self = self else { return }
             if let u = url { self.status.isHidden = true; self.web.load(URLRequest(url: u)) }
@@ -376,6 +448,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         panel.message = "Choose the folder that holds your documents, research and citations."
         guard panel.runModal() == .OK, let u = panel.url else { return }
         UserDefaults.standard.set(u.path, forKey: "dataFolder")
+        UserDefaults.standard.set(dataLayout, forKey: "dataLayout")
         let a = NSAlert(); a.messageText = "Data folder changed"
         a.informativeText = "ReWord will now restart to use \(u.path)."; a.runModal()
         server.stop()
