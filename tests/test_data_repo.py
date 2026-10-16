@@ -131,7 +131,7 @@ for _ in range(50):
     time.sleep(0.1)
 server.backup_now()
 bk = server.backup_dir()
-check('backup folder made', (bk / 'research' / 'a.md').read_text() == 'github 2\n')
+check('backup folder made', (bk / 'research' / 'a.md').read_text() == 'github 2\n', repr((bk / 'research' / 'a.md').read_text()) + repr((data / 'research' / 'a.md').read_text()))
 check('backup has no git', not (bk / '.git').exists())
 (data / 'research' / 'gh-only.md').unlink()
 server.backup_now()

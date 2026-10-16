@@ -605,39 +605,39 @@ def last_backup():
 def backup_now():
     """Copy every new or changed file into the backup folder. Files are never deleted from the backup, so
     something removed (or lost) in the data folder is still there."""
-    if not BACKUP_LOCK.acquire(blocking=False):
-        return 0
-    try:
-        src, dst = root(), backup_dir()
-        dst.mkdir(parents=True, exist_ok=True)
-        copied = 0
-        for here, dirs, files in os.walk(src):
-            dirs[:] = [x for x in dirs if x not in BACKUP_SKIP]
-            rel = Path(here).relative_to(src)
-            for f in files:
-                if f in BACKUP_SKIP:
-                    continue
-                a, b = Path(here) / f, dst / rel / f
-                try:
-                    sa = a.stat()
-                    if b.exists():
-                        sb = b.stat()
-                        if sb.st_size == sa.st_size and int(sb.st_mtime) == int(sa.st_mtime):
-                            continue
-                    b.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(a, b)
-                    copied += 1
-                except OSError as e:
-                    print("Backup skipped %s: %s" % (a, e))
-        readme = dst / "README.txt"
-        if not readme.exists():
-            readme.write_text("ReWord backup\n\nA plain copy of your ReWord data folder (%s), updated after every "
-                              "successful sync. It is not a git repository and is never uploaded. Files deleted from "
-                              "the data folder stay here.\n" % src, encoding="utf-8")
-        (dst / ".last-backup").write_text(datetime.datetime.now().strftime("%Y-%m-%d %H:%M") + "\n", encoding="utf-8")
-        return copied
-    finally:
-        BACKUP_LOCK.release()
+    with BACKUP_LOCK:                 # one at a time; a later request waits so the newest files always get copied
+        return _backup_now()
+
+
+def _backup_now():
+    src, dst = root(), backup_dir()
+    dst.mkdir(parents=True, exist_ok=True)
+    copied = 0
+    for here, dirs, files in os.walk(src):
+        dirs[:] = [x for x in dirs if x not in BACKUP_SKIP]
+        rel = Path(here).relative_to(src)
+        for f in files:
+            if f in BACKUP_SKIP:
+                continue
+            a, b = Path(here) / f, dst / rel / f
+            try:
+                sa = a.stat()
+                if b.exists():
+                    sb = b.stat()
+                    if sb.st_size == sa.st_size and sb.st_mtime_ns == sa.st_mtime_ns:
+                        continue
+                b.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(a, b)
+                copied += 1
+            except OSError as e:
+                print("Backup skipped %s: %s" % (a, e))
+    readme = dst / "README.txt"
+    if not readme.exists():
+        readme.write_text("ReWord backup\n\nA plain copy of your ReWord data folder (%s), updated after every "
+                          "successful sync. It is not a git repository and is never uploaded. Files deleted from "
+                          "the data folder stay here.\n" % src, encoding="utf-8")
+    (dst / ".last-backup").write_text(datetime.datetime.now().strftime("%Y-%m-%d %H:%M") + "\n", encoding="utf-8")
+    return copied
 
 
 def backup_after_sync():
