@@ -5,7 +5,7 @@
 (function () {
   'use strict';
   const { $, $$, toast } = App;
-  App.cmd = { global: {}, writing: {}, research: {}, citations: {} };
+  App.cmd = { global: {}, writing: {}, research: {}, citations: {}, verify: {} };
 
   /* ------------------------------------------------------------ icons */
   const T = (x, y, size, txt, fam) => '<text x="' + x + '" y="' + y + '" font-size="' + size + '" font-family="' + (fam || 'Georgia,serif') +

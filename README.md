@@ -21,7 +21,7 @@ documents. It does not need other software on the computer.
 2. [Requirements](#2-requirements)
 3. [Install ReWord](#3-install-reword)
 4. [Start and stop ReWord](#4-start-and-stop-reword)
-5. [The three work areas](#5-the-three-work-areas)
+5. [The four work areas](#5-the-four-work-areas)
 6. [Projects](#6-projects)
 7. [Documents](#7-documents)
 8. [Sources and citations](#8-sources-and-citations)
@@ -123,11 +123,11 @@ The command copies files. It does not move or delete them.
 
 ReWord saves automatically approximately 1.5 seconds after you stop typing. To save immediately, push ⌘S.
 
-## 5. The three work areas
+## 5. The four work areas
 
 The window has three parts:
 
-- **The sidebar** on the left: Writing, Research and Citations, the project menu, and the list for
+- **The sidebar** on the left: Writing, Research, Citations and Verify, the project menu, and the list for
   the current work area (documents, notes or sources). ⌥⌘S hides or shows it.
 - **The toolbar** at the top: Save, formatting, Cite, Footnote, and the layout (Editor, Split,
   Preview). In Research and Citations it also has that area's commands.
@@ -142,6 +142,7 @@ Use the sidebar to change the work area.
 | Writing | ⌘1 | Your documents. Each document has sections. |
 | Research | ⌘2 | Your notes. Each note can link to a source. |
 | Citations | ⌘3 | Your source library, with attached PDFs and highlights. |
+| Verify | ⌘4 | Check every citation in a project against its source, one card at a time. |
 
 The Mac menu bar has everything else: **Insert** (citation, footnote, section, new document, note
 or citation), **Format** (bold, italic, small caps, lists, block quote) and **View** (layout, rich
@@ -330,6 +331,31 @@ or *Quote to use*:
 
 The labels are shared by all your projects and are kept in `library/highlights.json`, so they sync
 with your library. The color bar in the reader and the highlight list show the labels.
+
+### 8.5 Verify your citations
+
+The **Verify** tab (⌘4) walks through every citation in a project's documents, in reading order, one
+card at a time.
+
+1. Click **Verify** in the sidebar and choose the project (and, if it has several, the document).
+2. Read the card. The left side shows the citation in context: for a footnote, the sentence the footnote
+   supports (highlighted) and the whole footnote; for a citation in the text, its paragraph. The pinpoint,
+   signal and parenthetical are listed under it. The right side shows the source's PDF or web-page
+   snapshot in the reader, where you can highlight and comment as in Citations. If the source has no file
+   yet, attach a PDF or take a snapshot right there.
+3. Click **Approve** (A) if the source supports the citation, or **Send back** (F) if it doesn't. When you
+   send one back, type why (optional) and push Return. ← and → move between cards without deciding.
+4. After the last card, the summary lists every citation you sent back with your reason. Click **Fix the
+   sent back** to go through only those, or **Go to it in the document** to fix one. ⌘4 brings you back to
+   the same card; approve it once it's fixed.
+
+- **All**, **Not checked** and **Sent back** at the top choose which cards you go through. The bar shows
+  each card's result; click a segment, or a row in the sidebar, to jump to it.
+- Results are saved per project in `projects/verification/<project>.json`, so they sync with your work.
+- If you change a citation (or the words just before it) after approving it, the approval no longer
+  counts and the card asks you to check it again. A citation you sent back stays sent back, marked
+  "edited since", until you approve it.
+- **Start over** forgets the results for the project (or the chosen document).
 
 ## 9. Research notes
 

@@ -71,6 +71,7 @@
     { g: 'Go to', d: 'Writing', mods: 'm', code: 'Digit1', key: '1', fn: goView('writing'), on: '#nav [data-view="writing"]' },
     { g: 'Go to', d: 'Research', mods: 'm', code: 'Digit2', key: '2', fn: goView('research'), on: '#nav [data-view="research"]' },
     { g: 'Go to', d: 'Citations', mods: 'm', code: 'Digit3', key: '3', fn: goView('citations'), on: '#nav [data-view="citations"]' },
+    { g: 'Go to', d: 'Verify citations', mods: 'm', code: 'Digit4', key: '4', fn: goView('verify'), on: '#nav [data-view="verify"]' },
     { g: 'Go to', d: 'Show or hide the sidebar', mods: 'am', code: 'KeyS', key: 'S', fn: () => App.menu('sidebar') },
     { g: 'Go to', d: 'Show or hide the inspector', mods: 'am', code: 'KeyI', key: 'I', fn: () => App.menu('inspector') },
     { g: 'Go to', d: 'Editor only', mods: 'cm', code: 'Digit1', key: '1', click: '[data-layout="editor"]', on: '[data-layout="editor"]', views: 'writing research' },

@@ -795,6 +795,9 @@ def delete_project(pid):
     if cite_dir().exists():
         for q in cite_dir().glob("*.md"):
             _edit_citation_projects(q, lambda pr, au: ([x for x in pr if x != pid], [x for x in au if x != pid]))
+    v = verification_path(pid)
+    if v.exists():
+        trash(v, v.parent)
     trash(p, projects_dir())
 
 
@@ -1012,6 +1015,160 @@ def citation_uses(tag=None):
                 found.append({"id": n["id"], "title": n["title"], "project": n["project"], "updated": n["updated"], "uses": uses})
     found.sort(key=lambda n: n["updated"] or "", reverse=True)
     return {"tag": tag, "documents": docs, "notes": found, "total": total}
+
+
+# ------------------------------------------------------------------ verification (the Verify tab)
+# projects/verification/<project>.json: {"results": {key: {status, reason, at, sig, tag, doc}}}
+# Every citation in a project's documents, one card each, checked against its source. A key names one place:
+# document, source, pinpoint and which time that (source, pinpoint) appears in the document, so results stay
+# put when other citations are added. sig fingerprints the citation and the words before it: when either
+# changes, an approval no longer counts (a citation sent back stays sent back, marked as edited since).
+
+VERIFY_STATUSES = ("approved", "failed")
+
+
+def verification_path(pid):
+    project_path(pid)                                        # validates the id
+    return projects_dir() / "verification" / (pid + ".json")
+
+
+def _read_verification(pid):
+    p = verification_path(pid)
+    if not p.exists():
+        return {"results": {}}
+    try:
+        d = json.loads(p.read_text(encoding="utf-8"))
+    except ValueError:
+        return {"results": {}}
+    if not isinstance(d.get("results"), dict):
+        d["results"] = {}
+    return d
+
+
+def _para_plain(md, region, start, end):
+    """The whole paragraph (or footnote) around a citation, as plain words before and after it."""
+    lo, hi = region[0], region[1]
+    if region[2] is None:
+        a = md.rfind("\n\n", lo, start)
+        b = md.find("\n\n", end, hi)
+        lo, hi = (a + 2 if a >= 0 else lo), (b if b >= 0 else hi)
+    else:
+        lo = lo + len(FN_DEF_RE.match(md[lo:hi]).group(0))
+    return md_plain(md[lo:start]), md_plain(md[end:hi])
+
+
+def _note_anchor(md, label):
+    """For a footnote: the paragraph of the text that points to it, split at the footnote mark (what the note supports)."""
+    for lo, hi, lab in _md_regions(md):
+        if lab is not None:
+            continue
+        m = re.search(r"\[\^" + re.escape(label) + r"\]", md[lo:hi])
+        if not m:
+            continue
+        at = lo + m.start()
+        a = md.rfind("\n\n", lo, at)
+        b = md.find("\n\n", at, hi)
+        plo, phi = (a + 2 if a >= 0 else lo), (b if b >= 0 else hi)
+        return md_plain(md[plo:at]), md_plain(md[lo + m.end():phi])
+    return None
+
+
+def verification(pid, slug=None):
+    """Every citation in the project's documents (or one of them), in reading order, with its result so far."""
+    import cites
+    import hashlib
+    read_project(pid)
+    tmpls = {t["id"]: t for t in templates()}
+    entries = {}
+    results = _read_verification(pid)["results"]
+    items = []
+    all_docs = sorted((d for d in documents() if d.get("project") == pid), key=lambda d: (d.get("title") or d["slug"]).lower())
+    for info in (d for d in all_docs if not slug or d["slug"] == slug):
+        t = tmpls.get(info.get("template", ""), {})
+        meta = {}
+        mp = doc_path(info["slug"]) / META
+        m = re.search(r'(?m)^citation-style:\s*"?([\w-]+)', mp.read_text(encoding="utf-8")) if mp.exists() else None
+        if m:
+            meta["citation-style"] = {"t": "MetaString", "c": m.group(1)}
+        style, typeface = cites.style_of(t, meta)
+        seen, refs = {}, 0
+        for f in section_paths(info["slug"]):
+            md = f.read_text(encoding="utf-8")
+            regions, order = _md_regions(md), _ref_order(md)
+            section = _section_title(md, f.name)
+            nth = {}
+            for start, end, kind, attrs, inner in _cite_spans(md):
+                tag = attrs["tag"]
+                reg = next((r for r in regions if r[0] <= start < r[1]), (0, len(md), None))
+                label = reg[2]
+                k = nth.get((tag, label), 0)                  # which match in its body or footnote (writing.reveal)
+                nth[(tag, label)] = k + 1
+                if tag not in entries:
+                    q = cite_path(tag) if TAG_RE.match(tag) else None
+                    c = read_citation(q) if q and q.exists() else None
+                    entries[tag] = {"type": c["type"], "fields": c["fields"], "tag": tag} if c else None
+                if kind == "cite":
+                    runs = cites.chip_text(entries[tag], attrs, typeface, style, bool(label) or typeface != "lawreview")
+                    text, html = md_plain(citeformat.to_md(runs)), citeformat.to_html(runs)
+                else:
+                    text, html = md_plain(inner), ""
+                before, after = _para_plain(md, reg, start, end)
+                pin = (attrs.get("pin") or "").strip()
+                n = seen.get((tag, pin), 0)
+                seen[(tag, pin)] = n + 1
+                key = "%s:%s:%s:%d" % (info["slug"], tag, pin, n)
+                near = before[-160:]
+                sig = hashlib.sha1((text + "\x00" + near).encode("utf-8")).hexdigest()[:12]
+                it = {"key": key, "sig": sig, "slug": info["slug"], "doc": info.get("title", info["slug"]), "file": f.name,
+                      "section": section, "tag": tag, "missing": entries[tag] is None, "kind": kind, "where": "footnote" if label else "text",
+                      "k": k, "start": start, "end": end, "text": text, "html": html, "before": before, "after": after,
+                      "pin": pin, "signal": (attrs.get("signal") or "").strip(), "paren": md_plain(attrs.get("paren") or "")}
+                if label:
+                    it["label"] = label
+                    it["number"] = refs + order.index(label) + 1 if label in order else None
+                    anchor = _note_anchor(md, label)
+                    if anchor:
+                        it["supports"] = list(anchor)
+                r = results.get(key)
+                if r:
+                    edited = r.get("sig") != sig
+                    if r.get("status") == "approved" and edited:
+                        it["was"] = "approved"                # approved, then the citation or its sentence changed
+                    else:
+                        it.update({"status": r.get("status"), "edited": edited})
+                    it.update({"reason": r.get("reason", ""), "at": r.get("at", "")})
+                items.append(it)
+            refs += len(order)
+    return {"project": pid, "documents": [{"slug": d["slug"], "title": d.get("title", d["slug"])} for d in all_docs], "items": items}
+
+
+def set_verification(pid, key, status, reason="", sig="", tag="", doc=""):
+    """Record one card's result (status "" clears it)."""
+    if status and status not in VERIFY_STATUSES:
+        raise StoreError("unknown result")
+    if not isinstance(key, str) or not key or len(key) > 300:
+        raise StoreError("invalid key")
+    d = _read_verification(pid)
+    if status:
+        d["results"][key] = {"status": status, "reason": (reason or "").strip()[:4000], "at": now(), "sig": sig or "",
+                             "tag": tag or "", "doc": doc or ""}
+    else:
+        d["results"].pop(key, None)
+    p = verification_path(pid)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    write_atomic(p, json.dumps(d, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
+    return d["results"].get(key)
+
+
+def reset_verification(pid, slug=None):
+    """Start over: forget every result (or one document's)."""
+    d = _read_verification(pid)
+    d["results"] = {k: v for k, v in d["results"].items() if slug and not k.startswith(slug + ":")}
+    p = verification_path(pid)
+    if p.exists() or d["results"]:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        write_atomic(p, json.dumps(d, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
+    return {"ok": True}
 
 
 def _edit_citation_projects(p, change):
