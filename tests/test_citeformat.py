@@ -171,6 +171,42 @@ check('APA 21+ authors', cf.Runs().r(cf.apa_names([P('A', 'N%d' % k) for k in ra
       ', '.join('N%d, A.' % k for k in range(1, 20)) + ', . . . N22, A.')
 check('APA initials hyphenated', cf.Runs().r(cf.apa_name(P('Jean-Paul', 'Sartre'))), 'Sartre, J.-P.')
 
+# ---------------- 1.3.1: sources with missing or differently named fields still format cleanly
+acosta = C('case', name='United States v. Acosta', short_name='Acosta', docket='No. 25-CR-00239-GKF, 2025 WL 2427700',
+           court='N.D. Okla.', date='2025-08-22')
+check('Westlaw cite typed in the docket: pin is a star page', cf.bluebook(acosta, 'practitioner', '3'),
+      '*United States v. Acosta*, No. 25-CR-00239-GKF, 2025 WL 2427700, at \\*3 (N.D. Okla. Aug. 22, 2025)')
+check('short form of a Westlaw-in-docket case', cf.bluebook_short(acosta, 'practitioner', '3'), '*Acosta*, 2025 WL 2427700, at \\*3')
+check('short form of a Westlaw-in-docket case, no pin', cf.bluebook_short(acosta, 'practitioner'), '*Acosta*, 2025 WL 2427700')
+check('Id. for a Westlaw-in-docket case', cf.bluebook_id(acosta, '4'), '*Id.* at \\*4')
+check('short form of a slip opinion', cf.bluebook_short(C('case', name='Albrecht v. Stranz', docket='No. 01-CV-0039', court='D. Minn.',
+      date='2002-03-01'), 'practitioner', '3'), '*Albrecht*, No. 01-CV-0039, slip op. at 3')
+check('short form with nothing but a name', cf.bluebook_short(C('case', name='Doe v. Roe', date='2020'), 'practitioner'), '*Doe*')
+fedreg = C('regulation', name='Required Warnings for Cigarette Packages', fed_reg='85 Fed. Reg. 15,638', date='2020-03-18')
+check('Federal Register rule: short form', cf.bluebook_short(fedreg, 'practitioner', '15,640'), '85 Fed. Reg. at 15,640')
+check('Federal Register rule: short form, no pin', cf.bluebook_short(fedreg, 'practitioner'), '85 Fed. Reg. 15,638')
+check('plural of an abbreviation that ends in a period', cf.Runs().r(cf.abbreviate_periodical('Proceedings of the National Academy of Sciences')),
+      'Proc. Nat’l Acad. Sci.')
+pnas = C('journal', authors=[P('Dimitris', 'Xygalatas')], title='Route of Fire', journal='Proceedings of the National Academy of Sciences',
+         volume='122', issue='24', article_number='e2422779122', date='2025')
+check('journal article number in place of a page', cf.bluebook(pnas, 'practitioner'), 'Dimitris Xygalatas, *Route of Fire*, 122 Proc. Nat’l Acad. Sci. e2422779122 (2025)')
+check('APA article number', cf.apa_reference(pnas), 'Xygalatas, D. (2025). Route of fire. *Proceedings of the National Academy of Sciences*, *122*(24), Article e2422779122.')
+check('journal with no page yet: no double space', cf.bluebook(C('journal', authors=[P('Johnny', 'Nhan')], title='Cops and Hotlists',
+      journal='The Police Journal', journal_abbrev='Police J.', date='2026'), 'practitioner'), 'Johnny Nhan, *Cops and Hotlists*, Police J. (2026)')
+rec = C('news', authors=[P('Suzanne', 'Smalley')], title='License Plate Cameras May Be Next Target', site='The Record', site_abbrev='The Record',
+        date='2026-07-10',
+        url='https://therecord.media/x')
+check('news saved with a website name instead of a publication', cf.bluebook(rec, 'practitioner'),
+      'Suzanne Smalley, *License Plate Cameras May Be Next Target*, The Record (July 10, 2026), https://therecord.media/x')
+check('APA: "May" the verb is not a month', cf.apa_reference(rec),
+      'Smalley, S. (2026, July 10). License plate cameras may be next target. *The Record*. https://therecord.media/x')
+check('APA: May the month keeps its capital', cf.Runs().r(cf.sentence_case('Report Due May 2021')), 'Report due May 2021')
+check('news with no publication at all', cf.bluebook(C('news', title='Untitled Story', date='2026-07-10'), 'practitioner'), '*Untitled Story* (July 10, 2026)')
+check('APA: no doubled period after an abbreviated publisher', cf.apa_reference(C('report', authors=[P('Saida', 'Mamedova')], title='A Description',
+      publisher='Nat’l Ctr. for Educ. Stat.', date='2018')), 'Mamedova, S. (2018). *A description*. Nat’l Ctr. for Educ. Stat.')
+check('book translators saved as people', cf.bluebook(C('book', authors=[P('Émile', 'Durkheim')], title='The Elementary Forms',
+      translators=[P('Joseph Ward', 'Swain')], date='1915'), 'practitioner'), 'Émile Durkheim, *The Elementary Forms* (Joseph Ward Swain trans., 1915)')
+
 ok = sum(1 for _, good, _, _ in CASES if good)
 for label, good, got, want in CASES:
     if not good:

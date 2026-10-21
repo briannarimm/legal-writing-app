@@ -180,6 +180,7 @@ TYPES = {
         F('journal_abbrev', 'Journal abbreviation (Bluebook)', hint='Harv. L. Rev. Leave blank to use an automatic abbreviation.'),
         F('volume', 'Volume'), F('issue', 'Issue'),
         F('first_page', 'First page'), F('last_page', 'Last page'),
+        F('article_number', 'Article number', hint='For journals that number articles instead of pages: e2422779122'),
         F('date', 'Year*', 'date'), F('doi', 'DOI', hint='10.1000/xyz123'), URL, HEREINAFTER]),
     'book': dict(label='Book', group='Academic', fields=[
         AUTHORS,
@@ -279,11 +280,28 @@ def schema():
 
 # ------------------------------------------------------------------ small helpers
 
+# Fields saved under another type's name (a source typed in by hand or by another tool, or one whose type was
+# changed): read them where this type expects them, so the citation still formats in full.
+ALIASES = {('news', 'publication'): 'site', ('news', 'publication_abbrev'): 'site_abbrev', ('news', 'page'): 'first_page',
+           ('webpage', 'site'): 'publication', ('webpage', 'site_abbrev'): 'publication_abbrev'}
+
+
 def g(c, key):
-    v = (c.get('fields') or {}).get(key, '')
+    f = c.get('fields') or {}
+    v = f.get(key, '')
+    if not v and (c.get('type'), key) in ALIASES:
+        v = f.get(ALIASES[(c.get('type'), key)], '')
+    if not v and key == 'translator' and isinstance(f.get('translators'), list):
+        v = ' & '.join(bb_name(p) for p in f['translators'] if isinstance(p, dict) and (p.get('family') or p.get('literal')))
     if isinstance(v, str):
         return v.strip()
     return v
+
+
+def _close(text):
+    """A sentence of a reference entry: the text with a period, unless it already ends with one (Inc., n.d.)."""
+    t = (text or '').rstrip()
+    return t if not t or t[-1] in '.?!' else t + '.'
 
 
 MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
@@ -478,6 +496,7 @@ PROPER = set('''American Americans English British European African Asian Canadi
 Native Black Latino Latina Latinx Hispanic Christian Jewish Muslim Catholic Protestant Congress Constitution
 January February March April May June July August September October November December
 Monday Tuesday Wednesday Thursday Friday Saturday Sunday I'''.split())
+VERB_MONTHS = {'May', 'March'}
 
 
 def sentence_case(title, start=True):
@@ -486,12 +505,16 @@ def sentence_case(title, start=True):
     start=False continues a title that began in an earlier run (no capital for its first word)."""
     words = re.split(r'(\s+)', title or '')
     out, cap_next = [], start
-    for w in words:
+    for k, w in enumerate(words):
         if not w or w.isspace():
             out.append(w); continue
         core = re.sub(r'^[^\w]+|[^\w]+$', '', w)
         parts = [x for x in re.split(r'[-–/]', core) if x]
-        keep = any(len(x) > 1 and x[1:] != x[1:].lower() for x in parts) or core.rstrip('.').title() in PROPER
+        proper = core.rstrip('.').title() in PROPER
+        if proper and core in VERB_MONTHS:          # "May be next", "March on": a month only beside a number (May 2021)
+            near = [x for x in (words[k - 2] if k > 1 else '', words[k + 2] if k + 2 < len(words) else '')]
+            proper = any(re.match(r'\d', x) for x in near)
+        keep = any(len(x) > 1 and x[1:] != x[1:].lower() for x in parts) or proper
         if keep:
             nw = w
         elif cap_next:
@@ -566,7 +589,8 @@ def abbreviate_periodical(name):
             out.append(t); i += 1; continue
         ab = table.get(lt)
         if ab is None and lt.endswith('s') and lt[:-1] in table:
-            ab = table[lt[:-1]] + 's'          # plurals: Departments -> Dep'ts (T11 note)
+            ab = table[lt[:-1]]                # plurals: Departments -> Dep'ts, but Sciences -> Sci. (T11 note)
+            ab = ab if ab.endswith('.') else ab + 's'
         out.append(ab or t)
         i += 1
     # Close up adjacent single capitals: "L. J." -> "L.J." (Indigo R7 spacing)
@@ -628,6 +652,23 @@ def _sc_or(lr, out, text, otherwise=''):
     else: out.add(text, otherwise)
 
 
+# A Westlaw or Lexis cite typed at the end of the docket number: No. 25-CR-239, 2025 WL 2427700
+EMBEDDED_DB = re.compile(r'\b(\d{4}\s+(?:WL|(?:U\.S\.\s*(?:Dist\.|App\.)\s*|[A-Z][\w.]*\s+)?LEXIS)\s+\d+)\s*$')
+
+
+def _database_of(c):
+    """The case's database cite (2013 WL 5811261): its own field, or the end of its docket number."""
+    if g(c, 'database'):
+        return g(c, 'database')
+    m = EMBEDDED_DB.search(g(c, 'docket')) if not g(c, 'volume') else None
+    return m.group(1) if m else ''
+
+
+def _star_pin(pin):
+    """Pincites in a database cite are star pages: at *7 (a page range too: at *7–8)."""
+    return ', at *' + pin.lstrip('*') if re.fullmatch(r'\*?\d+(?:[-–]\*?\d+)?', pin) else ', ' + pin
+
+
 def _bb_case(c, lr, pin):
     out = Runs()
     name = md_runs(g(c, 'name'))
@@ -640,13 +681,14 @@ def _bb_case(c, lr, pin):
             out.r(g(c, 'docket') + ', ')
         out.r(g(c, 'database'))
         if pin:
-            out.r(', at *' + pin.lstrip('*') if re.fullmatch(r'\*?\d+(?:[-–]\d+)?', pin) else ', ' + pin)
+            out.r(_star_pin(pin))
     else:
+        cite = ' '.join(x for x in (g(c, 'volume'), rep, g(c, 'first_page')) if x)
         if g(c, 'docket') and not g(c, 'volume'):
-            out.r(g(c, 'docket'))
-        out.r(' '.join(x for x in (g(c, 'volume'), rep, g(c, 'first_page')) if x))
+            out.r(g(c, 'docket') + (' ' if cite else ''))
+        out.r(cite)
         if pin:
-            out.r(', ' + pin)
+            out.r(_star_pin(pin) if _database_of(c) else ', ' + pin)
         if g(c, 'parallel'):
             out.r(', ' + g(c, 'parallel'))
     court = g(c, 'court')
@@ -782,7 +824,11 @@ def _bb_journal(c, lr, pin):
         out.r(g(c, 'volume') + ' ')
     journal = g(c, 'journal_abbrev') or abbreviate_periodical(g(c, 'journal'))
     _sc_or(lr, out, journal)
-    out.r(' ' + g(c, 'first_page') + pin_after(pin))
+    page = g(c, 'first_page') or g(c, 'article_number')
+    if page:
+        out.r(' ' + page + pin_after(pin))
+    elif pin:                                    # published online without pages yet
+        out.r(', at ' + pin)
     y = bb_date(g(c, 'date'), full=False)
     if y:
         out.r(' (' + y + ')')
@@ -855,9 +901,10 @@ def _bb_news(c, lr, pin):
         out.r(g(c, 'designation') + ', ')
     for text, fmt in md_runs(g(c, 'title')):
         out.add(text, 'i')
-    out.r(', ')
     pub = g(c, 'publication_abbrev') or abbreviate_periodical(g(c, 'publication'))
-    _sc_or(lr, out, pub)
+    if pub:
+        out.r(', ')
+        _sc_or(lr, out, pub)
     date = bb_date(g(c, 'date'))
     if g(c, 'page') and not g(c, 'url'):
         out.r(', ' + date + ', at ' + g(c, 'page') + pin_after(pin))
@@ -1051,12 +1098,24 @@ def bluebook_short(c, typeface='practitioner', pin='', note=None, in_text=False)
     out = Runs()
     if t == 'case':
         short = g(c, 'short_name') or default_short_name(g(c, 'name'))
-        out.i(short).r(', ')
-        if g(c, 'database'):
-            out.r(g(c, 'database') + (', at *' + pin.lstrip('*') if pin else ''))
-        else:
-            out.r(g(c, 'volume') + ' ' + g(c, 'reporter') + (' at ' + pin if pin else ' ' + g(c, 'first_page')))
+        out.i(short)
+        db = _database_of(c)
+        if db:                                   # Green, 2013 WL 5811261, at *7
+            out.r(', ' + db + (_star_pin(pin) if pin else ''))
+        elif g(c, 'volume') or g(c, 'reporter'):  # Carmel, 548 F.3d at 573
+            out.r(', ' + ' '.join(x for x in (g(c, 'volume'), g(c, 'reporter')) if x) +
+                  (' at ' + pin if pin else (' ' + g(c, 'first_page') if g(c, 'first_page') else '')))
+        elif g(c, 'docket'):                     # Albrecht, No. 01-CV-0039, slip op. at 3
+            out.r(', ' + g(c, 'docket') + (', slip op. at ' + pin if pin else ''))
+        elif pin:
+            out.r(', at ' + pin)
         return out
+    if t == 'regulation' and g(c, 'fed_reg') and not g(c, 'section'):
+        # a rule cited to the Federal Register: 85 Fed. Reg. at 15,640 (Indigo R14.4)
+        m = re.fullmatch(r'(.*?)\s+(\S+)', g(c, 'fed_reg'))
+        if m and pin:
+            return out.r(m.group(1) + ' at ' + pin)
+        return out.r(g(c, 'fed_reg'))
     if t in ('statute', 'regulation'):
         if t == 'statute' and not g(c, 'section'):
             return bluebook(c, typeface, pin, in_text)
@@ -1102,7 +1161,7 @@ def bluebook_id(c, pin='', cap=True):
         return out.r(' § ' + sec + pin)
     if re.match(r'[§¶]|art\.|amend\.|cl\.|cmt\.', pin) or (t in ('constitution',) and pin):
         return out.r(' ' + pin)
-    if t == 'case' and g(c, 'database'):
+    if t == 'case' and _database_of(c) and re.fullmatch(r'\*?\d+(?:[-–]\*?\d+)?', pin):
         return out.r(' at *' + pin.lstrip('*'))
     if t == 'record':
         return out.r(' at ' + pin)
@@ -1189,13 +1248,15 @@ def apa_reference(c, year_suffix=''):
         pages = '–'.join(x for x in (g(c, 'first_page'), g(c, 'last_page')) if x)
         if pages:
             out.r(', ' + pages)
+        elif g(c, 'article_number'):
+            out.r(', Article ' + g(c, 'article_number'))
         out.r('.')
     elif t == 'book':
         if ps or eds:
             _book_parens(c, out)
             _end(out)
         if g(c, 'publisher'):
-            out.r(' ' + g(c, 'publisher') + '.')
+            out.r(' ' + _close(g(c, 'publisher')))
     elif t == 'chapter':
         _end(out)
         out.r(' In ')
@@ -1213,29 +1274,30 @@ def apa_reference(c, year_suffix=''):
             out.r(' (' + ', '.join(bits) + ')')
         out.r('.')
         if g(c, 'publisher'):
-            out.r(' ' + g(c, 'publisher') + '.')
+            out.r(' ' + _close(g(c, 'publisher')))
     elif t == 'news':
-        _end(out); out.r(' ')
-        out.i(g(c, 'publication'))
-        if g(c, 'volume'):
-            out.r(', ').i(g(c, 'volume'))
-            if g(c, 'issue'):
-                out.r('(' + g(c, 'issue') + ')')
-            if g(c, 'page'):
-                out.r(', ' + g(c, 'page'))
-        out.r('.')
+        _end(out)
+        if g(c, 'publication'):
+            out.r(' ').i(g(c, 'publication'))
+            if g(c, 'volume'):
+                out.r(', ').i(g(c, 'volume'))
+                if g(c, 'issue'):
+                    out.r('(' + g(c, 'issue') + ')')
+                if g(c, 'page'):
+                    out.r(', ' + g(c, 'page'))
+            out.r('.')
     elif t == 'webpage':
         _end(out)
         site = g(c, 'site')
         if site and not (len(ps) == 1 and ps[0].get('literal', '').strip() == site):
-            out.r(' ' + site + '.')
+            out.r(' ' + _close(site))
     elif t == 'report':
         if g(c, 'number'):
             out.r(' (' + g(c, 'number') + ')')
         _end(out)
         pub = g(c, 'publisher')
         if pub and not (len(ps) == 1 and ps[0].get('literal', '').strip() == pub):
-            out.r(' ' + pub + '.')
+            out.r(' ' + _close(pub))
     link = _doi_or_url(c)
     if link:
         out.r(' ' + link)
@@ -1394,7 +1456,9 @@ def ch_italic(runs):
 
 
 def _quoted(out, runs, punct=''):
-    """“Title,” with the comma or period inside the quotation marks (not after ? or !)."""
+    """“Title,” with the comma or period inside the quotation marks (not after ? or !). Quotation marks inside
+    the title become single ones: “‘They Had Access’: Why …” (CMOS 6.11)."""
+    runs = Runs((t.replace('“', '‘').replace('”', '’'), f) for t, f in runs)
     out.r('“').extend_runs(runs)
     if punct and not runs.plain().rstrip().endswith(('?', '!')):
         out.r(punct)
@@ -1489,9 +1553,11 @@ def chicago_note(c, pin=''):
         if pin:
             out.r(': ' + pin)
     elif t == 'news':
-        _quoted(out, title, ',').r(' ').i(g(c, 'publication'))
+        _quoted(out, title, ',')
+        if g(c, 'publication'):
+            out.r(' ').i(g(c, 'publication'))
         if g(c, 'date'):
-            out.r(', ' + ch_date(g(c, 'date')))
+            out.r((', ' if g(c, 'publication') else ' ') + ch_date(g(c, 'date')))
     elif t == 'webpage':
         _quoted(out, title, ',')
         if g(c, 'site'):
@@ -1515,10 +1581,15 @@ def _short_title(c):
     runs = ch_title(c)
     text = runs.plain()
     main = re.split(r'[:?!]\s', text, 1)[0].strip()
+    main = re.split(r'\s+[(\[—]', main, 1)[0]                # not into a parenthetical: Behavioral Immune System (and …
+    main = re.sub(r'^[“"‘]+|[”"’]+$', '', main).strip()      # a title that opens with a quotation
     main = re.sub(r'^(The|A|An)\s+', '', main)
     words = main.split()
     if len(words) > 4:
-        main = ' '.join(words[:4])
+        words = words[:4]
+        while len(words) > 1 and re.sub(r'\W', '', words[-1]).lower() in SMALL:    # never end on "and", "of", "but"
+            words.pop()
+        main = ' '.join(words).rstrip(',;')
     # keep the italics of the original words where they survive
     out, pos = Runs(), text.find(main)
     if pos < 0:
@@ -1584,7 +1655,7 @@ def _bib_body(c, out, year_first=False, title_done=False):
         facts = [pub] + ([] if year_first else [date_full if t == 'report' else year])
         facts = [x for x in facts if x]
         if facts:
-            out.r(' ' + ', '.join(facts) + '.')
+            out.r(' ' + _close(', '.join(facts)))
     elif t == 'chapter':
         (out if title_done else _quoted(out, title, '.')).r(' In ')
         out.extend_runs(ch_italic(ch_title(c, 'book_title')))
@@ -1600,7 +1671,7 @@ def _bib_body(c, out, year_first=False, title_done=False):
             out.r(' ' + e[0].upper() + e[1:])
         facts = [x for x in [g(c, 'publisher')] + ([] if year_first else [year]) if x]
         if facts:
-            out.r(' ' + ', '.join(facts) + '.')
+            out.r(' ' + _close(', '.join(facts)))
     elif t == 'journal':
         (out if title_done else _quoted(out, title, '.')).r(' ').i(g(c, 'journal'))
         if g(c, 'volume'):
@@ -1613,15 +1684,20 @@ def _bib_body(c, out, year_first=False, title_done=False):
                 out.r(' (' + MONTHS[d[1] - 1] + ')')
         elif g(c, 'date'):
             out.r(' (' + date_full + ')')
-        pages = '–'.join(x for x in (g(c, 'first_page'), g(c, 'last_page')) if x)
+        pages = '–'.join(x for x in (g(c, 'first_page'), g(c, 'last_page')) if x) or g(c, 'article_number')
         if pages:
             out.r(': ' + pages)
         out.r('.')
     elif t == 'news':
-        (out if title_done else _quoted(out, title, '.')).r(' ').i(g(c, 'publication'))
-        if g(c, 'date'):
-            out.r(', ' + date_full)
-        out.r('.')
+        if not title_done:
+            _quoted(out, title, '.')
+        if g(c, 'publication'):
+            out.r(' ').i(g(c, 'publication'))
+            if g(c, 'date'):
+                out.r(', ' + date_full)
+            out.r('.')
+        elif g(c, 'date'):
+            out.r(' ' + _close(date_full))
     elif t == 'webpage':
         if not title_done:
             _quoted(out, title, '.')
@@ -1629,7 +1705,7 @@ def _bib_body(c, out, year_first=False, title_done=False):
             out.r(' ' + g(c, 'site'))
             if parse_date(g(c, 'date')):
                 out.r(', ' + date_full)
-            out.r('.')
+            _end(out)
         elif parse_date(g(c, 'date')):
             out.r(' ' + date_full + '.')
         if not parse_date(g(c, 'date')) and g(c, 'last_visited'):
@@ -1665,7 +1741,7 @@ def chicago_ad_reference(c, year_suffix=''):
     out = Runs()
     who, _ = ch_who(c, note=False)
     if who:
-        out.r(who); _end(out); out.r(' ' + year + '. ')
+        out.r(who); _end(out); out.r(' ' + _close(year) + ' ')
         return _bib_body(c, out, year_first=True)
     # no author: the title leads, then the year
     title = ch_title(c)

@@ -1425,6 +1425,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         d.mkdir(parents=True, exist_ok=True)
         name = "snapshot %s.pdf" % datetime.date.today().isoformat()
         target = store.attachment_path(tag, name)
+        if target.with_name(target.name + ".annotations.json").exists():
+            # today's snapshot already has highlights: put the new one beside it, so they stay where they were made
+            stem = target.stem
+            target = target.with_name(store.unique(stem, lambda s: target.with_name(s + ".pdf").exists()) + ".pdf")
         tool = pdf_tools().get("rwpdf")
         if tool:
             p = subprocess.run([tool, "snapshot", url, str(target)], capture_output=True, text=True, timeout=90)

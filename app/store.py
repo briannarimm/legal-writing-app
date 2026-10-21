@@ -19,6 +19,7 @@ import datetime
 import json
 import os
 import re
+import threading
 import time
 from pathlib import Path
 
@@ -73,7 +74,8 @@ def mtime_of(path):
 
 def write_atomic(path, text):
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
+    # a temporary file of its own for each writer: two saves of one file at once must not trip over each other
+    tmp = path.with_name(".%s.%d-%d.tmp" % (path.name, os.getpid(), threading.get_ident()))
     tmp.write_text(text, encoding="utf-8")
     os.replace(tmp, path)
 
@@ -82,7 +84,12 @@ def trash(path, folder):
     """Move a file or folder into <folder>/_trash/ with a timestamp, never delete it."""
     t = folder / "_trash"
     t.mkdir(parents=True, exist_ok=True)
-    os.rename(path, t / (time.strftime("%Y%m%d-%H%M%S-") + path.name))
+    dest = t / (time.strftime("%Y%m%d-%H%M%S-") + path.name)
+    n = 2
+    while dest.exists():                 # the same name thrown away twice in a second: keep both
+        dest = t / (time.strftime("%Y%m%d-%H%M%S-") + "%d-%s" % (n, path.name))
+        n += 1
+    os.rename(path, dest)
 
 
 def unique(base, exists):
@@ -558,6 +565,12 @@ def write_citation(tag, data, mtime=None, force=False, create=False):
     if ctype == "other" and not fields.get("text") and data.get("cite"):      # the old shape {type, cite, short}
         fields = clean_fields("other", {"text": data.get("cite"), "short": data.get("short", ""), "url": data.get("url", "")})
     old = read_citation(p) if p.exists() else {}
+    # Fields this type has no box for (written by another tool, or kept from the source's earlier type) aren't in
+    # the form, so they never come back with a save: keep them as they were instead of dropping them.
+    spec = {f["key"] for f in citeformat.TYPES[ctype]["fields"]}
+    for k, v in (old.get("fields") or {}).items():
+        if k not in spec and k not in fields and not k.startswith("_override"):
+            fields[k] = v
     c = {"type": ctype, "fields": fields}
     full = citeformat.to_md(citeformat.bluebook(c, "practitioner"))
     # projects: kept as they are unless the request sets them ("projects" = the full list chosen by hand)
@@ -1025,6 +1038,7 @@ def citation_uses(tag=None):
 # changes, an approval no longer counts (a citation sent back stays sent back, marked as edited since).
 
 VERIFY_STATUSES = ("approved", "failed")
+VERIFY_LOCK = threading.Lock()           # results are read, changed and written back: one request at a time
 
 
 def verification_path(pid):
@@ -1148,27 +1162,29 @@ def set_verification(pid, key, status, reason="", sig="", tag="", doc=""):
         raise StoreError("unknown result")
     if not isinstance(key, str) or not key or len(key) > 300:
         raise StoreError("invalid key")
-    d = _read_verification(pid)
-    if status:
-        d["results"][key] = {"status": status, "reason": (reason or "").strip()[:4000], "at": now(), "sig": sig or "",
-                             "tag": tag or "", "doc": doc or ""}
-    else:
-        d["results"].pop(key, None)
-    p = verification_path(pid)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    write_atomic(p, json.dumps(d, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
-    return d["results"].get(key)
+    with VERIFY_LOCK:
+        d = _read_verification(pid)
+        if status:
+            d["results"][key] = {"status": status, "reason": (reason or "").strip()[:4000], "at": now(), "sig": sig or "",
+                                 "tag": tag or "", "doc": doc or ""}
+        else:
+            d["results"].pop(key, None)
+        p = verification_path(pid)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        write_atomic(p, json.dumps(d, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
+        return d["results"].get(key)
 
 
 def reset_verification(pid, slug=None):
     """Start over: forget every result (or one document's)."""
-    d = _read_verification(pid)
-    d["results"] = {k: v for k, v in d["results"].items() if slug and not k.startswith(slug + ":")}
-    p = verification_path(pid)
-    if p.exists() or d["results"]:
-        p.parent.mkdir(parents=True, exist_ok=True)
-        write_atomic(p, json.dumps(d, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
-    return {"ok": True}
+    with VERIFY_LOCK:
+        d = _read_verification(pid)
+        d["results"] = {k: v for k, v in d["results"].items() if slug and not k.startswith(slug + ":")}
+        p = verification_path(pid)
+        if p.exists() or d["results"]:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            write_atomic(p, json.dumps(d, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
+        return {"ok": True}
 
 
 def _edit_citation_projects(p, change):

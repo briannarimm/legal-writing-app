@@ -77,6 +77,18 @@ check('author-date in-text', plain(cf.chicago_ad_intext(LIB['walker'], '45')), '
 check('author-date narrative', plain(cf.chicago_ad_intext(LIB['walker'], '45', narrative=True)), 'Walker (2017, 45)')
 check('author-date: three or more authors', plain(cf.chicago_ad_intext(LIB['many'])), '(One et al. 2020)')
 check('author-date, no author: title and n.d.', plain(cf.chicago_ad_reference(LIB['page'])), '“Why Sleep Matters.” n.d. Sleep Foundation.')
+# 1.3.1: titles that quote, short titles that would end mid-phrase, entries with no date or no publication
+statz = {'type': 'journal', 'fields': {'authors': [P('Michele', 'Statz')], 'journal': 'Georgetown Journal on Poverty Law & Policy',
+         'title': '“They Had Access, but They Didn’t Get Justice”: Why Access to Justice Initiatives Fail', 'volume': '28', 'date': '2021'}}
+check('a quotation inside a quoted title takes single quotes', plain(cf.chicago_note(statz)), 'Michele Statz, “‘They Had Access, but They Didn’t Get Justice’: Why')
+check('short title stops before "but"', plain(cf.chicago_short(statz, '5')), 'Statz, “They Had Access,” 5')
+check('short title stops before a parenthetical', plain(cf.chicago_short({'type': 'journal', 'fields': {'authors': [P('Mark', 'Schaller')],
+      'title': 'The Behavioral Immune System (and Why It Matters)', 'journal': 'X', 'date': '2011'}})), 'Schaller, “Behavioral Immune System”')
+undated = {'type': 'webpage', 'fields': {'authors': [{'literal': 'Public Health Law Center'}], 'title': 'R.J. Reynolds v. FDA', 'site': 'PHLC'}}
+check('author-date: n.d. takes no second period', plain(cf.chicago_ad_reference(undated)), 'Public Health Law Center. n.d. “R.J. Reynolds v. FDA.” PHLC.')
+nopub = {'type': 'news', 'fields': {'authors': [P('Jane', 'Doe')], 'title': 'A Story', 'date': '2026-07-10'}}
+check('news without a publication: no stray comma', plain(cf.chicago_note(nopub)), 'Jane Doe, “A Story,” July 10, 2026')
+check('news without a publication, bibliography', plain(cf.chicago_bib(nopub)), 'Doe, Jane. “A Story.” July 10, 2026.')
 check('gaps: book without a publisher', ', '.join(cf.chicago_gaps(LIB['nopub'])), 'publisher')
 check('gaps: complete journal has none', ', '.join(cf.chicago_gaps(LIB['ray'])) or 'none', 'none')
 check('gaps: other type has no Chicago form', ', '.join(cf.chicago_gaps({'type': 'other', 'fields': {'text': 'X'}})), 'Chicago form')
