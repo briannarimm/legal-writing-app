@@ -4,8 +4,21 @@ This folder contains the ready-to-use ReWord program for Mac.
 
 | File | Description |
 |---|---|
-| `ReWord-1.2.0-mac-arm64.zip` | The program. Download this file. |
-| `ReWord-1.2.0-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
+| `ReWord-1.2.1-mac-arm64.zip` | The program. Download this file. |
+| `ReWord-1.2.1-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
+
+## What's new in 1.2.1
+
+- **Cited in.** Each source's page in Citations lists every document and research note that cites it,
+  with the section, the footnote number and the words around it. Click one to go straight there.
+  The source list shows how often each source is cited, and **Not cited yet** finds the unused ones.
+- **Find and Replace** (⌘F, ⇧⌘H) in documents, footnotes and notes; ⌘Z undoes a replacement.
+- **A live word count** in the inspector, with footnotes counted separately and the template's limit.
+- **Cite… and Footnote work in Markdown mode** too.
+- **Save tells the truth about GitHub**: it shows when it couldn't sync, brings in changes made on your
+  other computers right away, and asks about files changed in both places.
+- **Fixes:** right-click Highlight in the PDF reader, ⌃⌘S no longer also saves, narrative citations in
+  research notes, notes export in their project's citation style, and more.
 
 ## What's new in 1.2
 
@@ -75,7 +88,7 @@ You do not need other software. ReWord contains its own copies of Python, Pandoc
 
 ## Install
 
-1. Click `ReWord-1.2.0-mac-arm64.zip` in the file list above.
+1. Click `ReWord-1.2.1-mac-arm64.zip` in the file list above.
 2. Click **View raw** or the **Download raw file** button (the arrow icon, top right of the
    file view). The download starts. The file is about 90 MB.
 3. Open your Downloads folder. Double-click the zip file. A folder named `ReWord` appears.
@@ -101,10 +114,10 @@ You do this one time only.
 Open Terminal, go to the folder that contains the zip file, and run:
 
 ```bash
-shasum -a 256 -c ReWord-1.2.0-mac-arm64.zip.sha256
+shasum -a 256 -c ReWord-1.2.1-mac-arm64.zip.sha256
 ```
 
-The result must be `ReWord-1.2.0-mac-arm64.zip: OK`. If the result is different, delete the file
+The result must be `ReWord-1.2.1-mac-arm64.zip: OK`. If the result is different, delete the file
 and download it again.
 
 ## Your data

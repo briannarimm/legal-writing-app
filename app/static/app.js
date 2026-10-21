@@ -95,7 +95,8 @@
     });
   });
   document.addEventListener('keydown', e => {
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') { e.preventDefault(); window.App.saveAll(); }
+    // ⌘S only: ⌃⌘S (new section) and ⌥⌘S (sidebar) are other shortcuts (shortcuts.js)
+    if ((e.metaKey || e.ctrlKey) && !(e.metaKey && e.ctrlKey) && !e.altKey && e.code === 'KeyS') { e.preventDefault(); window.App.saveAll(); }
   });
   $('#btn-save').onclick = () => window.App.saveAll();
 

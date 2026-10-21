@@ -806,6 +806,214 @@ def cited_tags(md):
     return set(CITED_RE.findall(md or ""))
 
 
+# ------------------------------------------------------------------ where a source is cited ("Cited in")
+
+SPAN_END_RE = re.compile(r'\]\{\.(cite|auth)\b((?:\s+[a-z]+="(?:\\.|[^"\\])*")*)\s*\}')
+SPAN_ATTR_RE = re.compile(r'([a-z]+)="((?:\\.|[^"\\])*)"')
+FN_DEF_RE = re.compile(r"^\[\^([^\]\s]+)\]:")
+FN_MORE_RE = re.compile(r"^( {4}|\t)\S")
+FN_REF_RE = re.compile(r"\[\^([^\]\s]+)\]")
+
+
+def _escaped(s, i):
+    n, j = 0, i - 1
+    while j >= 0 and s[j] == "\\":
+        n, j = n + 1, j - 1
+    return n % 2 == 1
+
+
+def _md_regions(md):
+    """The file split the way the editor reads it (md.js parse): footnote definitions [(start, end, label)] and
+    everything else (label None), in file order."""
+    lines = md.split("\n")
+    offs, pos = [], 0
+    for ln in lines:
+        offs.append(pos)
+        pos += len(ln) + 1
+    regions, body_from, i = [], 0, 0
+    while i < len(lines):
+        m = FN_DEF_RE.match(lines[i])
+        if not m:
+            i += 1
+            continue
+        j = i + 1
+        while j < len(lines):
+            if FN_MORE_RE.match(lines[j]):
+                j += 1
+                continue
+            if not lines[j].strip():
+                k = j
+                while k < len(lines) and not lines[k].strip():
+                    k += 1
+                if k < len(lines) and FN_MORE_RE.match(lines[k]):
+                    j = k
+                    continue
+            break
+        if offs[i] > body_from:
+            regions.append((body_from, offs[i], None))
+        end = offs[j] if j < len(lines) else len(md)
+        regions.append((offs[i], end, m.group(1)))
+        body_from, i = end, j
+    if body_from < len(md):
+        regions.append((body_from, len(md), None))
+    return regions
+
+
+def _ref_order(md):
+    """Footnote labels in the order the text refers to them (md.js countRefs): numbering across sections."""
+    out = []
+    for ln in md.split("\n"):
+        if FN_DEF_RE.match(ln) or FN_MORE_RE.match(ln) or ln.startswith(("    ", "\t")):
+            continue
+        for lab in FN_REF_RE.findall(ln):
+            if lab not in out:
+                out.append(lab)
+    return out
+
+
+def _cite_spans(md):
+    """Every [text]{.cite …} / [text]{.auth tag=…} in a file: (start, end, kind, attrs, inner)."""
+    out = []
+    for m in SPAN_END_RE.finditer(md):
+        depth, i = 0, m.start()
+        while i >= 0:
+            if md[i] in "[]" and not _escaped(md, i):
+                depth += 1 if md[i] == "]" else -1
+                if depth == 0:
+                    break
+            i -= 1
+        if i < 0:
+            continue
+        attrs = {k: re.sub(r"\\(.)", r"\1", v) for k, v in SPAN_ATTR_RE.findall(m.group(2))}
+        if attrs.get("tag"):
+            out.append((i, m.end(), m.group(1), attrs, md[i + 1:m.start()]))
+    return out
+
+
+def md_plain(md):
+    """Inline Markdown as plain words, for a short quotation around a citation."""
+    s = FN_REF_RE.sub("", md or "")
+    for _ in range(3):                                       # spans can nest: [*Name*, [Harv.]{.smallcaps}]{.cite}
+        s = re.sub(r"\[([^\[\]]*)\]\{[^}]*\}", r"\1", s)
+    s = re.sub(r"\[([^\[\]]*)\]\([^)]*\)", r"\1", s)
+    s = re.sub(r"\\(.)", r"\1", s)
+    s = re.sub(r"(?<!\w)[*_]+|[*_]+(?!\w)|`", "", s)
+    s = re.sub(r"^\s*(#{1,6}|>|[-+*]|\d+[.)])\s+", "", s, flags=re.M)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _context(md, region, start, end):
+    """A few words before and after a citation, inside its paragraph (or its footnote)."""
+    lo, hi = region[0], region[1]
+    if region[2] is None:
+        a = md.rfind("\n\n", lo, start)
+        b = md.find("\n\n", end, hi)
+        lo, hi = (a + 2 if a >= 0 else lo), (b if b >= 0 else hi)
+    else:
+        lo = lo + len(FN_DEF_RE.match(md[lo:hi]).group(0))
+    before, after = md_plain(md[lo:start]), md_plain(md[end:hi])
+    if len(before) > 110:
+        before = "…" + before[-110:].split(" ", 1)[-1]
+    if len(after) > 90:
+        after = after[:90].rsplit(" ", 1)[0] + "…"
+    return before, after
+
+
+def _uses_in(md, tag, refs_before=0, render=None):
+    """The places one file cites `tag`. k = which match this is inside its body or footnote, the way the editor
+    finds the chip again; start/end = where it is in the file, for the Markdown editor. render(attrs, in_note)
+    gives the citation as the editor's chip shows it now: (text, html)."""
+    regions, order = _md_regions(md), _ref_order(md)
+    seen, out = {}, []
+    for start, end, kind, attrs, inner in _cite_spans(md):
+        if attrs["tag"] != tag:
+            continue
+        reg = next((r for r in regions if r[0] <= start < r[1]), (0, len(md), None))
+        label = reg[2]
+        k = seen.get(label, 0)
+        seen[label] = k + 1
+        before, after = _context(md, reg, start, end)
+        text, html = render(attrs, bool(label)) if render and kind == "cite" else (md_plain(inner), "")
+        u = {"where": "footnote" if label else "text", "k": k, "start": start, "end": end, "kind": kind,
+             "text": text, "html": html, "before": before, "after": after}
+        if label:
+            u["label"] = label
+            u["number"] = refs_before + order.index(label) + 1 if label in order else None
+        out.append(u)
+    return out
+
+
+def _section_title(md, name):
+    m = re.search(r"^#\s+(.*?)\s*(?:\{[^}]*\})?\s*$", md, re.M)
+    t = md_plain(m.group(1)) if m else ""
+    return t or re.sub(r"^\d+-|\.md$", "", name).replace("-", " ")
+
+
+def citation_uses(tag=None):
+    """Where library sources are cited: live citations ({.cite tag=…}) and table-of-authorities marks
+    ({.auth tag=…}) in every document's sections and in research notes, in reading order.
+    With a tag: {documents: [{slug, title, …, uses: [{section, where, number, before, text, after, …}]}], notes: […], total}.
+    Without: {counts: {tag: number of places}}."""
+    if tag is None:
+        counts = {}
+        texts = []
+        for info in documents():
+            texts += [f.read_text(encoding="utf-8") for f in section_paths(info["slug"])]
+        if notes_dir().exists():
+            texts += [parse_front(p.read_text(encoding="utf-8"))[1] for p in notes_dir().glob("*.md") if SLUG_RE.match(p.stem)]
+        for md in texts:
+            for _, _, _, attrs, _ in _cite_spans(md):
+                counts[attrs["tag"]] = counts.get(attrs["tag"], 0) + 1
+        return {"counts": counts}
+    import cites
+    p = cite_path(tag)                                       # validates the tag
+    c = read_citation(p) if p.exists() else None
+    entry = {"type": c["type"], "fields": c["fields"], "tag": tag} if c else None
+
+    def renderer(style, typeface):
+        def render(attrs, in_note):
+            runs = cites.chip_text(entry, attrs, typeface, style, in_note or typeface != "lawreview")
+            return md_plain(citeformat.to_md(runs)), citeformat.to_html(runs)
+        return render
+    tmpls = {t["id"]: t for t in templates()}
+    docs, total = [], 0
+    for info in sorted(documents(), key=lambda d: -d["updated"]):
+        t = tmpls.get(info.get("template", ""), {})
+        meta = {}
+        mp = doc_path(info["slug"]) / META
+        m = re.search(r'(?m)^citation-style:\s*"?([\w-]+)', mp.read_text(encoding="utf-8")) if mp.exists() else None
+        if m:
+            meta["citation-style"] = {"t": "MetaString", "c": m.group(1)}
+        render = renderer(*cites.style_of(t, meta))
+        uses, refs = [], 0
+        for f in section_paths(info["slug"]):
+            md = f.read_text(encoding="utf-8")
+            for u in _uses_in(md, tag, refs, render):
+                u.update({"file": f.name, "section": _section_title(md, f.name)})
+                uses.append(u)
+            refs += len(_ref_order(md))
+        if uses:
+            total += len(uses)
+            docs.append({"slug": info["slug"], "title": info.get("title", info["slug"]), "template": info.get("template", ""),
+                         "template_name": t.get("name", ""), "project": info.get("project", ""), "uses": uses})
+    note_styles = {"apa": ("apa", "practitioner"), "bluebook-lawreview": ("bluebook", "lawreview"), "chicago": ("chicago", "practitioner"),
+                   "chicago-author-date": ("chicago-ad", "practitioner")}       # a note takes its project's style (research.js)
+    proj_style = {x["id"]: x.get("citation_style", "") for x in projects_list()}
+    found = []
+    if notes_dir().exists():
+        for q in notes_dir().glob("*.md"):
+            if not SLUG_RE.match(q.stem):
+                continue
+            n = read_note(q)
+            style = note_styles.get(proj_style.get(n["project"], ""), ("bluebook", "practitioner"))
+            uses = _uses_in(n["body"], tag, 0, renderer(*style))
+            if uses:
+                total += len(uses)
+                found.append({"id": n["id"], "title": n["title"], "project": n["project"], "updated": n["updated"], "uses": uses})
+    found.sort(key=lambda n: n["updated"] or "", reverse=True)
+    return {"tag": tag, "documents": docs, "notes": found, "total": total}
+
+
 def _edit_citation_projects(p, change):
     """Rewrite a citation's project lists without changing its timestamp, so a copy open in the editor
     doesn't think the file was edited underneath it (its next save keeps these lists)."""

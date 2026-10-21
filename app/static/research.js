@@ -265,16 +265,17 @@
     if (!cur) { toast('Open a note first.', true); return; }
     if (App.editMode === 'md') {
       const at = [mdEd.selectionStart, mdEd.selectionEnd];
-      App.pickCitation({ title: 'Insert a citation', format: noteFormat(), live: true, project: cur && cur.project, onPick: c => {
-        const md = '[' + App.citeText(c) + ']{.cite tag="' + c.tag + '"}';
+      App.pickCitation({ title: 'Insert a citation', format: noteFormat(), live: true, project: cur && cur.project, onPick: (c, which) => {
+        const f = noteFormat(), narrative = which === 'narrative';
+        const md = '[' + App.citeMarkdown(c, App.isParenFormat(f) ? (narrative ? 'narrative' : 'intext') : 'full', f) + ']{.cite tag="' + c.tag + '"' + (narrative ? ' narrative="1"' : '') + '}';
         mdEd.setRangeText(md, at[0], at[1], 'end'); mdEd.focus();
         mdEd.dispatchEvent(new Event('input'));
       } });
       return;
     }
     const saved = Rich.saveSelection();
-    App.pickCitation({ title: 'Insert a citation', format: noteFormat(), live: true, project: cur && cur.project, onPick: c => {
-      const html = App.chips.html(c, {}, noteFormat());
+    App.pickCitation({ title: 'Insert a citation', format: noteFormat(), live: true, project: cur && cur.project, onPick: (c, which) => {
+      const html = App.chips.html(c, which === 'narrative' ? { narrative: '1' } : {}, noteFormat());
       if (!Rich.insertHtml(saved, html)) { body.focus(); Rich.insertHtmlKeepingSpans(html); }
       App.chips.refresh([body], noteFormat());
       changed();
@@ -354,7 +355,7 @@
     await saver.flush(false);
     toast(format === 'pdf' ? 'Making the PDF…' : 'Making the Word file…');
     try {
-      const r = await post('/api/note/export', { id: cur.id, format });
+      const r = await post('/api/note/export', { id: cur.id, format, style: noteFormat() });
       const a = document.createElement('a');
       a.href = '/build/' + r.path.split('/').map(encodeURIComponent).join('/') + '?download=1';
       document.body.appendChild(a); a.click(); a.remove();
@@ -381,6 +382,19 @@
       if (cur) renderSource();
     },
     async open(id) { await App.showView('research'); await loadList(); await select(id); },
+    // "Cited in" (citations.js): open the note and show the citation. The rich note editor shows footnote marks
+    // but not their text, so a citation inside a footnote is shown in the Markdown editor.
+    async reveal(id, u) {
+      await this.open(id);
+      if (!cur || cur.id !== id) return;
+      if ($('#note-split').classList.contains('layout-preview')) { const b = $('[data-layout="split"]'); if (b) b.click(); }
+      if (u.where === 'footnote' && App.editMode !== 'md') {
+        App.setEditMode('md');
+        toast('This citation is in a footnote, so it’s shown in Markdown. ⌃⌘M goes back to rich text.');
+      }
+      const ok = App.editMode === 'md' ? App.chips.revealText(mdEd, u) : App.chips.reveal(body, u);
+      if (!ok) toast('That citation isn’t there any more (it may have been edited since).', true);
+    },
     // for the right-click menu (contextmenu.js)
     current: () => (cur ? cur.id : null),
     note: id => notes.find(x => x.id === id) || null,

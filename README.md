@@ -228,6 +228,14 @@ An annotated bibliography can't switch templates.
 | Citation | ⌃⌘C |
 | Edit the Markdown text | View → Markdown (⌃⌘M) |
 | Editor and preview side by side | View → Editor and Preview (⌃⌘2) |
+| Find, find and replace | ⌘F, ⇧⌘H (⌘G and ⇧⌘G go to the next and previous match) |
+
+The inspector (⌥⌘I) counts the words as you type: the text, and the footnotes separately. **Save** gives
+the exact count from the finished document.
+
+Find and Replace searches the section that is open, with its footnotes, or the Markdown when you edit
+as Markdown. It skips live citations, because their text comes from the library. ⌘Z undoes a
+replacement.
 
 ### 7.3 Make the finished files
 
@@ -283,6 +291,20 @@ If you change a source in the library, all chips for that source change.
 - In a law review article, a citation in the main text goes into a new footnote.
 - In a brief, ReWord adds each authority to the table of authorities.
 - In an APA document, ReWord adds each source to the References page.
+
+Cite… (⌃⌘C) and Footnote (⌥⌘F) also work when you edit as Markdown: ReWord types the citation or the
+footnote into the Markdown for you.
+
+### 8.2.1 See where a source is cited
+
+Each source's page in the Citations tab starts with **Cited in**: every document and research note that
+cites the source, grouped by document. Each place shows its section, its footnote number (if it is in a
+footnote) and the words around the citation. Click a place to go there: ReWord opens the document at
+that section and highlights the citation.
+
+- The list of sources shows how many times each one is cited. Choose **Not cited yet** in the type menu
+  to see the sources that nothing cites.
+- Right-click a citation in your text and choose **Everywhere It's Cited…** to see the source's list.
 
 ### 8.3 Attach and annotate a PDF
 
@@ -386,7 +408,7 @@ stays in the GitHub history.
 - Push ⌘K to search all commands, documents, notes and sources.
 - Right-click anything for the commands that fit it. In your text: spelling suggestions, Cut, Copy,
   Paste, italic, bold, small caps, paragraph styles, and Insert citation or footnote. On a live
-  citation: edit, open, copy or remove it. On a document, section, note or source in a side bar: open,
+  citation: edit, open, copy or remove it, or see everywhere it's cited. On a document, section, note or source in a side bar: open,
   rename, move to a project, move up or down, copy a citation in any style, or delete. In the PDF
   reader: highlight the selected text in a color, comment, or copy it as a quote. Hold ⌥ Option while
   you right-click to get the standard Mac menu instead.
@@ -455,9 +477,7 @@ are available. Use `--root DIR` to use a copy of the data.
 ### 14.3 Tests
 
 ```bash
-python3 tests/test_citeformat.py
-python3 tests/test_cites.py
-python3 tests/test_projects.py
+for t in tests/test_*.py; do python3 "$t"; done
 ```
 
 `tests/test_cites.py` needs Pandoc. It uses the Pandoc in the application build cache if it is present.

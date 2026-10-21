@@ -14,7 +14,7 @@
   function statusHtml(st, kind) {
     if (!st) return '…';
     if (st.gitAvailable === false) return 'GitHub needs git, which isn\u2019t installed on this computer';
-    if (!st.isRepo) return kind === 'outputs' ? 'Set up on your first Run' : 'Not a git repository';
+    if (!st.isRepo) return kind === 'outputs' ? 'Set up on your first Save' : 'Not a git repository';
     if (!st.remote) return '<span class="warn">Not connected to GitHub</span>';
     const bits = [];
     if (st.ahead === undefined) bits.push('not pushed yet');
@@ -177,7 +177,7 @@
   $('#gh-connect').onclick = async () => {
     try {
       await post('/api/git/connect', { repo: which, url: $('#gh-url').value });
-      dlg.close(); toast('Connected. Use ' + (which === 'outputs' ? 'Publish' : 'Sync') + ' to upload.');
+      dlg.close(); toast('Connected. Press Save (⌘S) to upload your work.');
       refresh();
     } catch (e) { fail(e.message); }
   };
@@ -189,7 +189,7 @@
     try {
       const st = await post('/api/git/create', { repo: which, name, private: priv });
       dlg.close();
-      toast('Created ' + shortName(st.web) + '. Use ' + (which === 'outputs' ? 'Publish' : 'Sync') + ' to upload.');
+      toast('Created ' + shortName(st.web) + '. Press Save (⌘S) to upload your work.');
       refresh();
     } catch (e) { fail(e.message); $('#gh-create').disabled = false; }
   };

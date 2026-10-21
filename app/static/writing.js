@@ -251,8 +251,9 @@
     if (W.info && W.info.slug === d.slug) { await saver.flush(false); unregisterFiles(); W.info = null; }
     await post('/api/doc/delete', { slug: d.slug });
     await refreshDocs();
-    if (!W.info) {
-      const next = App.state.documents[0];
+    if (!W.info) {         // open the next one in the list (most recently changed, in the project shown)
+      const docs = App.state.documents.slice().sort((a, b) => b.updated - a.updated);
+      const next = docs.find(x => App.projects.inScope(x.project)) || docs[0];
       if (next) openDoc(next.slug); else showEmpty(true);
     }
   }
@@ -304,6 +305,7 @@
     if (!W.outputs.length) clearPreview();
     $('#wordcount').textContent = '';
     await refreshDocs();
+    if (App.inspector) App.inspector.refresh();          // the window title and the inspector name this document now
   }
 
   function applyTemplate() {
@@ -434,7 +436,7 @@
     const s = new Set();
     W.files.forEach(f => {
       if (f.kind !== 'section') return;
-      (f.file === W.cur ? refLabels() : MD.countRefs(f.md)).forEach(l => s.add(l));
+      (f.file !== W.cur ? MD.countRefs(f.md) : App.editMode === 'md' ? MD.countRefs(docMd.value) : refLabels()).forEach(l => s.add(l));
     });
     if (except) s.delete(except);
     return s;
@@ -453,6 +455,9 @@
       r.setStart(doc, 0); r.setEnd(range.startContainer, range.startOffset);
       text = r.toString();
     } catch (e) { /* ignore */ }
+    return labelFromText(text);
+  }
+  function labelFromText(text) {
     const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 2 &&
       !['the', 'and', 'for', 'that', 'with', 'this', 'from', 'are', 'was', 'were', 'has', 'have'].includes(w));
     const base = words.slice(-3).join('-') || (W.cur.replace(/^\d+-|\.md$/g, '') + '-note');
@@ -470,9 +475,41 @@
     onChange();
   }
 
+  /* Markdown mode: Footnote and Cite… type the Markdown into the text box at the cursor. */
+  function mdInNote() {          // is the cursor inside a footnote's text ([^label]: … and its indented lines)?
+    const v = docMd.value, lines = v.slice(0, docMd.selectionStart).split('\n');
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (/^\[\^[^\]\s]+\]:/.test(lines[i])) return true;
+      if (!(/^( {4}|\t)/.test(lines[i]) || (i < lines.length - 1 && !lines[i].trim()))) return false;
+    }
+    return false;
+  }
+  function mdFootnote(opts) {
+    opts = opts || {};
+    if (mdInNote()) { toast('Footnotes can’t be nested. Put the cursor in the main text.', true); return; }
+    const v = docMd.value, at = docMd.selectionEnd;
+    const label = opts.label ? uniqueLabel(opts.label) : uniqueLabel(labelFromText(v.slice(0, at).replace(/\[[^\]]*\]\{[^}]*\}|\[\^[^\]]*\]/g, ' ')));
+    const def = '[^' + label + ']: ' + (opts.md || '');
+    const head = v.slice(0, at) + '[^' + label + ']' + v.slice(at);
+    docMd.value = head.replace(/\s*$/, '') + '\n\n' + def + '\n';
+    const end = docMd.value.length - 1;
+    docMd.focus(); docMd.setSelectionRange(end, end);
+    App.chips.revealText(docMd, { tag: '', start: end, end });
+    docMd.dispatchEvent(new Event('input'));
+  }
+  function mdCite(c, which, format) {
+    const text = App.citeMarkdown(c, App.isParenFormat(format) ? (which === 'narrative' ? 'narrative' : 'intext') : 'full', format);
+    const span = '[' + text + ']{.cite tag="' + c.tag + '"' + (which === 'narrative' ? ' narrative="1"' : '') + '}';
+    if (W.tmpl.cite_mode === 'footnote' && !mdInNote()) { mdFootnote({ label: c.tag, md: span + '.' }); return; }
+    docMd.focus();
+    docMd.setRangeText(span, docMd.selectionStart, docMd.selectionEnd, 'end');
+    docMd.dispatchEvent(new Event('input'));
+  }
+
   // Insert a footnote mark at the cursor (optionally with starting text) and move into the note.
   function insertFootnote(opts) {
     opts = opts || {};
+    if (App.editMode === 'md') { mdFootnote(opts); return; }
     const sel = getSelection();
     if (!sel.rangeCount || !doc.contains(sel.anchorNode) || sel.anchorNode.parentElement.closest('.raw')) {
       toast('Click in the text where the footnote should go first.', true); return;
@@ -514,13 +551,22 @@
     const on = !W.info.final_draft;
     try { await post('/api/doc/option', { slug: W.info.slug, key: 'final_draft', value: on }); } catch (e) { toast(e.message, true); return; }
     W.info.final_draft = on; showFinal();
-    toast(on ? 'Final draft on: the next Run also builds a copy with short forms, Id. and supra.' : 'Final draft off: Run builds the draft only.');
+    toast(on ? 'Final draft on: the next Save also builds a copy with short forms, Id. and supra.' : 'Final draft off: Save builds the draft only.');
   };
 
   // Cite… inserts a live citation chip (see citechips.js). In footnote templates (the article) a cite
   // typed in the main text goes into a new footnote. Brief templates list every authority in the table of
   // authorities automatically when the document is built.
   function insertCite() {
+    const f = curFile();
+    if (App.editMode === 'md' && f && f.kind === 'section') {
+      const at = [docMd.selectionStart, docMd.selectionEnd];
+      App.pickCitation({ title: 'Insert a citation', format: docFormat(), live: true, project: W.info && W.info.project, onPick: (c, which) => {
+        docMd.setSelectionRange(at[0], at[1]);
+        mdCite(c, which, docFormat());
+      } });
+      return;
+    }
     const saved = Rich.saveSelection();
     const inNote = saved && saved.el.classList && saved.el.classList.contains('note-body');
     if (!saved || (saved.el !== doc && !inNote)) { toast('Click in the text where the citation should go first.', true); return; }
@@ -562,7 +608,7 @@
     f.md = f.md.replace(/\s*$/, '') + '\n\n' + parts.join('\n\n') + '\n';
     renderRich(f); docMd.value = f.md;
     renderMdPane(); renderTree(); saver.touch();
-    toast('Added ' + list.length + ' source' + (list.length === 1 ? '' : 's') + '. They are sorted when you Run.');
+    toast('Added ' + list.length + ' source' + (list.length === 1 ? '' : 's') + '. They are sorted when you Save.');
   }
   App.cmd.writing.bibAdd = () => {
     if (!W.tmpl || !W.tmpl.bibliography) { toast('Sources are added this way in an annotated bibliography. Use Cite… elsewhere.', true); return; }
@@ -581,7 +627,9 @@
 
   Object.assign(App.cmd.writing, {
     footnote() {
-      if (Rich.activeEditable() === doc) insertFootnote();
+      const f = curFile();
+      if (App.editMode === 'md' && f && f.kind === 'section') mdFootnote();
+      else if (Rich.activeEditable() === doc) insertFootnote();
       else toast('Footnotes can’t be nested. Put the cursor in the main text.', true);
     },
     cite: insertCite,
@@ -689,6 +737,33 @@
     mdView.appendChild(frag);
   }
 
+  /* ---------------------------------------------------------- live word count */
+  // Counted the way the build counts (filters/wordcount.lua): every word with a letter or digit in it, body and
+  // footnotes separately, leaving out sections under a {.nocount} heading. Shown in the inspector as you type.
+  function wordStats() {
+    let body = 0, notes = 0;
+    const words = s => (s.replace(/<!--[\s\S]*?-->/g, ' ').replace(/\[\^[^\]\s]+\]/g, ' ').replace(/\]\{[^}]*\}/g, ' ')
+      .replace(/\]\([^)]*\)/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\\(.)/g, '$1').replace(/[[\]*_`#>]/g, ' ')
+      .match(/\S+/g) || []).filter(w => /[\p{L}\p{N}]/u.test(w)).length;
+    W.files.forEach(f => {
+      if (f.kind !== 'section') return;
+      let skip = 0, inNote = false;
+      f.md.split('\n').forEach(line => {
+        const h = /^(#{1,6})\s.*?(\{[^}]*\})?\s*$/.exec(line);
+        if (h) {
+          if (skip && h[1].length <= skip) skip = 0;
+          if (!skip && h[2] && /\.nocount\b/.test(h[2])) skip = h[1].length;
+        }
+        if (skip) return;
+        if (/^\[\^[^\]\s]+\]:/.test(line)) { inNote = true; notes += words(line.replace(/^\[\^[^\]\s]+\]:/, '')); return; }
+        if (inNote && (/^( {4}|\t)/.test(line) || !line.trim())) { notes += words(line); return; }
+        inNote = false;
+        body += words(line);
+      });
+    });
+    return { body, notes, limit: (W.tmpl && W.tmpl.word_limit) || 0 };
+  }
+
   /* ---------------------------------------------------------- git status / versions */
 
   function applyStatus(s) {
@@ -775,8 +850,14 @@
       if (App.sync && App.git.project && App.git.project.remote) App.sync('save', true);   // still get the work to GitHub
       return;
     }
-    if (here) { renderOutputs(s.outputs); showTab('pdf'); toast('Saved' + (App.git.project && App.git.project.remote ? ' and synced' : '') + '. ' + (s.words || '')); }
-    else toast('Finished building “' + s.doc + '”.');
+    const sy = s.sync;
+    if (here) {
+      renderOutputs(s.outputs); showTab('pdf');
+      toast(sy && !sy.ok ? 'Saved and built, but not synced: ' + sy.message : 'Saved' + (sy ? ' and synced' : '') + '. ' + (s.words || ''), !!(sy && !sy.ok && !/offline|reach/i.test(sy.message)));
+    } else toast('Finished building “' + s.doc + '”.');
+    // GitHub had changes for this computer: show them (the open document may be one of them), and any clashes
+    if (sy && sy.changed && App.reloadAll) App.reloadAll();
+    if (sy && sy.conflicts && App.showConflicts) App.showConflicts();
   }
 
   function clearPreview() {
@@ -863,8 +944,20 @@
       if (f && f.kind === 'section') (m === 'md' ? docMd : doc).focus();
     },
     open: slug => openDoc(slug),
+    // "Cited in" (citations.js): open the document at that section and show the citation there.
+    async reveal(u) {
+      await App.showView('writing');
+      if (!W.info || W.info.slug !== u.slug) await openDoc(u.slug, u.file);
+      else if (W.cur !== u.file) selectFile(u.file);
+      if (!W.info || W.info.slug !== u.slug || W.cur !== u.file) return;
+      if ($('#view-writing').classList.contains('layout-preview')) { const b = $('[data-layout="split"]'); if (b) b.click(); }
+      const ok = App.editMode === 'md' ? App.chips.revealText(docMd, u)
+        : App.chips.reveal(u.where === 'footnote' ? (noteEls.get(u.label) || doc).querySelector('.note-body') || doc : doc, u);
+      if (!ok) toast('That citation isn’t there any more (it may have been edited since).', true);
+    },
     runAll: () => runAll(),
     info: () => W.info,
+    words: () => (W.info ? wordStats() : null),
     outputs: () => W.outputs || [],
     status: () => W.status,
     showLog: () => showTab('log'),

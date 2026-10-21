@@ -311,6 +311,9 @@
 
   function renderFilter() {
     if (filter.options.length > 1) return;
+    const unused = el('option', '', 'Not cited yet'); unused.value = '_unused';
+    unused.title = 'Sources no document or research note cites';
+    filter.appendChild(unused);
     schema().groups.forEach(gname => {
       const og = document.createElement('optgroup'); og.label = gname;
       Object.entries(schema().types).filter(([, t]) => t.group === gname).forEach(([id, t]) => {
@@ -323,7 +326,8 @@
   function renderList() {
     list.innerHTML = '';
     const q = search.value.trim().toLowerCase(), ft = filter.value;
-    const items = App.state.citations.filter(c => App.projects.citeInScope(c) && (!ft || c.type === ft) &&
+    const typeOk = c => !ft || (ft === '_unused' ? !!counts && !counts[c.tag] : c.type === ft);
+    const items = App.state.citations.filter(c => App.projects.citeInScope(c) && typeOk(c) &&
       (!q || (c.tag + ' ' + App.citeText(c) + ' ' + App.citeText(c, 'apa_reference')).toLowerCase().includes(q)));
     if (!items.length) {
       list.appendChild(el('div', 'empty small', App.state.citations.length ? (App.projects.scope === 'all' ? 'No citations match.' : 'No sources in this project match.') : 'No citations yet.'));
@@ -333,6 +337,12 @@
       row.dataset.tag = c.tag;
       const top = el('div', 'li-top'); top.append(el('span', 'chip', App.typeLabel(c.type)), el('code', '', c.tag));
       if (c.missing && c.missing.length) top.appendChild(el('span', 'warn small', '•'));
+      if (counts) {
+        const n = counts[c.tag] || 0;
+        const u = el('span', 'cited-n' + (n ? '' : ' none'), n ? n + '×' : '0×');
+        u.title = n ? 'Cited in ' + n + ' place' + (n === 1 ? '' : 's') : 'Not cited in any document or note yet';
+        top.appendChild(u);
+      }
       const dots = el('span', 'proj-dots');
       (c.projects || []).filter(id => App.projects.get(id)).forEach(id => { const d = App.projects.dot(id); d.title = App.projects.name(id); dots.appendChild(d); });
       top.appendChild(dots);
@@ -350,6 +360,69 @@
     $('#cite-form').innerHTML = '';
     $('#cite-actions').innerHTML = '';
     $('#cite-notes').innerHTML = '';
+    $('#cite-uses').innerHTML = ''; $('#cite-uses').hidden = true;
+  }
+
+  /* ------------------------------------------------------------ Cited in */
+  // Every place a document or research note cites this source, grouped by document. Click one to go there:
+  // the document opens at that section and the citation is scrolled into view and flashed.
+  let counts = null;        // {tag: places}, for the list and the "Not cited yet" filter
+  async function loadCounts() {
+    try { counts = (await api('/api/citation/uses')).counts || {}; } catch (e) { counts = null; }
+  }
+  const usesOpen = new Set();                 // documents whose full list is showing (all places, not the first few)
+  async function renderUses(c) {
+    const box = $('#cite-uses');
+    let r;
+    try { r = await api('/api/citation/uses?tag=' + encodeURIComponent(c.tag)); } catch (e) { return; }
+    if (selected !== c.tag) return;
+    box.innerHTML = ''; box.hidden = false;
+    if (counts) counts[c.tag] = r.total;
+    const nDocs = r.documents.length + r.notes.length;
+    const head = el('div', 'uses-head');
+    head.append(el('h3', '', 'Cited in'), el('span', 'muted small', r.total
+      ? r.total + ' place' + (r.total === 1 ? '' : 's') + ' in ' + nDocs + ' ' + (nDocs === 1 ? 'document or note' : 'documents and notes')
+      : ''));
+    box.appendChild(head);
+    if (!r.total) {
+      box.appendChild(el('div', 'muted small', 'Not cited in any document or research note yet. Use Cite… (⌃⌘C) while writing.'));
+      return;
+    }
+    // the citation as its chip shows it there (the server formats it in that document's style)
+    const cited = u => { const m = el('mark'); if (u.html) m.innerHTML = u.html; else m.textContent = u.text || c.tag; return m; };
+    const group = (key, title, sub, project, uses, go) => {
+      const g = el('div', 'uses-doc');
+      const gh = el('div', 'uses-doc-head');
+      gh.append(App.projects.dot(project || ''), el('b', '', title), el('span', 'muted small', sub), el('span', 'spacer'),
+        el('span', 'uses-count', String(uses.length)));
+      g.appendChild(gh);
+      const all = usesOpen.has(key);
+      uses.slice(0, all ? uses.length : 4).forEach(u => {
+        const row = el('button', 'uses-row'); row.type = 'button';
+        const where = u.where === 'footnote' ? (u.number ? 'Footnote ' + u.number : 'Footnote') : (u.section ? '' : 'Text');
+        const loc = el('div', 'uses-loc');
+        if (u.section) loc.appendChild(el('span', '', u.section));
+        if (where) loc.appendChild(el('span', 'uses-where', where));
+        if (u.kind === 'auth') loc.appendChild(el('span', 'uses-where', 'typed cite'));
+        const q = el('div', 'uses-quote');
+        q.append(u.before ? u.before + ' ' : '', cited(u), u.after && !/^[.,;:)]/.test(u.after) ? ' ' + u.after : u.after || '');
+        row.append(loc, q);
+        row.title = 'Go to this citation';
+        row.onclick = () => go(u);
+        g.appendChild(row);
+      });
+      if (uses.length > 4) {
+        const more = el('button', 'btn small uses-more', all ? 'Show fewer' : 'Show all ' + uses.length); more.type = 'button';
+        more.onclick = () => { if (all) usesOpen.delete(key); else usesOpen.add(key); renderUses(c); };
+        g.appendChild(more);
+      }
+      box.appendChild(g);
+    };
+    r.documents.forEach(d => group('doc:' + d.slug, d.title, d.template_name, d.project, d.uses,
+      u => App.views.writing.reveal(Object.assign({ slug: d.slug, tag: c.tag }, u))));
+    r.notes.forEach(n => group('note:' + n.id, n.title, 'Research note', n.project, n.uses,
+      u => App.views.research.reveal(n.id, Object.assign({ tag: c.tag }, u))));
+    renderList();
   }
 
   async function select(tag) {
@@ -420,6 +493,7 @@
     del.onclick = () => deleteCitation(c.tag);
     $('#cite-actions').appendChild(del);
     renderLinkedNotes(c);
+    renderUses(c);
     renderList();
   }
 
@@ -462,13 +536,21 @@
 
   App.views.citations = {
     async show() {
-      try { await App.loadCitations(); } catch (e) { toast('Couldn’t load citations: ' + e.message, true); }
+      try { await Promise.all([App.loadCitations(), loadCounts()]); } catch (e) { toast('Couldn’t load citations: ' + e.message, true); }
       renderFilter();
       if (selected && selected !== '+' && !App.citation(selected)) selected = '';
       renderList();
       if (selected === null || selected === '') { editor.hidden = true; empty.hidden = false; }
     },
     open(tag) { return select(tag); },
+    // bring the "Cited in" list into view (it loads a moment after the citation opens)
+    showUses() {
+      let n = 0;
+      const t = setInterval(() => {
+        const box = $('#cite-uses');
+        if (!box.hidden || ++n > 20) { clearInterval(t); box.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
+      }, 100);
+    },
     remove: tag => deleteCitation(tag),
     startNote: tag => { const c = App.citation(tag); if (c) startNote(c); },
     async reload() { await this.show(); if (selected && selected !== '+') await select(selected); },

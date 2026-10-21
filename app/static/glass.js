@@ -77,16 +77,25 @@
     $('#insp-template').textContent = tpl ? tpl.name : '';
     $('#insp-project').textContent = info && info.project ? App.projects.name(info.project) : 'None';
     $('#insp-version').textContent = $('#version-info').textContent;
-    $('#insp-words').textContent = ($('#wordcount').textContent || '').replace(/\s*\(.*$/, '') || 'Press Save to count';
+    const ws = w && w.words && w.words(), n = x => x.toLocaleString();
+    $('#insp-words').textContent = !ws ? '' : n(ws.body) + (ws.notes ? ' + ' + n(ws.notes) + ' in footnotes' : '') +
+      (ws.limit ? ' (limit ' + n(ws.limit) + ')' : '');
+    $('#insp-words').classList.toggle('over', !!(ws && ws.limit && ws.body + ws.notes > ws.limit));
+    $('#insp-words').title = 'Counted as you type. Save gives the exact count from the finished document, which also counts a reference list built from your citations.';
+    // rebuild the download buttons only when they change (rebuilding mid-click would swallow the click)
+    const links = $$('#pdf-bar a');
+    const sig = links.map(a => a.href + '|' + a.textContent).join('\n');
+    if (sig === outSig) return;
+    outSig = sig;
     const out = $('#insp-outputs');
     out.innerHTML = '';
-    const links = $$('#pdf-bar a');
     if (!links.length) out.appendChild(el('span', 'muted small', 'Press Save to build.'));
     links.forEach(a => {
       const b = el('a', 'rb-btn sm', a.textContent.replace(/^⬇\s*/, ''));
       b.href = a.href; out.appendChild(b);
     });
   };
+  let outSig = null;
   // keep it current without wiring into every view: small, and only while open
   setInterval(() => { if (!document.hidden) I.refresh(); }, 1500);
   showPanel(store('inspPanel') || 'doc');
@@ -105,10 +114,16 @@
   function paint(cur, result) {
     panel.innerHTML = '';
     STEPS.forEach(([id, label], i) => {
-      const done = result ? (result.ok ? true : i < cur) : i < cur;
+      let done = result ? (result.ok ? true : i < cur) : i < cur;
       const now = !result && i === cur;
-      const row = el('div', 'sp-step' + (done ? ' done' : '') + (now ? ' now' : ''));
-      row.appendChild(el('span', 'sp-mark', done ? '✓' : ''));
+      let skipped = false;
+      if (result && result.ok && id === 'sync') {          // say what really happened with GitHub
+        const sy = result.sync;
+        if (!sy) { done = false; skipped = true; label = 'Not connected to GitHub'; }
+        else if (!sy.ok) { done = false; skipped = true; label = /offline|reach/i.test(sy.message) ? 'Not synced (offline)' : 'Not synced'; }
+      }
+      const row = el('div', 'sp-step' + (done ? ' done' : '') + (now ? ' now' : '') + (skipped ? ' skipped' : ''));
+      row.appendChild(el('span', 'sp-mark', done ? '✓' : skipped ? '–' : ''));
       row.appendChild(el('span', '', now ? label.replace(/^Saved$/, 'Saving').replace(/^Built$/, 'Building').replace(/^Copied/, 'Copying').replace(/^Synced/, 'Syncing') + '…' : label));
       panel.appendChild(row);
     });
@@ -166,11 +181,13 @@
     'view:citations': () => App.showView('citations'),
   };
   function clickSel(sel) { const b = $(sel); if (b) b.click(); }
+  const rightClick = App.menu;         // contextmenu.js: App.menu.open(x, y, items) / App.menu.close()
   App.menu = function (name) {
     if (MENU[name]) { MENU[name](); return true; }
     App.ribbon.run(name);              // any ribbon command: footnote, cite, bibAdd, addSection, newDoc, openData, …
     return true;
   };
+  if (rightClick) Object.assign(App.menu, rightClick);
   // Tell the menu bar which items are checked (layout, edit mode, theme)
   App.menuState = () => ({
     layout: ($('[data-layout].active') || {}).dataset ? $('[data-layout].active').dataset.layout : 'split',

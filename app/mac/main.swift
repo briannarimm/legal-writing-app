@@ -535,6 +535,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         let spellMenu = NSMenu(title: "Spelling"); spell.submenu = spellMenu
         add(spellMenu, "Check Spelling While Typing", Selector(("toggleContinuousSpellChecking:")))
         add(spellMenu, "Show Spelling and Grammar", #selector(NSText.showGuessPanel(_:)), ":")
+        let find = submenu(edit, "Find")                     // the page's own find bar (app/static/findbar.js)
+        js(find, "Find…", "find", "f")
+        js(find, "Find and Replace…", "replace", "h", [.command, .shift])
+        js(find, "Find Next", "findNext", "g")
+        js(find, "Find Previous", "findPrevious", "g", [.command, .shift])
 
         let insert = sub("Insert")
         js(insert, "Citation…", "cite")

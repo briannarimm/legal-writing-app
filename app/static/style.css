@@ -866,3 +866,45 @@ body[data-view="writing"] #tb-unnumbered { display: inline-flex; }
 .ann-item { background: var(--glass2); }
 body:not([data-view="writing"]) #version-info { visibility: hidden; }
 @media (max-width: 1100px) { #cite-work:not(.no-source) { grid-template-columns: 1fr; } }
+/* ---------- 1.2.1: Cited in (the citation page lists every place a source is cited; click one to go there) */
+#cite-uses { margin: 0 0 18px; }
+.uses-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.uses-head h3 { margin: 4px 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.uses-doc { background: var(--glass2, var(--panel)); border-radius: 12px; box-shadow: inset 0 0 0 1px var(--gline, var(--line)); padding: 6px; margin-bottom: 8px; }
+.uses-doc-head { display: flex; align-items: center; gap: 8px; padding: 4px 6px 6px; font-size: 13px; min-width: 0; }
+.uses-doc-head b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 0 1 auto; }
+.uses-doc-head .muted { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 0 100 auto; }
+.uses-count { font-size: 11px; font-weight: 600; color: var(--accent); background: var(--soft, var(--accent-soft)); border-radius: 999px; padding: 1px 8px; }
+.uses-row { display: block; width: 100%; text-align: left; border: 0; background: transparent; color: var(--ink); font: inherit;
+  border-radius: 8px; padding: 6px 8px; cursor: pointer; }
+.uses-row:hover, .uses-row:focus-visible { background: var(--soft, var(--hover)); outline: none; }
+.uses-loc { display: flex; gap: 8px; font-size: 11.5px; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
+.uses-where { font-weight: 500; }
+.uses-quote { font: 13px/1.45 Georgia, "Times New Roman", serif; color: var(--ink); }
+.uses-quote mark { background: color-mix(in srgb, var(--accent) 16%, transparent); color: inherit; border-radius: 3px; padding: 0 2px; }
+.uses-more { margin: 4px 8px 4px; }
+.li-top .cited-n { font-size: 11px; color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+.li-top .cited-n.none { opacity: .6; }
+.li-top .cited-n + .proj-dots { margin-left: 4px; }
+span.cite.flash, span.auth.flash { animation: cite-flash 2.4s ease-out; }
+@keyframes cite-flash {
+  0%, 30% { background: color-mix(in srgb, var(--accent) 45%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+/* ---------- 1.2.1: Find and Replace (⌘F, ⇧⌘H) */
+.find-bar { position: fixed; z-index: 55; width: 440px; max-width: calc(100vw - 24px); border-radius: 16px; padding: 6px; }
+.find-row { display: flex; align-items: center; gap: 4px; }
+.find-row input { flex: 1; min-width: 0; height: 28px; border: 0; border-radius: 999px; padding: 0 12px;
+  background: var(--glass2, var(--panel)); box-shadow: inset 0 0 0 1px var(--gline, var(--line)); color: var(--ink); font: 13px -apple-system, sans-serif; }
+.find-row input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+.find-row .icon-btn { font-size: 13px; min-width: 28px; height: 28px; }
+.find-count { white-space: nowrap; min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+.find-count.none { color: var(--bad); }
+.find-replace { display: none; margin-top: 6px; }
+.find-bar.replacing .find-replace { display: flex; }
+::highlight(rw-find) { background-color: rgba(255, 214, 10, .45); color: inherit; }
+::highlight(rw-find-cur) { background-color: rgba(255, 140, 0, .75); color: #000; }
+#insp-words.over { color: var(--bad); font-weight: 600; }
+.sp-step.skipped { color: var(--muted); }
+/* Research: Cite… is already in the toolbar's Insert group */
+.rb-panel[data-panel="research"] [data-cmd="cite"] { display: none; }
