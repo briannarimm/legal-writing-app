@@ -420,7 +420,7 @@ def _sync_work(reason="sync", log=None):
         return {"ok": False, "offline": True, "message": "Working offline: this computer has no git, so syncing waits until you're back on a Mac set up for GitHub."}
     d = root()
     if not (d / ".git").exists():
-        return {"ok": False, "setup": True, "message": "Your work isn't connected to GitHub yet (Publish → Connect…)."}
+        return {"ok": False, "setup": True, "message": "Your work isn't connected to GitHub yet (inspector → Files → Connect…)."}
     host = os.uname().nodename.split(".")[0]
     for k, v in (("user.name", "ReWord"), ("user.email", "noreply@reword.local")):
         if not git_in(d, "config", k)[1]:             # a borrowed Mac where nobody set up git
@@ -773,7 +773,7 @@ def publish_document(slug, push=False):
     tag = last_tag(slug)
     copied = copy_outputs(slug, info["template"], tag)
     if not copied:
-        raise store.StoreError("There's nothing built for this document yet. Press Run first.")
+        raise store.StoreError("There's nothing built for this document yet. Press Save (⌘S) first.")
     tname = store.template(info["template"])["name"]
     made = commit_repo(repo_path("outputs"), "%s (%s): %s" % (slug, tname, datetime.datetime.now().strftime("%Y-%m-%d %H:%M")))
     return copied, made
@@ -837,6 +837,7 @@ class Job:
         self.outputs = []
         self.words = ""
         self.message = ""
+        self.sync = None            # Save's sync with GitHub: None = not connected, else {ok, message, changed}
 
     def log(self, line):
         with self.lock:
@@ -846,7 +847,7 @@ class Job:
         with self.lock:
             return {"id": self.id, "doc": self.doc, "lines": self.lines[since:], "next": len(self.lines),
                     "step": self.step, "done": self.done, "ok": self.ok, "outputs": self.outputs,
-                    "words": self.words, "message": self.message, "running": self.running}
+                    "words": self.words, "message": self.message, "running": self.running, "sync": self.sync}
 
 
 JOB = Job()
@@ -895,7 +896,7 @@ def ensure_docker():
         JOB.log("Docker isn't available; using the Pandoc installed on this Mac instead.")
         return "local"
     raise RuntimeError("Docker isn't running and no local Pandoc was found. "
-                       "Open Docker Desktop, wait for it to say it's running, and press Run again.")
+                       "Open Docker Desktop, wait for it to say it's running, and press Save again.")
 
 
 def pipeline(slug):
@@ -954,12 +955,14 @@ def pipeline(slug):
         JOB.log("== Output folder ==")
         try:
             copied, made = publish_document(slug)
-            JOB.log("%d file%s copied to %s/%s/%s" % (len(copied), "" if len(copied) == 1 else "s", output_dir(), slug,
-                                                    " (committed)" if made else ""))
+            JOB.log("%d file%s copied to %s%s" % (len(copied), "" if len(copied) == 1 else "s", outputs_folder(slug)[1],
+                                                " (committed)" if made else ""))
             if (root() / ".git").exists() and find_git() and git_status("project").get("remote"):
                 JOB.step = "Syncing your work with GitHub"
                 JOB.log("== Sync ==")
-                sync_work("run", JOB.log)
+                r = sync_work("run", JOB.log)
+                JOB.sync = {"ok": bool(r.get("ok")), "message": r.get("message", ""), "changed": bool(r.get("changed")),
+                            "conflicts": len(r.get("conflicts") or [])}
             if get_settings().get("autoPush") and not outputs_in_work() and git_status("outputs").get("remote"):
                 JOB.step = "Pushing to GitHub"
                 push_repo("outputs")
@@ -1140,6 +1143,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/notes": lambda: self.send_json({"notes": store.notes()}),
             "/api/note": lambda: self.send_json(store.read_note(store.note_path(q.get("id")))),
             "/api/citations": lambda: self.send_json({"citations": store.citations(), "types": store.CITE_TYPES, "schema": citeformat.schema()}),
+            "/api/citation/uses": lambda: self.send_json(store.citation_uses(q.get("tag") or None)),
             "/api/settings": lambda: self.send_json(self.settings_out()),
             "/api/conflicts": lambda: self.send_json({"conflicts": list_conflicts()}),
             "/api/highlights": lambda: self.send_json({"colors": store.read_highlights()}),
@@ -1479,12 +1483,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
         fmt = b.get("format")
         if fmt not in ("docx", "pdf"):
             raise store.StoreError("Choose Word or PDF.")
+        style = b.get("style") if b.get("style") in ("apa", "chicago", "chicago-ad", "lawreview", "practitioner") else "practitioner"
         src = ""
         if n.get("citation"):
             c = next((x for x in store.citations() if x["tag"] == n["citation"]), None)
-            if c:
-                src = c["forms"]["bluebook_practitioner"]["md"]
-        pandoc, ast = self._note_ast(n.get("body") or "", {"title": n["title"], "topic": n.get("topic", ""), "source": src})
+            if c:               # the note's source, in the note's citation style (its project's)
+                key = {"apa": "apa_reference", "chicago": "chicago_bib", "chicago-ad": "chicago_ad_reference",
+                       "lawreview": "bluebook_lawreview"}.get(style, "bluebook_practitioner")
+                src = (c["forms"].get(key) or c["forms"]["bluebook_practitioner"])["md"]
+        pandoc, ast = self._note_ast(n.get("body") or "", {"title": n["title"], "topic": n.get("topic", ""), "source": src}, style)
         out = root() / "build" / "_notes"
         out.mkdir(parents=True, exist_ok=True)
         stem = out / n["id"]

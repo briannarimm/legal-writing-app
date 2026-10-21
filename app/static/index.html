@@ -76,7 +76,7 @@
           <button class="rb-btn primary" id="btn-save" data-ic="save" title="Save (⌘S): save, build this document, copy its finished files into outputs/, and sync with GitHub"><span class="lbl">Save</span></button>
           <button class="rb-btn writing-only" id="btn-run" hidden aria-hidden="true" tabindex="-1"><span class="lbl">Run</span></button>
           <button class="rb-btn writing-only" id="btn-tag" data-ic="tag" title="Mark this draft as a version. The next redline compares against it."><span class="lbl">Tag version</span></button>
-          <button class="rb-btn writing-only toggle" id="btn-final" data-ic="final" title="Final draft: Run also builds a copy with short forms, Id. and supra (the draft keeps every citation in full)"><span class="lbl">Final draft</span></button>
+          <button class="rb-btn writing-only toggle" id="btn-final" data-ic="final" title="Final draft: Save also builds a copy with short forms, Id. and supra (the draft keeps every citation in full)"><span class="lbl">Final draft</span></button>
         </div>
         <div class="rb-label">Document <span id="run-step" class="muted"></span></div>
       </div>
@@ -292,7 +292,7 @@
     <div id="tabs" class="tabs">
       <button class="tab active" data-tab="pdf">Preview</button>
       <button class="tab" data-tab="md">Markdown</button>
-      <button class="tab" data-tab="log">Run log</button>
+      <button class="tab" data-tab="log">Build log</button>
       <span class="spacer"></span>
     </div>
     <div id="tab-md" class="tabbody" hidden><pre id="md-view"></pre></div>
@@ -380,6 +380,7 @@
     <div id="cite-work" hidden>
       <div id="cite-editor">
         <h2 id="cite-heading">Citation</h2>
+        <div id="cite-uses" hidden></div>
         <div id="cite-form"></div>
         <div class="row" id="cite-actions"></div>
         <div id="cite-notes"></div>
@@ -560,6 +561,7 @@
 <script src="/static/github.js"></script>
 <script src="/static/shortcuts.js"></script>
 <script src="/static/contextmenu.js"></script>
+<script src="/static/findbar.js"></script>
 <script src="/static/glass.js"></script>
 <script src="/static/boot.js"></script>
 <script type="module" src="/static/pdfview.js"></script>

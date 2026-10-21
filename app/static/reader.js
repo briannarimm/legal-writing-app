@@ -196,7 +196,10 @@ class Reader {
     }, 50);
   }
 
-  closePop() { if (this.pop) { this.pop.remove(); this.pop = null; } }
+  closePop() {
+    if (this.pop) { this.pop.remove(); this.pop = null; }
+    if (this.away) { document.removeEventListener('mousedown', this.away, true); this.away = null; }
+  }
 
   annotation(id) { return this.anns.find(a => a.id === id) || null; }
   recolor(a, color) { a.color = color; a.dirty = true; this.paintHighlights(a.page); this.changed(); }
@@ -232,8 +235,8 @@ class Reader {
     const h = pop.offsetHeight;
     pop.style.top = (r.bottom + 8 + h < window.innerHeight ? r.bottom + 8 : Math.max(8, r.top - h - 8)) + 'px';
     ta.focus();
-    const away = e => { if (this.pop && !this.pop.contains(e.target)) { this.closePop(); document.removeEventListener('mousedown', away, true); } };
-    setTimeout(() => document.addEventListener('mousedown', away, true), 0);
+    const away = e => { if (this.pop && !this.pop.contains(e.target)) this.closePop(); };
+    setTimeout(() => { if (this.pop === pop) { this.away = away; document.addEventListener('mousedown', away, true); } }, 0);
   }
 }
 

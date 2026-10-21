@@ -507,6 +507,8 @@
       { header: c ? App.typeLabel(c.type) + ' · ' + tag : tag + ' (not in the library)' },
       { label: 'Edit Citation…', icon: 'edit', title: 'Pin cite, signal, parenthetical', run: () => clickEl(chip) },
       { label: 'Open in Citations', icon: 'open', disabled: !c, run: async () => { await App.showView('citations'); App.views.citations.open(tag); } },
+      { label: 'Everywhere It’s Cited…', icon: 'jump', disabled: !c, title: 'The source’s “Cited in” list: every document and note that cites it',
+        run: async () => { await App.showView('citations'); await App.views.citations.open(tag); App.views.citations.showUses(); } },
       { label: 'Copy Citation', icon: 'copy', run: () => copyText(text, chip.innerHTML) },
       { label: 'Remove Citation', icon: 'trash', danger: true, run: () => deleteNode(chip) },
     ];
@@ -653,8 +655,8 @@
     if (text.trim()) {
       return [
         { header: 'Highlight' },
-        ...COLORS.map(([c, n]) => ({ label: n, swatch: c, run: () => r.highlight(c) })),
-        { label: 'Highlight and Comment…', icon: 'comment', run: () => { const a = r.highlight('yellow'); if (a) r.editAnn(a); } },
+        ...App.highlights.colors.map(c => ({ label: App.highlights.name(c.id), swatch: c.id, run: () => r.highlight(c.id) })),
+        { label: 'Highlight and Comment…', icon: 'comment', run: () => { const a = r.highlight(r.lastColor || 'yellow'); if (a) r.editAnn(a); } },
         '-',
         { label: 'Copy', icon: 'copy', kbd: '⌘C', run: () => copyText(text.replace(/\s+/g, ' ').trim()) },
         { label: 'Copy as Quote', icon: 'quote', run: () => copyText('“' + text.replace(/\s+/g, ' ').trim() + '”') },
@@ -708,14 +710,14 @@
 
   function generalItems() {
     const theme = document.documentElement.dataset.theme;
-    const collapsed = $('#ribbon').classList.contains('collapsed');
+    const sideHidden = document.body.classList.contains('side-hidden'), inspHidden = $('#inspector').hidden;
     const setTheme = id => () => { const b = $('[data-theme-btn="' + id + '"]'); if (b) b.click(); };
     return [
       { label: 'New Document…', icon: 'doc', kbd: '⌘N', run: () => App.cmd.global.newDoc() },
       { label: 'New Research Note…', icon: 'note', kbd: '⌃⌘N', run: () => App.cmd.global.newNote() },
       { label: 'New Citation…', icon: 'cite', kbd: '⌥⌘N', run: () => App.cmd.global.newCite() },
       '-',
-      { label: 'Save Now', icon: 'save', kbd: '⌘S', run: () => App.saver.flush(true) },
+      { label: 'Save', icon: 'save', kbd: '⌘S', title: 'Save; in Writing also build, copy to outputs and sync', run: () => App.saveAll() },
       '-',
       { label: 'Command Palette…', icon: 'palette', kbd: '⌘K', run: () => App.togglePalette && App.togglePalette() },
       { label: 'Keyboard Shortcuts', icon: 'keys', kbd: '⌘/', run: () => App.toggleShortcuts && App.toggleShortcuts() },
@@ -724,7 +726,8 @@
         { label: 'Dark', checked: theme === 'dark', run: setTheme('dark') },
         { label: 'Dark, White Page', checked: theme === 'dark-paper', run: setTheme('dark-paper') },
       ] },
-      { label: collapsed ? 'Show the Ribbon' : 'Hide the Ribbon', icon: 'ribbon', kbd: '⌥⌘R', run: () => $('#rb-collapse').click() },
+      { label: sideHidden ? 'Show Sidebar' : 'Hide Sidebar', icon: 'ribbon', kbd: '⌥⌘S', run: () => App.menu('sidebar') },
+      { label: inspHidden ? 'Show Inspector' : 'Hide Inspector', icon: 'ribbon', kbd: '⌥⌘I', run: () => App.menu('inspector') },
     ];
   }
 
@@ -752,6 +755,7 @@
         return [
           ...(await spellingItems(root, x, y)),
           ...editItems(root),
+          root.id === 'doc' || root.id === 'note-body' || root.closest('#notes') ? { label: 'Find and Replace…', icon: 'search', kbd: '⌘F', run: () => App.find.open() } : null,
           '-',
           ...formatItems(root),
           '-',
@@ -762,8 +766,13 @@
         ];
       }
       const md = root.id === 'doc-md' || root.id === 'note-md';
+      const fnBtn = $('#tb-footnote');
       return [
         ...editItems(root),
+        md ? '-' : null,
+        md ? { label: 'Find and Replace…', icon: 'search', kbd: '⌘F', run: () => App.find.open() } : null,
+        md ? cmd('Insert Citation…', 'cite', { icon: 'cite', kbd: '⌃⌘C' }) : null,
+        root.id === 'doc-md' && fnBtn && !fnBtn.hidden ? cmd('Insert Footnote', 'footnote', { icon: 'footnote', kbd: '⌥⌘F' }) : null,
         md ? '-' : null,
         md ? { label: 'Edit as Rich Text', icon: 'markdown', kbd: '⌃⌘M', run: () => App.setEditMode('rich') } : null,
         root.type === 'search' && root.value ? '-' : null,

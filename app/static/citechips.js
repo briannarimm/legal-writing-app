@@ -97,8 +97,8 @@
       pop.appendChild(nl);
     }
     pop.appendChild(el('div', 'hint', apa ? 'In-text citations are the same every time; the References list is built from them.'
-      : format === 'chicago' ? 'Drafts show every note in full. With Final draft on, Run also builds a copy with shortened notes after the first full one.'
-      : 'Drafts show every citation in full. With Final draft on, Run also builds a copy with Id., short forms and supra.'));
+      : format === 'chicago' ? 'Drafts show every note in full. With Final draft on, Save also builds a copy with shortened notes after the first full one.'
+      : 'Drafts show every citation in full. With Final draft on, Save also builds a copy with Id., short forms and supra.'));
     const acts = el('div', 'row');
     const swap = el('button', 'btn small', 'Change source…'); swap.type = 'button';
     swap.onclick = () => {
@@ -127,5 +127,67 @@
     pin.focus();
   }
 
-  App.chips = { refresh, html: chipHtml, edit, close: closePop };
+  /* ------------------------------------------------------------ going to a citation ("Cited in") */
+  // u = one place from /api/citation/uses: {tag, k (which match in its text or footnote), start, end (in the file)}.
+  // In the rich editor: scroll the chip into the middle, flash it, and put the caret after it.
+  function reveal(root, u) {
+    const sel = 'span.cite[data-tag="' + CSS.escape(u.tag) + '"], span.auth[data-tag="' + CSS.escape(u.tag) + '"]';
+    const list = root ? Array.from(root.querySelectorAll(sel)) : [];
+    const chip = list[u.k];
+    if (!chip) return revealRaw(root, u, u.k - list.length) || (list.length ? reveal(root, Object.assign({}, u, { k: list.length - 1 })) : false);
+    placeCaretAfter(chip);
+    chip.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    chip.classList.remove('flash'); void chip.offsetWidth; chip.classList.add('flash');
+    setTimeout(() => chip.classList.remove('flash'), 2400);
+    return true;
+  }
+  // A paragraph the editor can't show as formatted text (a table, raw LaTeX…) stays plain Markdown, so its
+  // citations aren't chips: select the n-th one's Markdown there instead.
+  function revealRaw(root, u, n) {
+    if (!root || n < 0) return false;
+    const key = 'tag="' + u.tag + '"';
+    for (const raw of root.querySelectorAll('.raw')) {
+      const t = raw.firstChild && raw.firstChild.nodeType === 3 ? raw.firstChild : null;
+      if (!t) continue;
+      let i = -1;
+      while ((i = t.nodeValue.indexOf(key, i + 1)) >= 0) {
+        if (n-- > 0) continue;
+        const a = Math.max(0, t.nodeValue.lastIndexOf('[', i)), b = t.nodeValue.indexOf('}', i) + 1 || i + key.length;
+        const r = document.createRange(); r.setStart(t, a); r.setEnd(t, b);
+        raw.focus();
+        const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+        const box = r.getBoundingClientRect(), sc = raw.closest('.scroller');
+        if (sc) sc.scrollTop += box.top - sc.getBoundingClientRect().top - sc.clientHeight / 2;
+        return true;
+      }
+    }
+    return false;
+  }
+  // In a Markdown text box: select the citation's source text and scroll it into the middle.
+  function revealText(ta, u) {
+    const v = ta.value, key = 'tag="' + u.tag + '"';
+    let a = u.start, b = u.end;
+    if (!(a >= 0 && b <= v.length && v.slice(a, b).includes(key))) {          // typed since it was saved: find it again
+      let i = -1;
+      for (let n = 0; n <= (u.k || 0); n++) { const j = v.indexOf(key, i + 1); if (j < 0) break; i = j; }
+      if (i < 0) return false;
+      a = v.lastIndexOf('[', i); b = v.indexOf('}', i) + 1;
+    }
+    ta.focus();
+    ta.setSelectionRange(a, b);
+    // how far down the selection is: lay the text before it out in an invisible copy of the box
+    const cs = getComputedStyle(ta), m = document.createElement('div');
+    ['fontFamily', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'paddingTop', 'paddingLeft', 'paddingRight', 'tabSize']
+      .forEach(k => { m.style[k] = cs[k]; });
+    Object.assign(m.style, { position: 'absolute', visibility: 'hidden', left: '-9999px', top: '0', boxSizing: 'border-box',
+      width: ta.clientWidth + 'px', whiteSpace: 'pre-wrap', overflowWrap: 'break-word', border: '0' });
+    m.textContent = v.slice(0, a) + '​';
+    document.body.appendChild(m);
+    const y = m.scrollHeight;
+    m.remove();
+    ta.scrollTop = Math.max(0, y - ta.clientHeight / 2);
+    return true;
+  }
+
+  App.chips = { refresh, html: chipHtml, edit, close: closePop, reveal, revealText };
 })();

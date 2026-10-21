@@ -209,7 +209,7 @@
     return i;
   }
   let scaleIdx = 2;
-  try { const s = parseFloat(localStorage.getItem('pageScale')); if (s) scaleIdx = Math.max(0, SCALES.indexOf(s)); if (scaleIdx < 0) scaleIdx = 2; } catch (e) { /* ignore */ }
+  try { const s = parseFloat(localStorage.getItem('pageScale')); if (s && SCALES.includes(s)) scaleIdx = SCALES.indexOf(s); } catch (e) { /* ignore */ }
   $('#size-down').onclick = () => { scaleIdx = setScale(scaleIdx - 1); };
   $('#size-up').onclick = () => { scaleIdx = setScale(scaleIdx + 1); };
   $('#size-reset').onclick = () => { scaleIdx = setScale(2); };

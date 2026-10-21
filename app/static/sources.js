@@ -37,6 +37,7 @@
   async function show(c) {
     await flush();
     cur = c;
+    if (!c) fileName = null;
     work.classList.toggle('no-source', !c);
     if (!c) { if (reader) reader.close(); return; }
     await loadFiles();
@@ -139,6 +140,9 @@
   panel.addEventListener('drop', e => { e.preventDefault(); panel.classList.remove('dragging'); if (e.dataTransfer.files.length) upload(e.dataTransfer.files); });
 
   async function snapshot() {
+    if (!cur) { toast('Choose a citation first.', true); return; }
+    await App.saver.flush(false);              // a web address typed a moment ago is saved first
+    cur = App.citation(cur.tag) || cur;
     const url = urlOf(cur);
     if (!url) { toast('Add the web address (Link) to this citation first.', true); return; }
     const b = $('#src-snap'); b.disabled = true; const label = b.textContent; b.textContent = 'Saving page…';
@@ -154,7 +158,7 @@
   sel.addEventListener('change', () => openFile(sel.value));
 
   async function exportAnnotated() {
-    if (!fileName) return;
+    if (!cur || !fileName) { toast('Open a PDF in the reader first.', true); return; }
     await flush();
     try {
       const r = await post('/api/annotations/export', { tag: cur.tag, name: fileName });
@@ -166,7 +170,7 @@
   }
   $('#src-export').onclick = exportAnnotated;
   $('#src-remove').onclick = async () => {
-    if (!fileName || !confirm('Remove ' + fileName + ' from this source?\n\nIt moves to library/files/' + cur.tag + '/_trash with its highlights; nothing is deleted.')) return;
+    if (!cur || !fileName || !confirm('Remove ' + fileName + ' from this source?\n\nIt moves to library/files/' + cur.tag + '/_trash with its highlights; nothing is deleted.')) return;
     await flush();
     try { await post('/api/file/delete', { tag: cur.tag, name: fileName }); fileName = null; await loadFiles(); } catch (e) { toast(e.message, true); }
   };

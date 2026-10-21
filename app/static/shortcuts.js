@@ -7,7 +7,7 @@
  *   on:    selector(s) of the buttons that get the hint
  * Where Word for Mac has a shortcut for the same thing, it is used here (⌘B, ⌘I, ⇧⌘K small caps,
  * ⇧⌘L bullets, ⌥⌘1–3 headings, ⇧⌘N Normal, ⌥⌘F footnote, ⇧⌘. ⇧⌘, text size, ⌘Y redo).
- * Save (⌘S) is handled in app.js; it is listed here for the hint and the sheet.
+ * Save (⌘S) is handled in app.js and Find (⌘F, ⌘G, ⇧⌘H) in findbar.js; they are listed here for the hints and the sheet.
  */
 (function () {
   'use strict';
@@ -43,6 +43,9 @@
     { g: 'Text', d: 'Larger editor text', mods: 'sm', code: 'Period', key: '.', click: '#size-up', on: '#size-up' },
     { g: 'Text', d: 'Smaller editor text', mods: 'sm', code: 'Comma', key: ',', click: '#size-down', on: '#size-down' },
     { g: 'Text', d: 'Redo', mods: 'm', code: 'KeyY', key: 'Y', fn: () => document.execCommand('redo') },
+    { g: 'Text', d: 'Find', mods: 'm', code: 'KeyF', key: 'F', builtin: true, fn: () => App.find.open() },
+    { g: 'Text', d: 'Find and replace', mods: 'sm', code: 'KeyH', key: 'H', builtin: true, fn: () => App.find.open(true) },
+    { g: 'Text', d: 'Find next / previous', mods: 'm', code: 'KeyG', key: 'G', builtin: true, fn: () => App.cmd.global.findNext() },
     { g: 'Text', d: 'Toggle “no number” on a heading', mods: 'am', code: 'KeyU', key: 'U', cmd: 'unnumbered', on: '[data-cmd="unnumbered"]', views: 'writing' },
     // Insert
     { g: 'Insert', d: 'Citation from your library', mods: 'cm', code: 'KeyC', key: 'C', cmd: 'cite', on: '[data-cmd="cite"]' },
@@ -76,7 +79,6 @@
     { g: 'Go to', d: 'Edit as rich text or Markdown', mods: 'cm', code: 'KeyM', key: 'M', fn: () => App.setEditMode(App.editMode === 'md' ? 'rich' : 'md'), on: '[data-editmode="md"]', views: 'writing research' },
     { g: 'Go to', d: 'Zoom the preview in', mods: 'am', code: 'Equal', key: '+', click: '#pz-in', views: 'writing' },
     { g: 'Go to', d: 'Zoom the preview out', mods: 'am', code: 'Minus', key: '−', click: '#pz-out', views: 'writing' },
-    { g: 'Go to', d: 'Collapse or expand the ribbon', mods: 'am', code: 'KeyR', key: 'R', click: '#rb-collapse' },
     { g: 'Go to', d: 'Command palette (search every action)', mods: 'm', code: 'KeyK', key: 'K', fn: () => togglePalette() },
     { g: 'Go to', d: 'This list of shortcuts', mods: 'm', code: 'Slash', key: '/', fn: () => toggleSheet() },
   ];
@@ -107,7 +109,7 @@
     const inView = x => !x.views || x.views.split(' ').includes(App.view);
     const k = S.find(x => x.code === e.code && sorted(x.mods) === have && inView(x)) ||
               S.find(x => x.code === e.code && sorted(x.mods) === have);
-    if (!k || (k.builtin && k.code === 'KeyS')) return;
+    if (!k || k.builtin) return;                 // ⌘S is app.js's, ⌘F ⌘G ⇧⌘H findbar.js's
     if (k.views && !k.views.split(' ').includes(App.view)) return;
     if (document.querySelector('dialog[open]') && k.code !== 'Slash') return;
     if (!pal.hidden && k.code !== 'KeyK') return;      // dialogs keep their keys
@@ -119,9 +121,9 @@
   });
 
   function exec(k) {
-    if (k.builtin) { App.saveAll(); return; }
     if (k.fn) { k.fn(); return; }
-    if (k.click) { const b = $(k.click); if (b && !b.disabled) b.click(); return; }
+    if (k.builtin) { App.saveAll(); return; }
+    if (k.click) { const b = $(k.click); if (b && !b.disabled && !b.closest('[hidden]')) b.click(); return; }
     const b = $('#ribbon [data-cmd="' + k.cmd + '"]');
     if (b && b.disabled) return;
     if (b) b.click(); else if (App.cmd.global[k.cmd]) App.cmd.global[k.cmd]();
@@ -130,7 +132,7 @@
   function available(k) {
     if (k.views && !k.views.split(' ').includes(App.view)) return false;
     const sel = k.click ? $(k.click) : k.cmd ? $('#ribbon [data-cmd="' + k.cmd + '"]') : null;
-    if (sel && sel.disabled) return false;
+    if (sel && (sel.disabled || (k.click && sel.closest('[hidden]')))) return false;
     if (k.opt && $('#tb-block').disabled) return false;
     return true;
   }
