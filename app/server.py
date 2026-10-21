@@ -1144,6 +1144,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/note": lambda: self.send_json(store.read_note(store.note_path(q.get("id")))),
             "/api/citations": lambda: self.send_json({"citations": store.citations(), "types": store.CITE_TYPES, "schema": citeformat.schema()}),
             "/api/citation/uses": lambda: self.send_json(store.citation_uses(q.get("tag") or None)),
+            "/api/verify": lambda: self.send_json(store.verification(q.get("project"), q.get("doc") or None)),
             "/api/settings": lambda: self.send_json(self.settings_out()),
             "/api/conflicts": lambda: self.send_json({"conflicts": list_conflicts()}),
             "/api/highlights": lambda: self.send_json({"colors": store.read_highlights()}),
@@ -1166,6 +1167,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                   "/api/annotations": lambda b: self.send_json(store.write_annotations(b.get("tag"), b.get("name"), b.get("annotations"),
                                                                                        b.get("mtime"), b.get("force"))),
                   "/api/settings": self.api_save_settings,
+                  "/api/verify": lambda b: self.send_json({"result": store.set_verification(b.get("project"), b.get("key"), b.get("status") or "",
+                                                                                           b.get("reason"), b.get("sig"), b.get("tag"), b.get("doc"))}),
                   "/api/highlights": lambda b: self.send_json({"colors": store.write_highlights(b.get("labels"))})}
         fn = routes.get(self.path)
         if not fn:
@@ -1189,6 +1192,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/cite/render": self.api_cite_render,
             "/api/project/new": lambda b: self.send_json(store.create_project(b)),
             "/api/project/delete": lambda b: (store.delete_project(b.get("id")), self.send_json({"ok": True}))[1],
+            "/api/verify/reset": lambda b: self.send_json(store.reset_verification(b.get("project"), b.get("doc") or None)),
             "/api/note/project": lambda b: self.send_json(store.assign_note(b.get("id"), b.get("project") or "")),
             "/api/citation/projects": self.api_citation_projects, "/api/file/delete": self.api_file_delete,
             "/api/snapshot": self.api_snapshot, "/api/annotations/export": self.api_annotations_export, "/api/render": self.api_render, "/api/note/export": self.api_note_export,

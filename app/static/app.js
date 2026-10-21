@@ -123,7 +123,7 @@
     await saver.flush(false);
     App.view = name;
     $$('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
-    ['writing', 'research', 'citations'].forEach(v => { $('#view-' + v).hidden = v !== name; });
+    ['writing', 'research', 'citations', 'verify'].forEach(v => { $('#view-' + v).hidden = v !== name; });
     $$('.writing-only').forEach(e => { e.style.display = name === 'writing' ? '' : 'none'; });
     if (App.ribbon) App.ribbon.refresh();
     const v = App.views[name];

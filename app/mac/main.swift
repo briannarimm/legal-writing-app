@@ -564,6 +564,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         js(view, "Writing", "view:writing", "1")
         js(view, "Research", "view:research", "2")
         js(view, "Citations", "view:citations", "3")
+        js(view, "Verify", "view:verify", "4")
         view.addItem(.separator())
         js(view, "Editor Only", "layout:editor", "1", [.command, .control])
         js(view, "Editor and Preview", "layout:split", "2", [.command, .control])

@@ -34,6 +34,7 @@
     <button data-view="writing" class="active"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg>Writing</button>
     <button data-view="research"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4z"/><path d="M9 9h6M9 13h4"/></svg>Research</button>
     <button data-view="citations"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/></svg>Citations</button>
+    <button data-view="verify"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>Verify</button>
   </nav>
   <div class="gs-sec">Project</div>
   <div id="project-switch"></div>
@@ -412,6 +413,85 @@
   </section>
 </main>
 
+<!-- ================= Verify ================= -->
+<main id="view-verify" class="view view-2col" hidden>
+  <nav class="sidebar">
+    <div class="side-row"><select id="vf-project" title="Which project to verify"></select></div>
+    <div class="side-row"><select id="vf-doc" title="Which of its documents"></select></div>
+    <div id="vf-tally" class="vf-tally"></div>
+    <div id="vf-list"></div>
+  </nav>
+  <section class="detail">
+    <div id="vf-empty" class="empty big" hidden></div>
+    <div id="vf-work" hidden>
+      <div class="vf-top">
+        <div class="seg-cap vf-modes" role="group" aria-label="Which citations">
+          <button class="rb-btn sm" data-vf-mode="all" title="Every citation, in reading order">All</button>
+          <button class="rb-btn sm" data-vf-mode="todo" title="Only the citations you haven't checked yet">Not checked</button>
+          <button class="rb-btn sm" data-vf-mode="failed" title="Only the citations you sent back, to fix them">Sent back</button>
+        </div>
+        <div class="vf-progress"><div class="vf-bar" id="vf-bar"></div><span id="vf-count" class="muted small"></span></div>
+        <button class="btn small" id="vf-summary-btn" title="See how the check went, and the citations you sent back">Summary</button>
+        <button class="btn small" id="vf-reset" title="Forget every result for this project (or document) and start over">Start over</button>
+      </div>
+      <div id="vf-card" class="vf-card">
+        <div class="vf-cols">
+          <section class="vf-left">
+            <div class="vf-loc" id="vf-loc"></div>
+            <div id="vf-state"></div>
+            <div class="vf-block" id="vf-supports-box">
+              <div class="vf-label">The text it supports</div>
+              <div class="vf-quote" id="vf-supports"></div>
+            </div>
+            <div class="vf-block">
+              <div class="vf-label" id="vf-cite-label">The citation</div>
+              <div class="vf-quote" id="vf-context"></div>
+            </div>
+            <dl class="vf-facts" id="vf-facts"></dl>
+            <div class="row"><button class="btn small" id="vf-goto" title="Open the document at this citation, to fix it">Go to it in the document</button>
+              <button class="btn small" id="vf-open-cite" title="Open this source in Citations">Open the source</button></div>
+          </section>
+          <section class="vf-right">
+            <div class="vf-src-head" id="vf-src-head"></div>
+            <div class="src-bar">
+              <select id="vf-file" title="Files attached to this source"></select>
+              <button class="btn small" id="vf-attach" title="Attach a PDF of this source">Attach PDF…</button>
+              <input type="file" id="vf-input" accept="application/pdf,.pdf" hidden>
+              <button class="btn small" id="vf-snap" title="Save the source's web page as a PDF">Snapshot page</button>
+              <button class="btn small" id="vf-live" title="Open the live web page in your browser">Live page ↗</button>
+              <span class="spacer"></span>
+              <button class="btn small" id="vf-zoom-out" title="Smaller">−</button>
+              <button class="btn small" id="vf-zoom-fit" title="Fit the width">Fit</button>
+              <button class="btn small" id="vf-zoom-in" title="Bigger">+</button>
+            </div>
+            <div class="src-body" id="vf-src-body">
+              <div id="vf-view" class="reader"></div>
+              <aside id="vf-anns" class="ann-list"></aside>
+            </div>
+            <div id="vf-src-empty" class="empty"></div>
+          </section>
+        </div>
+        <div class="vf-reason" id="vf-reason" hidden>
+          <label for="vf-reason-text">Why is it sent back? <span class="muted">(optional)</span></label>
+          <textarea id="vf-reason-text" rows="2" placeholder="e.g. The pinpoint is to the dissent, not the majority. Return ↩ to save, Esc to cancel."></textarea>
+          <div class="row"><span class="spacer"></span>
+            <button class="btn small" id="vf-reason-cancel">Cancel</button>
+            <button class="btn small vf-fail-btn" id="vf-reason-ok">Send back</button></div>
+        </div>
+        <div class="vf-actions">
+          <button class="btn" id="vf-prev" title="The previous citation (←)">← Previous</button>
+          <span class="spacer"></span>
+          <button class="btn vf-fail-btn" id="vf-fail" title="It doesn't check out: send it back to fix later (F)">✕ Send back <span class="kbd">F</span></button>
+          <button class="btn vf-ok-btn" id="vf-ok" title="The source supports it as cited (A)">✓ Approve <span class="kbd">A</span></button>
+          <span class="spacer"></span>
+          <button class="btn" id="vf-next" title="The next citation, without deciding (→)">Next →</button>
+        </div>
+      </div>
+      <div id="vf-done" class="vf-done" hidden></div>
+    </div>
+  </section>
+</main>
+
 <!-- ================= Inspector (glass, right) ================= -->
 <aside id="inspector" class="glass" hidden>
   <div class="seg-cap insp-tabs" role="group" aria-label="Inspector">
@@ -557,6 +637,7 @@
 <script src="/static/sources.js"></script>
 <script src="/static/research.js"></script>
 <script src="/static/citechips.js"></script>
+<script src="/static/verify.js"></script>
 <script src="/static/writing.js"></script>
 <script src="/static/github.js"></script>
 <script src="/static/shortcuts.js"></script>

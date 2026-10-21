@@ -12,7 +12,7 @@
   /* ------------------------------------------------------------ sidebar */
   // Each view's list moves into the one glass sidebar; CSS shows the one for the current view.
   const slot = $('#side-slot');
-  [['writing', '#tree-pane'], ['research', '#view-research > .sidebar'], ['citations', '#view-citations > .sidebar']].forEach(([v, sel]) => {
+  [['writing', '#tree-pane'], ['research', '#view-research > .sidebar'], ['citations', '#view-citations > .sidebar'], ['verify', '#view-verify > .sidebar']].forEach(([v, sel]) => {
     const n = $(sel);
     if (n) { n.dataset.forView = v; slot.appendChild(n); }
   });
@@ -36,7 +36,7 @@
 
   function refreshTitle() {
     const w = App.views.writing, info = w && w.info && w.info();
-    const t = App.view === 'writing' ? (info ? info.title : 'Writing') : App.view === 'research' ? 'Research' : 'Citations';
+    const t = App.view === 'writing' ? (info ? info.title : 'Writing') : App.view === 'research' ? 'Research' : App.view === 'verify' ? 'Verify' : 'Citations';
     $('#tb-doc-title').textContent = t;
     document.title = t === 'ReWord' ? 'ReWord' : t + ' · ReWord';
   }
@@ -179,6 +179,7 @@
     'view:writing': () => App.showView('writing'),
     'view:research': () => App.showView('research'),
     'view:citations': () => App.showView('citations'),
+    'view:verify': () => App.showView('verify'),
   };
   function clickSel(sel) { const b = $(sel); if (b) b.click(); }
   const rightClick = App.menu;         // contextmenu.js: App.menu.open(x, y, items) / App.menu.close()
