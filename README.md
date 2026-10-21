@@ -129,8 +129,9 @@ The window has three parts:
 
 - **The sidebar** on the left: Writing, Research, Citations and Verify, the project menu, and the list for
   the current work area (documents, notes or sources). ⌥⌘S hides or shows it.
-- **The toolbar** at the top: Save, formatting, Cite, Footnote, and the layout (Editor, Split,
-  Preview). In Research and Citations it also has that area's commands.
+- **The toolbar** at the top: in Writing, Save, formatting, Cite, Footnote, and the layout (Editor,
+  Split, Preview). In Research and Citations it has that area's commands. Outside Writing, **Save** sits
+  at the bottom of the sidebar, beside the save status (⌘S works everywhere).
 - **The inspector** on the right (⌥⌘I, or the button at the right end of the toolbar): the open
   document's template, project, version and word count, Final draft, Details, the finished files,
   and a **Files** tab with the data folder, GitHub and backups.
@@ -146,8 +147,13 @@ Use the sidebar to change the work area.
 
 The Mac menu bar has everything else: **Insert** (citation, footnote, section, new document, note
 or citation), **Format** (bold, italic, small caps, lists, block quote) and **View** (layout, rich
-text or Markdown, Files, **Appearance**: Light, Dark, or Dark with a white page). ⌘K searches every
-command, and ⌘/ lists the keyboard shortcuts.
+text or Markdown, Files, **Appearance**: Light, Dark, or Dark with a white page, and **Translucent
+Window**). ⌘K searches every command, and ⌘/ lists the keyboard shortcuts.
+
+The window is see-through like the Mac's own apps: what is behind it shows through, softly blurred,
+around the sidebar and panels. **View → Appearance → Translucent Window** turns this off (and on again);
+so does the Theme item when you right-click an empty spot. With **Reduce transparency** on in System
+Settings → Accessibility → Display, the window is solid.
 
 ## 6. Projects
 
@@ -243,7 +249,8 @@ replacement.
 1. Click **Save** (⌘S). Save also builds the document, copies its finished files into `outputs/`, and
    syncs with GitHub.
 2. Wait until the Preview tab shows the PDF.
-3. Use the links above the preview to download the PDF or Word file.
+3. Click **Download** above the preview to save the PDF or Word file (the finished files are also in
+   `outputs/` in your data folder).
 
 ### 7.4 Make a final draft
 
@@ -349,8 +356,11 @@ card at a time.
    sent back** to go through only those, or **Go to it in the document** to fix one. ⌘4 brings you back to
    the same card; approve it once it's fixed.
 
-- **All**, **Not checked** and **Sent back** at the top choose which cards you go through. The bar shows
-  each card's result; click a segment, or a row in the sidebar, to jump to it.
+- **All**, **Not checked** and **Sent back** at the top choose which cards you go through, with how many
+  each holds. The bar shows each card's result (one segment per card, or for a long pass a map with a
+  marker at the card you're on); click it, or a row in the sidebar, to jump there.
+- The sidebar shows how far the check has got, then every citation under its section, with ✓ for
+  approved and ✕ for sent back. Right-click a row to approve it, send it back or go to it.
 - Results are saved per project in `projects/verification/<project>.json`, so they sync with your work.
 - If you change a citation (or the words just before it) after approving it, the approval no longer
   counts and the card asks you to check it again. A citation you sent back stays sent back, marked

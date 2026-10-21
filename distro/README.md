@@ -4,8 +4,26 @@ This folder contains the ready-to-use ReWord program for Mac.
 
 | File | Description |
 |---|---|
-| `ReWord-1.3.0-mac-arm64.zip` | The program. Download this file. |
-| `ReWord-1.3.0-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
+| `ReWord-1.3.1-mac-arm64.zip` | The program. Download this file. |
+| `ReWord-1.3.1-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
+
+## What's new in 1.3.1
+
+- **A see-through window**, like the Mac's own apps: what's behind ReWord shows through, softly blurred,
+  around the glass panels. View → Appearance → Translucent Window turns it off.
+- **Save outside Writing** sits by the save status at the bottom of the sidebar instead of alone in the
+  toolbar. In Writing it leads the toolbar as before.
+- **A clearer Verify queue**: progress at a glance, citations under their sections with ✓ and ✕ marks,
+  a map of a long pass with a marker where you are, and a right-click menu on each row. Other citations
+  in a footnote now read as citations instead of tags.
+- **A light facelift**: softer focus rings, a subtitle under each view's name, glass toasts, one
+  Download menu for a document's finished files.
+- **Citations that printed wrong now print right**: short forms of Westlaw cases typed into the docket
+  number, rules cited to the Federal Register, plural abbreviations (Proc. Nat'l Acad. Sci.), article
+  numbers, doubled periods, Chicago short titles and quoted titles.
+- **Fixes that keep your work safe**: opening a document no longer rewrites its files; saving a source
+  keeps fields its form doesn't show; Return and paste in a table keep it in one piece; Verify never
+  loses or skips a result; Copy Subject uses the email's own details.
 
 ## What's new in 1.3
 

@@ -228,6 +228,7 @@ final class MenuBridge: NSObject, WKScriptMessageHandlerWithReply {
         case "theme":
             // the window frame follows the app's theme (1.2: the title bar is transparent over the glass)
             let dark = (body["theme"] as? String ?? "light") != "light"
+            UserDefaults.standard.set(dark, forKey: "windowDark")      // so the next start opens in the right colors
             if let win = web?.window { styleWindow(win, dark: dark) }
             replyHandler(true, nil)
         case "translucent":
@@ -272,7 +273,7 @@ func styleWindow(_ win: NSWindow, dark: Bool) {
 /// The strip under the traffic lights: the window is dragged by it, and a double-click does what System Settings
 /// says a double-click on a title bar does (zoom or minimize).
 final class TitleStrip: NSView {
-    override var mouseDownCanMoveWindow: Bool { true }
+    override var mouseDownCanMoveWindow: Bool { false }      // it moves the window itself, below
     override func mouseDown(with e: NSEvent) {
         guard e.clickCount == 2 else { window?.performDrag(with: e); return }
         switch UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick") ?? "Maximize" {
@@ -375,7 +376,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
             status.centerXAnchor.constraint(equalTo: content.centerXAnchor), status.centerYAnchor.constraint(equalTo: content.centerYAnchor),
             status.leadingAnchor.constraint(greaterThanOrEqualTo: content.leadingAnchor, constant: 30),
         ])
-        styleWindow(window, dark: false)
+        styleWindow(window, dark: UserDefaults.standard.bool(forKey: "windowDark"))
         if env["LT_OFFSCREEN"] != nil { window.setFrameOrigin(NSPoint(x: -6000, y: 200)) }
         window.makeKeyAndOrderFront(nil)
     }
