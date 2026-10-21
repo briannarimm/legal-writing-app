@@ -918,7 +918,29 @@ def md_plain(md):
     return re.sub(r"\s+", " ", s).strip()
 
 
-def _context(md, region, start, end):
+def plain_with_cites(md, render=None, in_note=False):
+    """md_plain, with every live citation in it written the way its chip shows it now. A citation's saved text is
+    only what the chip last showed (and just its tag when another tool wrote it), so it isn't used for reading."""
+    if not render:
+        return md_plain(md)
+    out, pos = [], 0
+    for start, end, kind, attrs, inner in _cite_spans(md):
+        out.append(("md", md[pos:start]))
+        out.append(("text", render(attrs, in_note, inner)[0] if kind == "cite" else md_plain(inner)))
+        pos = end
+    out.append(("md", md[pos:]))
+    text = ""
+    for kind, seg in out:
+        if kind == "text":
+            text += seg
+            continue
+        words = md_plain(seg)
+        lead, trail = (" " if seg[:1].isspace() else ""), (" " if seg[-1:].isspace() else "")
+        text += (lead + words + trail) if words else (lead or trail)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _context(md, region, start, end, render=None):
     """A few words before and after a citation, inside its paragraph (or its footnote)."""
     lo, hi = region[0], region[1]
     if region[2] is None:
@@ -927,7 +949,8 @@ def _context(md, region, start, end):
         lo, hi = (a + 2 if a >= 0 else lo), (b if b >= 0 else hi)
     else:
         lo = lo + len(FN_DEF_RE.match(md[lo:hi]).group(0))
-    before, after = md_plain(md[lo:start]), md_plain(md[end:hi])
+    note = region[2] is not None
+    before, after = plain_with_cites(md[lo:start], render, note), plain_with_cites(md[end:hi], render, note)
     if len(before) > 110:
         before = "…" + before[-110:].split(" ", 1)[-1]
     if len(after) > 90:
@@ -948,7 +971,7 @@ def _uses_in(md, tag, refs_before=0, render=None):
         label = reg[2]
         k = seen.get(label, 0)
         seen[label] = k + 1
-        before, after = _context(md, reg, start, end)
+        before, after = _context(md, reg, start, end, render)
         text, html = render(attrs, bool(label)) if render and kind == "cite" else (md_plain(inner), "")
         u = {"where": "footnote" if label else "text", "k": k, "start": start, "end": end, "kind": kind,
              "text": text, "html": html, "before": before, "after": after}
@@ -982,13 +1005,22 @@ def citation_uses(tag=None):
                 counts[attrs["tag"]] = counts.get(attrs["tag"], 0) + 1
         return {"counts": counts}
     import cites
-    p = cite_path(tag)                                       # validates the tag
-    c = read_citation(p) if p.exists() else None
-    entry = {"type": c["type"], "fields": c["fields"], "tag": tag} if c else None
+    cite_path(tag)                                           # validates the tag
+    entries = {}
+
+    def entry(t):                                            # this source, and the others cited beside it
+        if t not in entries:
+            q = cite_path(t) if TAG_RE.match(t or "") else None
+            c = read_citation(q) if q and q.exists() else None
+            entries[t] = {"type": c["type"], "fields": c["fields"], "tag": t} if c else None
+        return entries[t]
 
     def renderer(style, typeface):
-        def render(attrs, in_note):
-            runs = cites.chip_text(entry, attrs, typeface, style, in_note or typeface != "lawreview")
+        def render(attrs, in_note, saved=None):
+            e = entry(attrs.get("tag", ""))
+            if e is None and saved is not None:              # gone from the library: what its chip last showed
+                return md_plain(saved), ""
+            runs = cites.chip_text(e, attrs, typeface, style, in_note or typeface != "lawreview")
             return md_plain(citeformat.to_md(runs)), citeformat.to_html(runs)
         return render
     tmpls = {t["id"]: t for t in templates()}
@@ -1059,7 +1091,7 @@ def _read_verification(pid):
     return d
 
 
-def _para_plain(md, region, start, end):
+def _para_plain(md, region, start, end, render=None):
     """The whole paragraph (or footnote) around a citation, as plain words before and after it."""
     lo, hi = region[0], region[1]
     if region[2] is None:
@@ -1068,10 +1100,11 @@ def _para_plain(md, region, start, end):
         lo, hi = (a + 2 if a >= 0 else lo), (b if b >= 0 else hi)
     else:
         lo = lo + len(FN_DEF_RE.match(md[lo:hi]).group(0))
-    return md_plain(md[lo:start]), md_plain(md[end:hi])
+    note = region[2] is not None
+    return plain_with_cites(md[lo:start], render, note), plain_with_cites(md[end:hi], render, note)
 
 
-def _note_anchor(md, label):
+def _note_anchor(md, label, render=None):
     """For a footnote: the paragraph of the text that points to it, split at the footnote mark (what the note supports)."""
     for lo, hi, lab in _md_regions(md):
         if lab is not None:
@@ -1083,7 +1116,7 @@ def _note_anchor(md, label):
         a = md.rfind("\n\n", lo, at)
         b = md.find("\n\n", at, hi)
         plo, phi = (a + 2 if a >= 0 else lo), (b if b >= 0 else hi)
-        return md_plain(md[plo:at]), md_plain(md[lo + m.end():phi])
+        return plain_with_cites(md[plo:at], render), plain_with_cites(md[lo + m.end():phi], render)
     return None
 
 
@@ -1094,6 +1127,13 @@ def verification(pid, slug=None):
     read_project(pid)
     tmpls = {t["id"]: t for t in templates()}
     entries = {}
+
+    def entry(tag):
+        if tag not in entries:
+            q = cite_path(tag) if TAG_RE.match(tag) else None
+            c = read_citation(q) if q and q.exists() else None
+            entries[tag] = {"type": c["type"], "fields": c["fields"], "tag": tag} if c else None
+        return entries[tag]
     results = _read_verification(pid)["results"]
     items = []
     all_docs = sorted((d for d in documents() if d.get("project") == pid), key=lambda d: (d.get("title") or d["slug"]).lower())
@@ -1105,6 +1145,14 @@ def verification(pid, slug=None):
         if m:
             meta["citation-style"] = {"t": "MetaString", "c": m.group(1)}
         style, typeface = cites.style_of(t, meta)
+
+        def render(attrs, in_note, saved=None, style=style, typeface=typeface):
+            """A live citation as its chip shows it in this document: (plain text, html)."""
+            e = entry(attrs.get("tag", ""))
+            if e is None and saved is not None:              # gone from the library: what its chip last showed
+                return md_plain(saved), ""
+            runs = cites.chip_text(e, attrs, typeface, style, in_note or typeface != "lawreview")
+            return md_plain(citeformat.to_md(runs)), citeformat.to_html(runs)
         seen, refs = {}, 0
         for f in section_paths(info["slug"]):
             md = f.read_text(encoding="utf-8")
@@ -1116,22 +1164,18 @@ def verification(pid, slug=None):
                 reg = next((r for r in regions if r[0] <= start < r[1]), (0, len(md), None))
                 label = reg[2]
                 k = nth.get((tag, label), 0)                  # which match in its body or footnote (writing.reveal)
+                entry(tag)
                 nth[(tag, label)] = k + 1
-                if tag not in entries:
-                    q = cite_path(tag) if TAG_RE.match(tag) else None
-                    c = read_citation(q) if q and q.exists() else None
-                    entries[tag] = {"type": c["type"], "fields": c["fields"], "tag": tag} if c else None
                 if kind == "cite":
-                    runs = cites.chip_text(entries[tag], attrs, typeface, style, bool(label) or typeface != "lawreview")
-                    text, html = md_plain(citeformat.to_md(runs)), citeformat.to_html(runs)
+                    text, html = render(attrs, bool(label))
                 else:
                     text, html = md_plain(inner), ""
-                before, after = _para_plain(md, reg, start, end)
+                before, after = _para_plain(md, reg, start, end, render)
                 pin = (attrs.get("pin") or "").strip()
                 n = seen.get((tag, pin), 0)
                 seen[(tag, pin)] = n + 1
                 key = "%s:%s:%s:%d" % (info["slug"], tag, pin, n)
-                near = before[-160:]
+                near = _para_plain(md, reg, start, end)[0][-160:]    # the saved words: what an approval was given for
                 sig = hashlib.sha1((text + "\x00" + near).encode("utf-8")).hexdigest()[:12]
                 it = {"key": key, "sig": sig, "slug": info["slug"], "doc": info.get("title", info["slug"]), "file": f.name,
                       "section": section, "tag": tag, "missing": entries[tag] is None, "kind": kind, "where": "footnote" if label else "text",
@@ -1140,7 +1184,7 @@ def verification(pid, slug=None):
                 if label:
                     it["label"] = label
                     it["number"] = refs + order.index(label) + 1 if label in order else None
-                    anchor = _note_anchor(md, label)
+                    anchor = _note_anchor(md, label, render)
                     if anchor:
                         it["supports"] = list(anchor)
                 r = results.get(key)

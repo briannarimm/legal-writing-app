@@ -176,6 +176,8 @@
     S.forEach(k => { if (available(k)) out.push({ label: k.d, group: k.g, hint: glyphs(k), run: () => exec(k) }); });
     [['light', 'Light'], ['dark', 'Dark'], ['dark-paper', 'Dark with white page']].forEach(([id, n]) =>
       out.push({ label: 'Theme: ' + n, group: 'View', run: () => { const b = $('[data-theme-btn="' + id + '"]'); if (b) b.click(); } }));
+    const mac = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.reword;
+    if (mac) out.push({ label: 'Translucent window on or off', group: 'View', run: () => mac.postMessage({ action: 'translucent' }).catch(() => {}) });
     [['sidebar', 'Show or hide the sidebar'], ['inspector', 'Show or hide the inspector'], ['openData', 'Show data folder in Finder'],
       ['webWork', 'Open repository on GitHub'], ['openBackup', 'Show backups in Finder']].forEach(([id, n]) =>
       out.push({ label: n, group: 'View', run: () => App.menu(id) }));

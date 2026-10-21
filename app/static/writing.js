@@ -347,6 +347,7 @@
     App.ribbon.textEditing = !isMeta; App.ribbon.refresh();
     if (isMeta) {
       metaEd.value = f.md;
+      edited = false;
     } else {
       renderRich(f);
       docMd.value = f.md;
@@ -358,6 +359,7 @@
 
   // Show a section's Markdown in the rich editor (text, footnotes, live citations).
   function renderRich(f) {
+    edited = false;                      // the editor shows the file exactly as it is
     const p = MD.parse(f.md);
     doc.innerHTML = p.docHtml || '<p><br></p>';
     noteEls.clear(); graveyard.clear(); notesEl.innerHTML = '';
@@ -647,9 +649,11 @@
 
   /* ---------------------------------------------------------- email tools */
 
+  // The email's details (to, cc, subject) from its metadata file, with any edits in the Details box included.
   function emailMeta(key) {
+    updateMd();
     const meta = (W.files.find(f => f.kind === 'meta') || { md: '' });
-    const m = new RegExp('^' + key + ':\\s*"?(.*?)"?\\s*$', 'm').exec(metaEd.hidden ? meta.md : metaEd.value);
+    const m = new RegExp('^' + key + ':\\s*"?(.*?)"?\\s*$', 'm').exec(meta.md);
     return m ? m[1].replace(/\\"/g, '"') : '';
   }
   function emailParts() {
@@ -679,7 +683,11 @@
     }
   }
   $('#em-copy').onclick = async () => { updateMd(); const p = emailParts(); await copyRich(p.html, p.text); toast('Copied. Paste it into your email.'); };
-  $('#em-subject').onclick = async () => { await navigator.clipboard.writeText(emailMeta('subject')); toast('Subject copied.'); };
+  $('#em-subject').onclick = async () => {
+    const s = emailMeta('subject');
+    if (!s) { toast('This email has no subject yet. Add one in its Details.', true); return; }
+    await navigator.clipboard.writeText(s); toast('Subject copied.');
+  };
   $('#em-mailto').onclick = () => {
     const p = emailParts();
     const q = ['subject=' + encodeURIComponent(emailMeta('subject')), 'body=' + encodeURIComponent(p.text)];
@@ -689,8 +697,11 @@
 
   /* ---------------------------------------------------------- Markdown pane + dirty tracking */
 
-  let changeTimer;
+  // Only an edit makes the editor write a section back. Its Markdown is tidied on the way (a sentence on each line,
+  // no trailing blank lines), and that should never happen to a file just because it was opened and looked at.
+  let changeTimer, edited = false;
   function onChange() {
+    edited = true;
     clearTimeout(changeTimer);
     changeTimer = setTimeout(() => { syncNotes(); updateMd(); }, 120);
   }
@@ -712,6 +723,7 @@
     const f = curFile();
     if (!f) return;
     clearTimeout(changeTimer);
+    if (!edited && !(App.editMode === 'md' && f.kind !== 'meta')) return;     // nothing typed here since it was opened
     const md = exportCurrent();
     if (md !== f.md) {
       f.md = md;
@@ -905,12 +917,28 @@
     addDownloads(bar, outputs);
     loadPreview();
   }
+  // The finished files: one Download menu instead of a row of links (the links stay, hidden, for the inspector)
   function addDownloads(bar, outputs) {
+    const files = el('span', 'pdf-files');
+    const kind = o => (o.kind === 'docx' ? 'Word' : o.kind === 'txt' ? 'text' : o.kind.toUpperCase());
     outputs.forEach(o => {
-      const a = el('a', '', '⬇ ' + o.label + ' (' + (o.kind === 'docx' ? 'Word' : o.kind === 'txt' ? 'text' : o.kind.toUpperCase()) + ')');
+      const a = el('a', '', '⬇ ' + o.label + ' (' + kind(o) + ')');
       a.href = '/build/' + o.name.split('/').map(encodeURIComponent).join('/') + '?download=1';
-      bar.appendChild(a);
+      files.appendChild(a);
     });
+    const b = el('button', 'btn small pdf-dl', 'Download ▾'); b.type = 'button';
+    b.title = 'Save a copy of the finished files (they are also in outputs/ in your data folder)';
+    b.onclick = () => {
+      const r = b.getBoundingClientRect(), links = Array.from(files.children);
+      const items = [];
+      outputs.forEach((o, k) => {
+        if (k && o.label !== outputs[k - 1].label) items.push('-');
+        items.push({ label: o.label + ' · ' + kind(o), icon: o.kind === 'pdf' ? 'doc' : 'save', run: () => links[k].click() });
+      });
+      items.push('-', { label: 'Show the Finished Files in Finder', icon: 'folder', run: () => App.cmd.global.openOutput() });
+      App.menu.open(r.left, r.bottom + 4, items);
+    };
+    bar.append(b, files);
   }
 
   $('#btn-run').onclick = () => runAll();
@@ -929,10 +957,12 @@
     setEditMode(m) {
       const f = curFile();
       if (f && f.kind === 'section') {
-        if (m === 'md') {                       // from the rich editor to Markdown
-          const bodies = new Map(); noteEls.forEach((n, l) => bodies.set(l, n.querySelector('.note-body')));
-          const md = MD.exportMd(doc, bodies, W.orphans, { split: splitLines() });
-          if (md !== f.md) { f.md = md; saver.touch(); }
+        if (m === 'md') {                       // from the rich editor to Markdown (what was typed there, if anything)
+          if (edited) {
+            const bodies = new Map(); noteEls.forEach((n, l) => bodies.set(l, n.querySelector('.note-body')));
+            const md = MD.exportMd(doc, bodies, W.orphans, { split: splitLines() });
+            if (md !== f.md) { f.md = md; saver.touch(); }
+          }
           docMd.value = f.md;
         } else if (docMd.value !== f.md) {      // back: show what was typed
           f.md = docMd.value; saver.touch();

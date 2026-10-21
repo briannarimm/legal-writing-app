@@ -65,6 +65,22 @@ try:
         t.join()
     got = store._read_verification(pid)['results']
     check('no result is lost when several are saved at once', all(k in got for k in keys), '%d of %d' % (sum(k in got for k in keys), len(keys)))
+
+    # a footnote with two citations whose saved text is only their tag (another tool wrote them): around one card,
+    # the other reads as a citation, not as "doe-2020"
+    store.write_citation('smith', {'type': 'case', 'fields': {'name': 'Smith v. Jones', 'volume': '1', 'reporter': 'F.3d',
+                                                               'first_page': '2', 'date': '2000'}}, create=True)
+    store.write_citation('doe-2020', {'type': 'journal', 'fields': {'authors': [{'given': 'Jane', 'family': 'Doe'}], 'title': 'Privacy',
+                                                                   'journal': 'Yale Law Journal', 'volume': '9', 'first_page': '1', 'date': '2020'}},
+                         create=True)
+    slug = store.create_document('article', 'Two Cites', pid)
+    (store.doc_path(slug) / '01-intro.md').write_text(
+        '# Intro\n\nCourts agree.[^a]\n\n[^a]: [smith]{.cite tag="smith"}; [doe-2020]{.cite tag="doe-2020" signal="see"}.\n', encoding='utf-8')
+    items = [x for x in store.verification(pid)['items'] if x['slug'] == slug]
+    check('a neighbouring citation reads as a citation in Verify', items and 'Smith v. Jones' in items[1]['before'] and 'smith' not in items[1]['before'],
+          str([x['before'] for x in items]))
+    uses = store.citation_uses('doe-2020')['documents'][0]['uses'][0]
+    check('… and in Cited in', 'Smith v. Jones' in uses['before'], uses['before'])
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 

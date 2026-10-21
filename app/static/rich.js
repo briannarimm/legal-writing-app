@@ -139,6 +139,14 @@
     if (!target) return;
     e.preventDefault();
     const cd = e.clipboardData;
+    const raw = e.target.closest('.raw');
+    if (raw) {
+      // a pass-through block (a table, LaTeX…) is plain Markdown: its line breaks are part of it
+      const text = (cd.getData('text/plain') || '').replace(/\r\n?/g, '\n');
+      if (text) document.execCommand('insertText', false, text);
+      target.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
     const html = cd.getData('text/html');
     const s = html ? cleanPaste(html) : esc(cd.getData('text/plain')).replace(/\r/g, '');
     if (!s) return;

@@ -118,6 +118,8 @@
     try { window.webkit.messageHandlers.reword.postMessage({ action: 'theme', theme: t }).catch(() => {}); } catch (e) { /* not the Mac app */ }
   }
   $$('[data-theme-btn]').forEach(b => b.addEventListener('click', () => setTheme(b.dataset.themeBtn)));
+  // the Mac app tells the page when View > Appearance > Translucent Window changes (main.swift)
+  App.onTranslucent = on => toast(on ? 'The window is see-through now. View → Appearance → Translucent Window turns it off.' : 'The window is solid now.');
   setTheme(document.documentElement.dataset.theme || 'light');
 
   /* ------------------------------------------------------------ view settings */
@@ -192,9 +194,10 @@
   splitter.addEventListener('mousedown', e => {
     e.preventDefault();
     document.body.classList.add('dragging');
-    const rect = writingView.getBoundingClientRect();
-    const side = writingView.contains($('#tree-pane')) ? $('#tree-pane').getBoundingClientRect().width : 0;
-    const move = ev => setSplit(((ev.clientX - rect.left - side) / (rect.width - side - 6)) * 100);
+    // the divider follows the pointer: measure the two panes it sits between (the view has padding around them)
+    const ed = $('#editor-pane').getBoundingClientRect(), rp = $('#right-pane').getBoundingClientRect();
+    const left = ed.left, right = rp.right, gap = Math.max(0, rp.left - ed.right);
+    const move = ev => setSplit(((ev.clientX - left - gap / 2) / Math.max(1, right - left - gap)) * 100);
     const up = () => { document.body.classList.remove('dragging'); document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
     document.addEventListener('mousemove', move);
     document.addEventListener('mouseup', up);

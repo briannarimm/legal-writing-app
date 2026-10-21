@@ -94,23 +94,59 @@
     renderCard(cur());
   }
 
+  // The queue in the sidebar: how far the check has got, then every citation by section, a mark for each
+  // (✓ approved, ✕ sent back, ring not checked). A footnote with several citations shows its number once.
   function renderSide() {
-    const c = counts();
+    const c = counts(), n = V.items.length;
     const tally = $('#vf-tally');
     tally.innerHTML = '';
-    if (V.items.length) {
-      const chip = (n, label, cls) => { const s = el('span', 'vf-chip ' + cls); s.append(el('b', '', String(n)), ' ' + label); return s; };
-      tally.append(chip(c.approved, 'approved', 'ok'), chip(c.failed, 'sent back', 'bad'), chip(c.todo, 'to check', 'todo'));
+    if (n) {
+      const done = c.approved + c.failed;
+      const head = el('div', 'vf-sum-head');
+      head.append(el('b', '', done + ' of ' + n + ' checked'), el('span', 'muted', Math.round((100 * done) / n) + '%'));
+      const bar = el('div', 'vf-sum-bar');
+      [[c.approved, 'ok'], [c.failed, 'bad']].forEach(([k, cls]) => { if (k) { const s = el('span', cls); s.style.width = (100 * k / n) + '%'; bar.appendChild(s); } });
+      const legend = el('div', 'vf-sum-legend');
+      const key = (k, cls, label) => { const s = el('span', 'vf-key'); s.append(el('i', 'vf-mark ' + cls), el('b', '', String(k)), ' ' + label); return s; };
+      legend.append(key(c.approved, 'approved', 'approved'), key(c.failed, 'failed', 'sent back'), key(c.todo, 'todo', 'to check'));
+      tally.append(head, bar, legend);
     }
     const list = $('#vf-list');
     list.innerHTML = '';
-    let lastDoc = null;
     const showing = cur();
+    const docs = new Set(V.items.map(it => it.slug)).size;
+    // how many are checked in each section, for its heading
+    const per = new Map();
+    V.items.forEach(it => {
+      const k = it.slug + '\u0000' + it.section, p = per.get(k) || { n: 0, done: 0 };
+      p.n++; if (it.status) p.done++;
+      per.set(k, p);
+    });
+    let lastDoc = null, lastSec = null, lastNote = null;
     V.items.forEach((it, i) => {
-      if (it.slug !== lastDoc && !V.slug) { list.appendChild(el('div', 'vf-doc-head', it.doc)); lastDoc = it.slug; }
-      const row = el('button', 'vf-row' + (it === showing ? ' on' : '')); row.type = 'button';
-      row.append(el('span', 'vf-dot ' + (it.status || 'todo')), el('span', 'vf-row-loc', where(it)), el('span', 'vf-row-text', it.text || it.tag));
-      row.title = (it.status === 'failed' ? 'Sent back' + (it.reason ? ': ' + it.reason : '') : it.status === 'approved' ? 'Approved' : 'Not checked yet');
+      if (it.slug !== lastDoc) {
+        if (docs > 1) list.appendChild(el('div', 'vf-doc-head', it.doc));
+        lastDoc = it.slug; lastSec = null;
+      }
+      if (it.section !== lastSec) {
+        const p = per.get(it.slug + '\u0000' + it.section);
+        const h = el('div', 'vf-sec-head' + (p.done === p.n ? ' complete' : ''));
+        h.append(el('span', 'vf-sec-name', it.section || 'Text'), el('span', 'vf-sec-n', p.done + '/' + p.n));
+        list.appendChild(h);
+        lastSec = it.section; lastNote = null;
+      }
+      const note = it.where === 'footnote' ? it.slug + ':' + (it.number || it.label) : null;
+      const same = note && note === lastNote;
+      lastNote = note;
+      const row = el('button', 'vf-row' + (it === showing ? ' on' : '') + (same ? ' cont' : '') + (it.status ? ' ' + it.status : ''));
+      row.type = 'button';
+      const text = el('span', 'vf-row-text');
+      if (it.html) text.innerHTML = it.html; else text.textContent = it.text || it.tag;
+      row.append(el('span', 'vf-mark ' + (it.status || 'todo') + (it.edited ? ' edited' : '')),
+        el('span', 'vf-row-loc', same ? '' : it.where === 'footnote' ? where(it) : 'text'), text);        // the section is in the heading above
+      row.title = (it.status === 'failed' ? 'Sent back' + (it.reason ? ': ' + it.reason : '') + (it.edited ? ' (edited since)' : '')
+        : it.status === 'approved' ? 'Approved' : it.was === 'approved' ? 'Changed since you approved it' : 'Not checked yet') + ' · ' + (it.text || it.tag);
+      row.dataset.i = i;
       row.onclick = () => jumpTo(i);
       list.appendChild(row);
     });
@@ -118,18 +154,52 @@
     if (on) on.scrollIntoView({ block: 'nearest' });
   }
 
+  // Where this pass is. A short pass gets one segment per card; a long one a single bar that maps the whole pass
+  // (green approved, red sent back) with a marker at the card on screen. Click anywhere on it to go there.
+  const SEGMENTS_UP_TO = 40;
   function renderProgress() {
     const bar = $('#vf-bar');
     bar.innerHTML = '';
-    V.order.forEach((i, n) => {
-      const it = V.items[i];
-      const s = el('button', 'vf-seg ' + (it.status || 'todo') + (n === V.pos && !V.done ? ' on' : '')); s.type = 'button';
-      s.title = where(it) + ' · ' + (it.text || it.tag);
-      s.onclick = () => { V.done = false; V.pos = n; render(); };
-      bar.appendChild(s);
-    });
+    const n = V.order.length;
+    const many = n > SEGMENTS_UP_TO;
+    bar.classList.toggle('map', many);
+    bar.onclick = null; bar.onmousemove = null;
+    if (many) {
+      const color = s => (s === 'approved' ? 'var(--ok)' : s === 'failed' ? 'var(--bad)' : 'var(--vf-todo)');
+      const stops = [];
+      let from = 0;
+      for (let k = 1; k <= n; k++) {
+        const a = V.items[V.order[k - 1]].status || '', b = k < n ? V.items[V.order[k]].status || '' : null;
+        if (b !== a) { stops.push(color(a) + ' ' + (100 * from / n) + '% ' + (100 * k / n) + '%'); from = k; }
+      }
+      bar.style.background = 'linear-gradient(to right, ' + stops.join(', ') + ')';
+      if (!V.done) {
+        const m = el('span', 'vf-marker');
+        m.style.left = (100 * (V.pos + 0.5) / n) + '%';
+        bar.appendChild(m);
+      }
+      const at = e => { const r = bar.getBoundingClientRect(); return Math.max(0, Math.min(n - 1, Math.floor(((e.clientX - r.left) / r.width) * n))); };
+      bar.onclick = e => { V.done = false; V.pos = at(e); render(); };
+      bar.onmousemove = e => { const it = V.items[V.order[at(e)]]; bar.title = where(it) + ' · ' + (it.text || it.tag); };
+    } else {
+      bar.style.background = '';
+      V.order.forEach((i, k) => {
+        const it = V.items[i];
+        const s = el('button', 'vf-seg ' + (it.status || 'todo') + (k === V.pos && !V.done ? ' on' : '')); s.type = 'button';
+        s.title = where(it) + ' · ' + (it.text || it.tag);
+        s.onclick = () => { V.done = false; V.pos = k; render(); };
+        bar.appendChild(s);
+      });
+    }
     const label = V.mode === 'failed' ? 'sent back' : V.mode === 'todo' ? 'not checked' : '';
-    $('#vf-count').textContent = V.done ? 'Summary' : (V.pos + 1) + ' of ' + V.order.length + (label ? ' ' + label : '');
+    $('#vf-count').textContent = V.done ? '' : (V.pos + 1) + ' of ' + n + (label ? ' ' + label : '');
+    const sb = $('#vf-summary-btn');
+    sb.textContent = V.done && n ? 'Back to the cards' : 'Summary';
+    sb.title = V.done && n ? 'Go back to the card you were on' : 'See how the check went, and the citations you sent back';
+    // how many each pass holds, on its button
+    const c = counts();
+    const num = { all: V.items.length, todo: c.todo, failed: c.failed };
+    $$('[data-vf-mode]').forEach(b => { const s = b.querySelector('.vf-n'); if (s) s.textContent = num[b.dataset.vfMode]; });
   }
 
   const where = it => (it.where === 'footnote' ? (it.number ? 'n.' + it.number : 'Footnote') : it.section || 'Text');
@@ -251,7 +321,7 @@
     if (!V.reader && window.Reader) V.reader = new window.Reader($('#vf-view'), $('#vf-anns'), { onChange: anns => scheduleSave(anns) });
     return V.reader;
   }
-  function closeSource() { flush(); if (V.reader) V.reader.close(); V.tag = null; }
+  function closeSource() { flush(); if (V.reader) V.reader.close(); V.tag = null; V.fileName = null; }
 
   function renderSourceHead(tag) {
     const h = $('#vf-src-head');
@@ -397,10 +467,19 @@
     return true;
   }
 
+  // One decision at a time: pressing A twice quickly must not approve this card and skip the next one.
+  let deciding = false;
+  async function decide(it, status, reason) {
+    if (deciding) return;
+    deciding = true;
+    try {
+      if (!(await record(it, status, reason))) return;
+      if (cur() === it) advance(); else render();          // moved on while it saved: stay there, just show the result
+    } finally { deciding = false; }
+  }
   async function approve() {
     const it = cur();
-    if (!it) return;
-    if (await record(it, 'approved')) advance();
+    if (it) await decide(it, 'approved');
   }
 
   function showReason() {
@@ -414,10 +493,10 @@
   function hideReason() { $('#vf-reason').hidden = true; }
   async function sendBack() {
     const it = cur();
-    if (!it) return;
+    if (!it || deciding) return;
     const reason = $('#vf-reason-text').value.trim();
     hideReason();
-    if (await record(it, 'failed', reason)) advance();
+    await decide(it, 'failed', reason);
   }
 
   function advance() {
@@ -459,7 +538,7 @@
   $('#vf-next').onclick = advance;
   $('#vf-goto').onclick = () => { const it = cur(); if (it) goTo(it); };
   $('#vf-open-cite').onclick = async () => { const it = cur(); if (it && !it.missing) { await App.showView('citations'); App.views.citations.open(it.tag); } };
-  $('#vf-summary-btn').onclick = () => { V.done = true; render(); };
+  $('#vf-summary-btn').onclick = () => { V.done = !V.done || !V.order.length; render(); };
   $('#vf-reset').onclick = async () => {
     const what = V.slug ? 'this document' : 'the project “' + App.projects.name(V.pid) + '”';
     if (!confirm('Start over on ' + what + '?\n\nEvery approval and every citation you sent back (with its reason) is forgotten.')) return;
@@ -496,5 +575,27 @@
     },
     async reload() { const it = cur(); await load(it && it.key); },
     afterSave() {},
+    // the right-click menu on a row of the queue (contextmenu.js)
+    menuFor(i) {
+      const it = V.items[i];
+      if (!it) return [];
+      const show = () => jumpTo(i);
+      return [
+        { header: where(it) + ' · ' + (it.section || it.doc) },
+        { label: 'Show This Card', icon: 'open', run: show },
+        { label: it.status === 'approved' ? 'Approved' : 'Approve', icon: 'check', disabled: it.status === 'approved',
+          run: async () => { show(); await decide(it, 'approved'); } },
+        { label: 'Send Back…', icon: 'comment', run: () => { show(); showReason(); } },
+        '-',
+        { label: 'Go to It in the Document', icon: 'jump', run: () => goTo(it) },
+        { label: 'Open the Source in Citations', icon: 'cite', disabled: !!it.missing,
+          run: async () => { await App.showView('citations'); App.views.citations.open(it.tag); } },
+      ];
+    },
+    subtitle() {                        // under the title bar's "Verify"
+      if (!V.pid) return '';
+      const c = counts(), n = V.items.length;
+      return App.projects.name(V.pid) + (n ? ' · ' + (c.approved + c.failed) + ' of ' + n + ' checked' : '');
+    },
   };
 })();
