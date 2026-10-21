@@ -228,8 +228,14 @@ final class MenuBridge: NSObject, WKScriptMessageHandlerWithReply {
         case "theme":
             // the window frame follows the app's theme (1.2: the title bar is transparent over the glass)
             let dark = (body["theme"] as? String ?? "light") != "light"
+            UserDefaults.standard.set(dark, forKey: "windowDark")      // so the next start opens in the right colors
             if let win = web?.window { styleWindow(win, dark: dark) }
             replyHandler(true, nil)
+        case "translucent":
+            // the page's right-click menu and command palette turn the see-through window on or off
+            let on = (body["on"] as? Bool) ?? !translucent()
+            (NSApp.delegate as? AppDelegate)?.setTranslucent(on)
+            replyHandler(on, nil)
         case "lookUp":
             if let q = word.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed), let u = URL(string: "dict://" + q) {
                 NSWorkspace.shared.open(u)
@@ -242,12 +248,46 @@ final class MenuBridge: NSObject, WKScriptMessageHandlerWithReply {
 }
 
 /// 1.2: a transparent title bar over the app's glass background, matching its light or dark theme.
+/// 1.3.1: with View > Appearance > Translucent Window (on unless you turn it off) the window is see-through like
+/// the Mac's own apps: what's behind it shows through, blurred, under the title bar and around the glass panels.
+let translucentKey = "translucentWindow"
+var windowIsDark = false
+var backdrop: NSVisualEffectView?
+
+func translucent() -> Bool { UserDefaults.standard.bool(forKey: translucentKey) }
+
 func styleWindow(_ win: NSWindow, dark: Bool) {
+    windowIsDark = dark
     win.titlebarAppearsTransparent = true
     win.titleVisibility = .hidden
     win.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
-    win.backgroundColor = dark ? NSColor(calibratedRed: 0.09, green: 0.11, blue: 0.15, alpha: 1)
-                               : NSColor(calibratedRed: 0.87, green: 0.89, blue: 0.93, alpha: 1)
+    let see = translucent()
+    backdrop?.isHidden = !see
+    win.isOpaque = !see
+    win.backgroundColor = see ? .clear
+        : dark ? NSColor(calibratedRed: 0.09, green: 0.11, blue: 0.15, alpha: 1)
+               : NSColor(calibratedRed: 0.87, green: 0.89, blue: 0.93, alpha: 1)
+    win.invalidateShadow()
+}
+
+/// The strip under the traffic lights: the window is dragged by it, and a double-click does what System Settings
+/// says a double-click on a title bar does (zoom or minimize).
+final class TitleStrip: NSView {
+    override var mouseDownCanMoveWindow: Bool { false }      // it moves the window itself, below
+    override func mouseDown(with e: NSEvent) {
+        guard e.clickCount == 2 else { window?.performDrag(with: e); return }
+        switch UserDefaults.standard.string(forKey: "AppleActionOnDoubleClick") ?? "Maximize" {
+        case "Minimize": window?.performMiniaturize(nil)
+        case "None": break
+        default: window?.performZoom(nil)
+        }
+    }
+}
+
+/// Tells the page whether the window behind it is see-through, before the page draws anything.
+func translucencyScript() -> WKUserScript {
+    WKUserScript(source: "document.documentElement.classList.toggle('mac-translucent', \(translucent()));",
+                 injectionTime: .atDocumentStart, forMainFrameOnly: true)
 }
 
 // MARK: - the app
@@ -261,7 +301,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     let menuBridge = MenuBridge()
 
     func applicationDidFinishLaunching(_ n: Notification) {
-        UserDefaults.standard.register(defaults: ["WebContinuousSpellCheckingEnabled": true, "pageZoom": 1.0])
+        UserDefaults.standard.register(defaults: ["WebContinuousSpellCheckingEnabled": true, "pageZoom": 1.0, translucentKey: true])
         buildMenu()
         buildWindow()
         server.onRestart = { [weak self] url in self?.web.load(URLRequest(url: url)) }
@@ -282,6 +322,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         let cfg = WKWebViewConfiguration()
         cfg.websiteDataStore = .default()
         cfg.userContentController.addScriptMessageHandler(menuBridge, contentWorld: .page, name: "reword")
+        cfg.userContentController.addUserScript(translucencyScript())
         web = WKWebView(frame: .zero, configuration: cfg)
         menuBridge.web = web
         web.navigationDelegate = self
@@ -289,11 +330,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         web.pageZoom = CGFloat(UserDefaults.standard.double(forKey: "pageZoom"))
         if #available(macOS 13.3, *), env["LT_DEBUG"] != nil { web.isInspectable = true }
         web.setValue(false, forKey: "drawsBackground")
+        web.underPageBackgroundColor = .clear
 
+        // The content runs under the title bar, so one see-through backdrop covers the whole window. The page
+        // starts below the traffic lights, as before; the strip there moves the window.
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1360, height: 900),
-                          styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+                          styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         window.title = "ReWord"
-        styleWindow(window, dark: false)
         window.minSize = NSSize(width: 900, height: 600)
         window.delegate = self
         window.setFrameAutosaveName("ReWordMain")
@@ -306,20 +349,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         status.alignment = .center
         status.translatesAutoresizingMaskIntoConstraints = false
 
+        let fx = NSVisualEffectView()
+        fx.blendingMode = .behindWindow
+        fx.material = .underWindowBackground
+        fx.state = .followsWindowActiveState          // like the Mac's own windows: it settles when ReWord is in the background
+        fx.translatesAutoresizingMaskIntoConstraints = false
+        backdrop = fx
+        let strip = TitleStrip()
+        strip.translatesAutoresizingMaskIntoConstraints = false
+
         let content = NSView()
         web.translatesAutoresizingMaskIntoConstraints = false
+        content.addSubview(fx)
         content.addSubview(web)
+        content.addSubview(strip)
         content.addSubview(status)
+        window.contentView = content
+        let belowTitle = (window.contentLayoutGuide as? NSLayoutGuide)?.topAnchor ?? content.topAnchor
         NSLayoutConstraint.activate([
+            fx.leadingAnchor.constraint(equalTo: content.leadingAnchor), fx.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            fx.topAnchor.constraint(equalTo: content.topAnchor), fx.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+            strip.leadingAnchor.constraint(equalTo: content.leadingAnchor), strip.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+            strip.topAnchor.constraint(equalTo: content.topAnchor), strip.bottomAnchor.constraint(equalTo: belowTitle),
             web.leadingAnchor.constraint(equalTo: content.leadingAnchor), web.trailingAnchor.constraint(equalTo: content.trailingAnchor),
-            web.topAnchor.constraint(equalTo: content.topAnchor), web.bottomAnchor.constraint(equalTo: content.bottomAnchor),
+            web.topAnchor.constraint(equalTo: belowTitle), web.bottomAnchor.constraint(equalTo: content.bottomAnchor),
             status.centerXAnchor.constraint(equalTo: content.centerXAnchor), status.centerYAnchor.constraint(equalTo: content.centerYAnchor),
             status.leadingAnchor.constraint(greaterThanOrEqualTo: content.leadingAnchor, constant: 30),
         ])
-        window.contentView = content
+        styleWindow(window, dark: UserDefaults.standard.bool(forKey: "windowDark"))
         if env["LT_OFFSCREEN"] != nil { window.setFrameOrigin(NSPoint(x: -6000, y: 200)) }
         window.makeKeyAndOrderFront(nil)
     }
+
+    // View > Appearance > Translucent Window (and the page's own menus, through the bridge)
+    var translucencyItem: NSMenuItem?
+    func setTranslucent(_ on: Bool) {
+        UserDefaults.standard.set(on, forKey: translucentKey)
+        styleWindow(window, dark: windowIsDark)
+        let ucc = web.configuration.userContentController
+        ucc.removeAllUserScripts()
+        ucc.addUserScript(translucencyScript())
+        web.evaluateJavaScript("document.documentElement.classList.toggle('mac-translucent', \(on)); window.App && App.onTranslucent && App.onTranslucent(\(on))",
+                               completionHandler: nil)
+        translucencyItem?.state = on ? .on : .off
+    }
+    @objc func toggleTranslucency(_ s: Any?) { setTranslucent(!translucent()) }
 
     // MARK: quitting: save what's on screen, stop the server
 
@@ -582,6 +656,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         js(appearance, "Light", "theme:light")
         js(appearance, "Dark", "theme:dark")
         js(appearance, "Dark, White Page", "theme:dark-paper")
+        appearance.addItem(.separator())
+        let see = NSMenuItem(title: "Translucent Window", action: #selector(toggleTranslucency(_:)), keyEquivalent: "")
+        see.target = self
+        see.state = translucent() ? .on : .off
+        appearance.addItem(see)
+        translucencyItem = see
         js(view, "Show or Hide Sidebar", "sidebar", "s", [.command, .option])
         js(view, "Show or Hide Inspector", "inspector", "i", [.command, .option])
         view.addItem(.separator())

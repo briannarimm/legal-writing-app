@@ -325,6 +325,7 @@
 
   function renderList() {
     list.innerHTML = '';
+    if (!App.state.citationsLoaded) { list.appendChild(el('div', 'empty small', 'Loading…')); return; }
     const q = search.value.trim().toLowerCase(), ft = filter.value;
     const typeOk = c => !ft || (ft === '_unused' ? !!counts && !counts[c.tag] : c.type === ft);
     const items = App.state.citations.filter(c => App.projects.citeInScope(c) && typeOk(c) &&
@@ -536,11 +537,13 @@
 
   App.views.citations = {
     async show() {
+      if (App.state.citationsLoaded) { renderFilter(); renderList(); }      // what's here already, at once; then refresh it
       try { await Promise.all([App.loadCitations(), loadCounts()]); } catch (e) { toast('Couldn’t load citations: ' + e.message, true); }
       renderFilter();
       if (selected && selected !== '+' && !App.citation(selected)) selected = '';
       renderList();
       if (selected === null || selected === '') { editor.hidden = true; empty.hidden = false; }
+      if (App.inspector) App.inspector.refresh();          // the title bar's "356 sources"
     },
     open(tag) { return select(tag); },
     // bring the "Cited in" list into view (it loads a moment after the citation opens)
@@ -556,5 +559,10 @@
     async reload() { await this.show(); if (selected && selected !== '+') await select(selected); },
     afterSave() { renderList(); },
     renderList() { renderList(); },
+    subtitle() {                        // under the title bar's "Citations"
+      if (!App.state.citationsLoaded) return '';
+      const n = App.state.citations.filter(c => App.projects.citeInScope(c)).length;
+      return n + ' source' + (n === 1 ? '' : 's') + (App.projects.current() ? ' in ' + App.projects.name(App.projects.current()) : ' in your library');
+    },
   };
 })();

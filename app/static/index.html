@@ -42,6 +42,7 @@
   <div class="gs-foot">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9z"/></svg>
     <span id="save-status" class="muted">Loading…</span>
+    <button type="button" class="gs-save" id="btn-save-side" title="Save everything now, and sync with GitHub when it’s connected (⌘S)">Save</button>
   </div>
 </aside>
 
@@ -51,6 +52,7 @@
   <div class="tb-title">
     <strong id="tb-doc-title">ReWord</strong>
     <span id="version-info" class="muted"></span>
+    <span id="tb-sub" class="muted"></span>
   </div>
   <div id="theme-switch" class="seg" role="group" aria-label="Color theme" hidden>
     <button data-theme-btn="light" title="Light"></button>
@@ -426,9 +428,9 @@
     <div id="vf-work" hidden>
       <div class="vf-top">
         <div class="seg-cap vf-modes" role="group" aria-label="Which citations">
-          <button class="rb-btn sm" data-vf-mode="all" title="Every citation, in reading order">All</button>
-          <button class="rb-btn sm" data-vf-mode="todo" title="Only the citations you haven't checked yet">Not checked</button>
-          <button class="rb-btn sm" data-vf-mode="failed" title="Only the citations you sent back, to fix them">Sent back</button>
+          <button class="rb-btn sm" data-vf-mode="all" title="Every citation, in reading order">All <span class="vf-n"></span></button>
+          <button class="rb-btn sm" data-vf-mode="todo" title="Only the citations you haven't checked yet">Not checked <span class="vf-n"></span></button>
+          <button class="rb-btn sm" data-vf-mode="failed" title="Only the citations you sent back, to fix them">Sent back <span class="vf-n"></span></button>
         </div>
         <div class="vf-progress"><div class="vf-bar" id="vf-bar"></div><span id="vf-count" class="muted small"></span></div>
         <button class="btn small" id="vf-summary-btn" title="See how the check went, and the citations you sent back">Summary</button>

@@ -39,6 +39,9 @@
     const t = App.view === 'writing' ? (info ? info.title : 'Writing') : App.view === 'research' ? 'Research' : App.view === 'verify' ? 'Verify' : 'Citations';
     $('#tb-doc-title').textContent = t;
     document.title = t === 'ReWord' ? 'ReWord' : t + ' · ReWord';
+    // under the title: the document's versions in Writing; elsewhere what the view holds (24 notes, 8 of 263 checked)
+    const v = App.views[App.view], sub = App.view !== 'writing' && v && v.subtitle ? v.subtitle() : '';
+    if ($('#tb-sub').textContent !== sub) $('#tb-sub').textContent = sub;
   }
 
   /* ------------------------------------------------------------ inspector */
@@ -135,9 +138,12 @@
     }
   }
   function place() {
-    const r = $('#btn-save').getBoundingClientRect();
-    panel.style.left = Math.max(8, r.left) + 'px';
-    panel.style.top = (r.bottom + 8) + 'px';
+    // under Save in Writing; a build still running after you move to another view reports beside its Save instead
+    const b = $('#btn-save'), side = $('#btn-save-side');
+    const r = b.getBoundingClientRect();
+    if (r.width) { panel.style.left = Math.max(8, r.left) + 'px'; panel.style.top = (r.bottom + 8) + 'px'; panel.style.bottom = ''; return; }
+    const s = side.getBoundingClientRect();
+    panel.style.left = Math.max(8, s.left) + 'px'; panel.style.top = ''; panel.style.bottom = Math.max(8, window.innerHeight - s.top + 8) + 'px';
   }
   App.saveProgress = function (on, step, result) {
     clearTimeout(hideT);

@@ -72,7 +72,8 @@
           } catch (e) {
             if (e.status === 409) {
               if (confirm('“' + item.title() + '” was changed outside this app since you opened it (another editor, or git).\n\nOverwrite it with what’s here?')) {
-                await item.save(sent, true); item.saved = sent;
+                try { await item.save(sent, true); item.saved = sent; }
+                catch (e2) { this.status('Save failed'); toast('Couldn’t save: ' + e2.message, true); return; }
               } else { this.status('Not saved: file changed on disk'); return; }
             } else { this.status('Save failed'); toast('Couldn’t save: ' + e.message, true); return; }
           }
@@ -99,6 +100,7 @@
     if ((e.metaKey || e.ctrlKey) && !(e.metaKey && e.ctrlKey) && !e.altKey && e.code === 'KeyS') { e.preventDefault(); window.App.saveAll(); }
   });
   $('#btn-save').onclick = () => window.App.saveAll();
+  $('#btn-save-side').onclick = () => window.App.saveAll();        // Save outside Writing lives by the save status
 
   /* ---------------------------------------------------------- views */
   const App = window.App = {
@@ -142,6 +144,7 @@
     App.state.citations = r.citations;
     App.state.citeTypes = r.types;
     App.state.citeSchema = r.schema || { types: {}, groups: [] };
+    App.state.citationsLoaded = true;
     return r.citations;
   };
   App.citation = tag => App.state.citations.find(c => c.tag === tag);

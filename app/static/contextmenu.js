@@ -664,7 +664,22 @@
         ...lookItems(text),
       ];
     }
-    return readerViewItems();
+    return view.id === 'vf-view' ? verifyReaderItems() : readerViewItems();
+  }
+  // the source beside a Verify card: its own zoom and file buttons
+  function verifyReaderItems() {
+    const press = sel => () => clickEl($(sel));
+    const has = sel => { const b = $(sel); return b && !b.disabled && !b.hidden; };
+    return [
+      { label: 'Zoom In', icon: 'zoomIn', run: press('#vf-zoom-in') },
+      { label: 'Zoom Out', icon: 'zoomOut', run: press('#vf-zoom-out') },
+      { label: 'Fit Width', icon: 'fit', run: press('#vf-zoom-fit') },
+      '-',
+      { label: 'Attach PDF…', icon: 'plus', disabled: !has('#vf-attach'), run: press('#vf-attach') },
+      { label: 'Snapshot the Web Page', icon: 'doc', disabled: !has('#vf-snap'), run: press('#vf-snap') },
+      { label: 'Open the Live Page', icon: 'link', disabled: !has('#vf-live'), run: press('#vf-live') },
+      { label: 'Open the Source in Citations', icon: 'open', run: press('#vf-open-cite') },
+    ];
   }
   function readerViewItems() {
     return [
@@ -678,7 +693,7 @@
     ];
   }
   function annItemItems(item) {
-    const view = $('#src-view'), r = view && view.reader;
+    const body = item.closest('.src-body'), view = body && body.querySelector('.reader'), r = view && view.reader;
     const a = r && r.annotation(item.dataset.id);
     if (!a) return [];
     return [
@@ -711,6 +726,7 @@
   function generalItems() {
     const theme = document.documentElement.dataset.theme;
     const sideHidden = document.body.classList.contains('side-hidden'), inspHidden = $('#inspector').hidden;
+    const see = document.documentElement.classList.contains('mac-translucent');
     const setTheme = id => () => { const b = $('[data-theme-btn="' + id + '"]'); if (b) b.click(); };
     return [
       { label: 'New Document…', icon: 'doc', kbd: '⌘N', run: () => App.cmd.global.newDoc() },
@@ -725,6 +741,9 @@
         { label: 'Light', checked: theme === 'light', run: setTheme('light') },
         { label: 'Dark', checked: theme === 'dark', run: setTheme('dark') },
         { label: 'Dark, White Page', checked: theme === 'dark-paper', run: setTheme('dark-paper') },
+        bridge() ? '-' : null,
+        bridge() ? { label: 'Translucent Window', checked: see, title: 'See what’s behind the window, softly blurred, as in the Mac’s own apps',
+          run: () => native({ action: 'translucent', on: !see }) } : null,
       ] },
       { label: sideHidden ? 'Show Sidebar' : 'Hide Sidebar', icon: 'ribbon', kbd: '⌥⌘S', run: () => App.menu('sidebar') },
       { label: inspHidden ? 'Show Inspector' : 'Hide Inspector', icon: 'ribbon', kbd: '⌥⌘I', run: () => App.menu('inspector') },
@@ -733,12 +752,13 @@
 
   // What to show for a right-click on `t` at (x, y).
   async function itemsFor(t, x, y) {
-    // the PDF reader and its highlight list
-    const view = t.closest('#src-view');
+    // the PDF reader and its highlight list (in Citations, and beside a Verify card)
+    const view = t.closest('#src-view, #vf-view');
     if (view && view.reader) return readerItems(view, t);
-    const ann = t.closest('#src-anns .ann-item');
+    const ann = t.closest('#src-anns .ann-item, #vf-anns .ann-item');
     if (ann) return annItemItems(ann);
     if (t.closest('#cite-source') && !editableOf(t)) return readerViewItems();
+    if (t.closest('.vf-right') && !editableOf(t) && !t.closest('.src-bar')) return verifyReaderItems();
 
     // live citations and footnote marks inside the text
     const root = editableOf(t);
@@ -790,6 +810,8 @@
     if (t.closest('#tree .sections li.add')) return [{ label: 'Add Section…', icon: 'plus', kbd: '⌃⌘S', run: () => App.views.writing.addSection() }];
     const head = t.closest('.proj-head');
     if (head) return projectHeadItems(head);
+    const vfRow = t.closest('#vf-list .vf-row');
+    if (vfRow && App.views.verify.menuFor) return App.views.verify.menuFor(+vfRow.dataset.i);
     const noteRow = t.closest('#note-list .list-item[data-id]');
     if (noteRow) return noteRowItems(noteRow);
     const citeRow = t.closest('#cite-list .list-item[data-tag]');
@@ -838,5 +860,5 @@
     });
   });
 
-  App.menu = { open: show, close };
+  App.menu = { open: (x, y, items) => show(items, x, y), close };
 })();

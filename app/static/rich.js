@@ -35,6 +35,20 @@
         break;
       }
     }
+    // Chrome (ReWord in a browser) drops a chip inserted at the very end of a paragraph after the paragraph
+    // instead of inside it, which would make it a paragraph of its own. Put it back, with the caret after it.
+    if (root.dataset.rich === 'block') {
+      Array.from(root.children).forEach(chip => {
+        const prev = chip.previousElementSibling;
+        if (!chip.matches('span.cite, span.auth') || !prev || !/^(P|LI|H[1-6])$/.test(prev.tagName)) return;
+        const after = chip.nextSibling && chip.nextSibling.nodeType === 3 && chip.nextSibling.nodeValue.startsWith(MARK) ? chip.nextSibling : null;
+        prev.appendChild(chip);
+        const z = after || document.createTextNode(MARK);
+        prev.appendChild(z);
+        const r = document.createRange(); r.setStart(z, MARK.length); r.collapse(true);
+        const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      });
+    }
     // If the caret ended up at the very end of an authority mark, step out of it so that
     // whatever is typed next (a comma, a pin cite) isn't swallowed into the mark.
     const sel = getSelection();
@@ -139,6 +153,15 @@
     if (!target) return;
     e.preventDefault();
     const cd = e.clipboardData;
+    if (inRaw()) {
+      // a pass-through block (a table, LaTeX…) is plain Markdown: its line breaks are part of it
+      ((cd.getData('text/plain') || '').replace(/\r\n?/g, '\n')).split('\n').forEach((line, i) => {
+        if (i) document.execCommand('insertLineBreak');        // a new line inside the block (a "\n" would split it)
+        if (line) document.execCommand('insertText', false, line);
+      });
+      target.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
     const html = cd.getData('text/html');
     const s = html ? cleanPaste(html) : esc(cd.getData('text/plain')).replace(/\r/g, '');
     if (!s) return;
@@ -148,6 +171,19 @@
     target.dispatchEvent(new Event('input', { bubbles: true }));
   }
   document.addEventListener('paste', onPaste);
+  // Is the caret in a pass-through block? (They sit inside the editor, which gets the key and paste events.)
+  function inRaw() {
+    const s = getSelection();
+    const n = s.rangeCount ? s.anchorNode : null;
+    return !!(n && (n.nodeType === 1 ? n : n.parentElement).closest('.raw'));
+  }
+  // Return in a pass-through block starts a new line of it. Left alone, the browser splits the block in two, and
+  // the halves come out as separate blocks: a table with a blank line between two of its rows.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || e.isComposing || e.metaKey || e.ctrlKey || e.altKey || !inRaw()) return;
+    e.preventDefault();
+    document.execCommand('insertLineBreak');
+  });
   document.addEventListener('drop', e => { if (e.target.closest && e.target.closest('[data-rich]')) e.preventDefault(); });
 
   // Toolbar buttons keep the text selection (mousedown is cancelled) and run a command.

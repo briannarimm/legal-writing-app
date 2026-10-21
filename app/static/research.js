@@ -19,6 +19,7 @@
   const renderEl = $('#note-render');
 
   let notes = [];          // list entries (no bodies)
+  let loaded = false;      // until the first list arrives, say so rather than "No notes yet"
   let cur = null;          // the open note: { id, mtime, citation, ... }
   let value = '';          // cached serialized state of the open note
   let regKey = null;
@@ -53,6 +54,7 @@
   // One project: notes grouped by topic. All projects: under project headings, then topics.
   function renderList() {
     listEl.innerHTML = '';
+    if (!loaded) { listEl.appendChild(el('div', 'empty small', 'Loading…')); return; }
     const q = search.value.trim().toLowerCase();
     const items = notes.filter(n => App.projects.inScope(n.project) &&
       (!q || (n.title + ' ' + n.topic + ' ' + n.snippet + ' ' + n.citation).toLowerCase().includes(q)));
@@ -95,6 +97,7 @@
 
   async function loadList() {
     notes = (await api('/api/notes')).notes;
+    loaded = true;
     renderList();
   }
 
@@ -380,6 +383,7 @@
     async show() {
       try { await Promise.all([loadList(), App.loadCitations()]); } catch (e) { toast('Couldn’t load notes: ' + e.message, true); }
       if (cur) renderSource();
+      if (App.inspector) App.inspector.refresh();          // the title bar's "24 notes"
     },
     async open(id) { await App.showView('research'); await loadList(); await select(id); },
     // "Cited in" (citations.js): open the note and show the citation. The rich note editor shows footnote marks
@@ -402,5 +406,10 @@
     move: (id, pid) => moveNote('note:' + id, pid),
     newNote,
     afterSave() { renderList(); },
+    subtitle() {                        // under the title bar's "Research"
+      if (!loaded) return '';
+      const n = notes.filter(x => App.projects.inScope(x.project)).length;
+      return n + ' note' + (n === 1 ? '' : 's') + (App.projects.current() ? ' in ' + App.projects.name(App.projects.current()) : '');
+    },
   };
 })();

@@ -981,10 +981,7 @@ span.cite.flash, span.auth.flash { animation: cite-flash 2.4s ease-out; }
   border-left: 4px solid var(--bad); display: flex; flex-direction: column; gap: 6px; }
 .vf-fail-row .vf-why { font-size: 13px; }
 .vf-edited { color: #b07415; font-weight: 600; }
-/* sidebar list */
-.vf-tally { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 10px; }
-.vf-chip { font-size: 11.5px; border-radius: 999px; padding: 2px 8px; background: var(--gline); }
-.vf-chip.ok b { color: var(--ok); } .vf-chip.bad b { color: var(--bad); }
+/* sidebar list (1.3.1: see the queue styles at the end) */
 .vf-doc-head { font-size: 11px; font-weight: 600; color: var(--muted); padding: 10px 8px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vf-row { display: flex; align-items: center; gap: 7px; width: 100%; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 12.5px;
   text-align: left; padding: 5px 8px; border-radius: 9px; cursor: pointer; min-width: 0; }
@@ -992,7 +989,106 @@ span.cite.flash, span.auth.flash { animation: cite-flash 2.4s ease-out; }
 .vf-row.on { background: var(--glass2); box-shadow: 0 1px 3px rgba(0,0,0,.10); }
 .vf-row-loc { flex: none; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 2.6em; }
 .vf-row-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.vf-dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: transparent; box-shadow: inset 0 0 0 1.5px var(--muted); }
-.vf-dot.approved { background: var(--ok); box-shadow: none; } .vf-dot.failed { background: var(--bad); box-shadow: none; }
 @media (max-width: 1000px) { .vf-cols { grid-template-columns: 1fr; grid-template-rows: auto minmax(420px, 1fr); overflow: auto; }
   .vf-right { border-left: 0; border-top: 1px solid var(--gline); } .vf-right .src-body { grid-template-columns: 1fr; } .vf-right .ann-list { display: none; } }
+
+/* =====================================================================================================
+ * 1.3.1: a light facelift. Save outside Writing sits with the save status, the Verify queue reads like a
+ * checklist, and in the Mac app the window can be see-through like the Mac's own (View > Appearance).
+ * ===================================================================================================== */
+
+/* ---------- the see-through window: the page leaves its background to the Mac's (main.swift) */
+:root.mac-translucent, :root.mac-translucent body { background: transparent; }
+:root.mac-translucent body { background-image: none; }
+:root.mac-translucent #app-shell { background: transparent; }
+:root.mac-translucent { --glass: rgba(255,255,255,.46); --glass2: rgba(255,255,255,.74); --gshadow: 0 4px 16px rgba(0,0,0,.08); }
+:root.mac-translucent[data-theme="dark"], :root.mac-translucent[data-theme="dark-paper"] {
+  --glass: rgba(44,44,50,.50); --glass2: rgba(62,62,70,.74); --gshadow: 0 4px 16px rgba(0,0,0,.30);
+}
+
+/* ---------- Save: in Writing it builds the document, so it leads the toolbar; elsewhere it waits by the save status */
+body:not([data-view="writing"]) #ribbon .g-save { display: none; }
+.gs-foot #save-status { flex: 1; min-width: 0; }
+.gs-save { flex: none; border: 0; border-radius: 999px; padding: 3px 12px; cursor: pointer;
+  font: 600 12px -apple-system, BlinkMacSystemFont, sans-serif; color: var(--accent);
+  background: var(--glass2); box-shadow: inset 0 0 0 1px var(--gline), 0 1px 2px rgba(0,0,0,.06); }
+.gs-save:hover { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
+.gs-save:active { filter: brightness(.95); }
+body[data-view="writing"] .gs-save { display: none; }
+
+/* ---------- the title: what the view holds, under its name */
+#tb-sub { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tb-sub:empty, body[data-view="writing"] #tb-sub { display: none; }
+body:not([data-view="writing"]) #version-info { display: none; }
+#tb-doc-title { font-weight: 650; letter-spacing: -.005em; }
+
+/* ---------- a little polish everywhere */
+.btn, .rb-btn, .icon-btn, .tab, #nav button, .list-item, .doc-row, .sections li, .vf-row, .uses-row, .proj-item, .gs-save {
+  transition: background-color .12s ease, box-shadow .12s ease, color .12s ease, filter .12s ease;
+}
+input:focus, select:focus, textarea:focus, .rich-inline:focus {
+  outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--accent) 75%, transparent);
+}
+.md-editor:focus, .title-input:focus, .note-label:focus, .pal-box input:focus, #meta-editor:focus { box-shadow: none; }
+#nav button svg { color: var(--accent); opacity: .85; }
+#nav button.active { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+#nav button.active svg { opacity: 1; }
+.gs-foot { padding-top: 9px; }
+.rb-group { box-shadow: inset 0 1px 0 var(--edge), inset 0 0 0 1px var(--gline), 0 1px 2px rgba(0,0,0,.05), var(--gshadow); }
+.empty.big p:first-child { color: var(--ink); font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+#toast { background: color-mix(in srgb, var(--ink) 86%, transparent); padding: 9px 18px;
+  -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%); box-shadow: 0 10px 30px rgba(0,0,0,.22); }
+#toast.bad { background: color-mix(in srgb, var(--bad) 92%, transparent); }
+
+/* ---------- Verify: the queue */
+:root { --vf-todo: color-mix(in srgb, var(--muted) 24%, transparent); }
+#vf-tally { display: block; margin: 4px 0 10px; padding: 10px 12px 9px; border-radius: 12px; background: var(--glass2); box-shadow: inset 0 0 0 1px var(--gline); }
+#vf-tally:empty { display: none; }
+.vf-sum-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12.5px; margin-bottom: 7px; }
+.vf-sum-head b { font-weight: 650; font-variant-numeric: tabular-nums; }
+.vf-sum-head .muted { font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.vf-sum-bar { display: flex; height: 6px; border-radius: 999px; overflow: hidden; background: var(--vf-todo); }
+.vf-sum-bar .ok { background: var(--ok); } .vf-sum-bar .bad { background: var(--bad); }
+.vf-sum-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 11.5px; color: var(--muted); }
+.vf-key { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.vf-key b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.vf-mark { flex: none; width: 14px; height: 14px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--muted) 65%, transparent); font: 700 8.5px/1 -apple-system, BlinkMacSystemFont, sans-serif;
+  font-style: normal; color: #fff; }
+.vf-mark.approved { background: var(--ok); box-shadow: none; } .vf-mark.approved::after { content: "✓"; }
+.vf-mark.failed { background: var(--bad); box-shadow: none; } .vf-mark.failed::after { content: "✕"; font-size: 7.5px; }
+:root[data-theme="dark"] .vf-mark, :root[data-theme="dark-paper"] .vf-mark { color: #10151d; }
+.vf-mark.edited { box-shadow: 0 0 0 2px color-mix(in srgb, #d4932b 65%, transparent); }
+.vf-key .vf-mark { width: 11px; height: 11px; font-size: 6.5px; }
+.vf-sec-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: baseline; gap: 8px; margin: 6px -2px 2px; padding: 6px 10px 5px;
+  border-radius: 9px; font-size: 11px; font-weight: 650; color: var(--muted);
+  background: color-mix(in srgb, var(--glass2) 92%, transparent); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+.vf-sec-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vf-sec-n { flex: none; font-variant-numeric: tabular-nums; font-weight: 600; }
+.vf-sec-head.complete .vf-sec-n { color: var(--ok); }
+.vf-doc-head { color: var(--ink); font-size: 12px; padding: 12px 8px 2px; }
+.vf-doc-head:not(:first-child) { margin-top: 8px; border-top: 1px solid var(--gline); }
+.vf-row { position: relative; gap: 8px; }
+.vf-row.cont { padding-top: 2px; }
+.vf-row-loc { min-width: 2.9em; text-align: right; font-size: 11.5px; }
+.vf-row.approved .vf-row-text { color: var(--muted); }
+.vf-row.on { box-shadow: 0 1px 3px rgba(0,0,0,.10), inset 0 0 0 1px var(--gline); }
+.vf-row.on::before { content: ""; position: absolute; left: -1px; top: 7px; bottom: 7px; width: 3px; border-radius: 3px; background: var(--accent); }
+.vf-row-text i { font-style: italic; } .vf-row-text .sc { font-variant: small-caps; }
+/* the pass at the top: segments for a short one, one map for a long one, and counts on the buttons */
+.vf-seg { border-radius: 999px; }
+.vf-bar.map { position: relative; border-radius: 999px; cursor: pointer; gap: 0; }
+.vf-marker { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; border-radius: 3px; background: var(--accent);
+  box-shadow: 0 0 0 2px var(--glass2), 0 1px 4px rgba(0,0,0,.25); pointer-events: none; }
+.vf-n { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; margin-left: 2px; }
+.vf-n:empty { display: none; }
+.rb-btn.sm.active .vf-n { color: inherit; opacity: .65; }
+/* the source bar beside a card: the file menu gives way before the buttons wrap (they wrap only in a narrow window) */
+.vf-right .src-bar select { flex: 1 1 90px; min-width: 70px; max-width: 220px; }
+.vf-right .src-bar .btn { flex: none; }
+.vf-right .src-bar .btn.small { padding: 3px 8px; }
+/* Verify has no toolbar of its own: its title can take the room */
+body[data-view="verify"] .tb-title { max-width: min(640px, 60%); }
+/* Writing: the finished files are one Download menu beside what's being viewed */
+#pdf-bar .pdf-files { display: none; }
+#pdf-bar .pdf-dl { flex: none; }
