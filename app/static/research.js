@@ -383,6 +383,7 @@
     async show() {
       try { await Promise.all([loadList(), App.loadCitations()]); } catch (e) { toast('Couldn’t load notes: ' + e.message, true); }
       if (cur) renderSource();
+      if (App.inspector) App.inspector.refresh();          // the title bar's "24 notes"
     },
     async open(id) { await App.showView('research'); await loadList(); await select(id); },
     // "Cited in" (citations.js): open the note and show the citation. The rich note editor shows footnote marks

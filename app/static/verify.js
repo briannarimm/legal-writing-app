@@ -49,6 +49,7 @@
     docSel.hidden = r.documents.length < 2;
     makeOrder(keepKey);
     render();
+    if (App.inspector) App.inspector.refresh();            // the title bar's "9 of 263 checked"
   }
 
   // The cards in this pass. The list is fixed when the pass starts, so approving a card in "Not checked"
@@ -475,6 +476,7 @@
     try {
       if (!(await record(it, status, reason))) return;
       if (cur() === it) advance(); else render();          // moved on while it saved: stay there, just show the result
+      if (App.inspector) App.inspector.refresh();
     } finally { deciding = false; }
   }
   async function approve() {

@@ -543,6 +543,7 @@
       if (selected && selected !== '+' && !App.citation(selected)) selected = '';
       renderList();
       if (selected === null || selected === '') { editor.hidden = true; empty.hidden = false; }
+      if (App.inspector) App.inspector.refresh();          // the title bar's "356 sources"
     },
     open(tag) { return select(tag); },
     // bring the "Cited in" list into view (it loads a moment after the citation opens)
