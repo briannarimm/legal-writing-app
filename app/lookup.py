@@ -153,6 +153,8 @@ def from_doi(doi):
     if t in ("journal-article", "proceedings-article"):
         f = dict(common, journal=clean(first("container-title")), volume=w.get("volume", ""), issue=w.get("issue", ""),
                  first_page=pages[0] if pages else "", last_page=pages[1] if len(pages) > 1 else "")
+        if not f["first_page"] and w.get("article-number"):           # journals that number articles (e2422779122)
+            f["article_number"] = w["article-number"]
         return {"type": "journal", "fields": f, "source": "CrossRef"}
     if t in ("book-chapter", "book-section", "reference-entry"):
         return {"type": "chapter", "fields": dict(common, book_title=clean(first("container-title")), editors=people("editor"),

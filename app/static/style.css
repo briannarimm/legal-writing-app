@@ -1083,9 +1083,8 @@ input:focus, select:focus, textarea:focus, .rich-inline:focus {
 .vf-n { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; margin-left: 2px; }
 .vf-n:empty { display: none; }
 .rb-btn.sm.active .vf-n { color: inherit; opacity: .65; }
-/* the source bar beside a card: the file menu gives way before the buttons wrap */
-.vf-right .src-bar { flex-wrap: nowrap; }
-.vf-right .src-bar select { flex: 0 1 220px; min-width: 70px; }
+/* the source bar beside a card: the file menu gives way before the buttons wrap (they wrap only in a narrow window) */
+.vf-right .src-bar select { flex: 1 1 90px; min-width: 70px; max-width: 220px; }
 .vf-right .src-bar .btn { flex: none; }
 .vf-right .src-bar .btn.small { padding: 3px 8px; }
 /* Verify has no toolbar of its own: its title can take the room */
