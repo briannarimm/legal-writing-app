@@ -492,24 +492,51 @@ span.cite.missing { background: color-mix(in srgb, var(--bad) 14%, transparent);
 .chip-pop .row { margin-top: 8px; flex-wrap: wrap; }
 .rb-btn.toggle.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 
-/* Markdown editing (Writing and Research) and the research page view */
+/* Markdown editing (Writing and Research), and the sources beside a research note */
 .md-editor { flex: 1; min-height: 0; width: 100%; box-sizing: border-box; border: 0; resize: none; outline: none; padding: 22px 28px;
   font: 13.5px/1.6 ui-monospace, Menlo, monospace; background: var(--panel); color: var(--ink); tab-size: 4; }
-.note-split { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); }
-.note-split.layout-editor { grid-template-columns: 1fr; } .note-split.layout-editor .note-right { display: none; }
-.note-split.layout-preview { grid-template-columns: 1fr; } .note-split.layout-preview .note-left { display: none; }
+.note-split { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, 1fr); border-top: 1px solid var(--line); }
 .note-left, .note-right { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
-.note-right { border-left: 1px solid var(--line); }
-.note-split.layout-preview .note-right { border-left: 0; }
+.note-right { border-left: 1px solid var(--line); background: var(--bg); }
+@media (max-width: 1000px) { .note-split { grid-template-columns: 1fr; grid-template-rows: minmax(260px, 1fr) minmax(320px, 1fr); }
+  .note-right { border-left: 0; border-top: 1px solid var(--line); } }
+/* the linked citations beside a note: one card each, and the chosen one's file in the reader */
+.ns-head { display: flex; align-items: center; gap: 6px; padding: 6px 10px 6px 12px; border-bottom: 1px solid var(--line); }
+.pane-label-text { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.ns-cards { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; max-height: 38%; overflow: auto; border-bottom: 1px solid var(--line); flex: none; }
+.ns-cards:empty { display: none; }
+.ns-cards.none { max-height: none; flex: 1; border-bottom: 0; }
+.ns-card { position: relative; padding: 7px 30px 7px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); cursor: pointer; }
+.ns-card:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.ns-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent); }
+.ns-card.missing { opacity: .75; }
+.ns-card-top { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+.ns-card-top .ns-files { margin-left: auto; color: var(--muted); font-size: 11px; }
+.ns-card-cite { font: 13.5px/1.45 Georgia, "Times New Roman", serif; margin-top: 3px; }
+.ns-unlink { position: absolute; top: 5px; right: 5px; border: 0; background: transparent; color: var(--muted); font-size: 15px; line-height: 1; padding: 3px 6px; border-radius: 6px; cursor: pointer; }
+.ns-unlink:hover { background: color-mix(in srgb, var(--bad) 14%, transparent); color: var(--bad); }
+.ns-none { margin: 36px auto; max-width: 24rem; text-align: center; color: var(--muted); }
+.ns-none .row { justify-content: center; margin-top: 10px; }
+.ns-newform { padding: 10px 12px; border-bottom: 1px solid var(--line); overflow: auto; max-height: 60%; background: var(--panel); flex: none; }
+.ns-newform .row { margin-top: 8px; flex-wrap: wrap; }
+.ns-source { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ns-source[hidden] { display: none; }
+.ns-source .src-body { grid-template-columns: 1fr 190px; }
+.ns-source.dragging .reader, .ns-source.dragging #ns-src-empty { outline: 3px dashed var(--accent); outline-offset: -8px; }
+#ns-src-empty { margin: 30px auto; max-width: 26rem; text-align: center; }
+@media (max-width: 1400px) { .ns-source .src-body { grid-template-columns: 1fr; } .ns-source .ann-list { display: none; } }
+/* the new-note dialog's sources */
+.nn-sources { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.nn-sources-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.nn-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.nn-list:empty { display: none; }
+.nn-item { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border-radius: 8px; background: var(--note-bg); font-size: 13px; }
+.nn-item .nn-item-cite { flex: 1; min-width: 0; }
+.nn-item .chip { flex: none; }
+.nn-new-box { margin-top: 10px; }
+.nn-new-box[hidden] { display: none; }
+.nn-new-box .row { margin-top: 8px; flex-wrap: wrap; }
 .pane-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 6px 12px; border-bottom: 1px solid var(--line); }
-.note-render { max-width: 46rem; min-height: 14rem; padding: 28px 44px 32px; font: 16px/1.5 "Times New Roman", "TeX Gyre Termes", Times, serif; }
-.note-render h1 { font-size: 1.25em; } .note-render h2 { font-size: 1.1em; } .note-render h3 { font-size: 1em; font-style: italic; }
-.note-render .smallcaps, .note-render .sc { font-variant: small-caps; letter-spacing: .03em; }
-.note-render blockquote { margin: 0 1.6em .9em; }
-.note-render section.footnotes { border-top: 1px solid var(--line); margin-top: 1.5em; font-size: .85em; }
-.note-render section.footnotes hr { display: none; }
-.note-render a.footnote-ref sup, .note-render sup { line-height: 0; }
-.note-render table { border-collapse: collapse; } .note-render td, .note-render th { border: 1px solid var(--line); padding: 3px 7px; }
 #doc-md { min-height: 100%; height: 100%; }
 .render-title { font-size: 1.3em; margin-top: 0; }
 #note-body { counter-reset: nfn; }
@@ -792,7 +819,8 @@ body:not([data-view="writing"]) #btn-tag { display: none; }
 .tab { border: 0 !important; border-radius: 999px; padding: 4px 12px; }
 .tab.active { background: var(--glass2); top: 0; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 .tabbody { background: transparent; }
-.note-split, .note-right { border-color: var(--gline); }
+.note-split, .note-right, .ns-head, .ns-cards, .ns-newform { border-color: var(--gline); }
+.ns-card { background: var(--glass2); border-color: var(--gline); } .ns-source .src-bar { background: var(--glass2); border-bottom-color: var(--gline); }
 body.insp-open .view { margin-right: 296px; }
 
 /* ---------- inspector */

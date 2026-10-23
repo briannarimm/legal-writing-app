@@ -77,7 +77,7 @@ $endif$
 \vspace{0.3em}
 {\small
 $if(topic)$Topic: $topic$\par$endif$
-$if(source)$Source: $source$\par$endif$
+$if(source)$$if(sourcelabel)$$sourcelabel$$else$Source$endif$: $source$\par$endif$
 $if(date)$$date$$else$\today$endif$\par}
 \vspace{0.4em}
 \noindent\rule{\textwidth}{0.6pt}

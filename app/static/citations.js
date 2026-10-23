@@ -503,12 +503,13 @@
     box.innerHTML = '';
     box.appendChild(el('h3', '', 'Research notes about this source'));
     let notes = [];
-    try { notes = (await api('/api/notes')).notes.filter(n => n.citation === c.tag); } catch (e) { /* ignore */ }
+    try { notes = (await api('/api/notes')).notes.filter(n => (n.citations || []).includes(c.tag)); } catch (e) { /* ignore */ }
     if (selected !== c.tag) return;
     if (!notes.length) box.appendChild(el('div', 'muted small', 'None yet.'));
     notes.forEach(n => {
       const a = el('a', 'link-item', n.title);
       a.href = '#'; a.onclick = e => { e.preventDefault(); App.views.research.open(n.id); };
+      if ((n.citations || []).length > 1) a.title = 'Also about: ' + n.citations.filter(t => t !== c.tag).join(', ');
       box.appendChild(a);
     });
     const start = el('button', 'btn small', '+ Start a note about this source');
@@ -518,7 +519,7 @@
 
   async function startNote(c) {
     try {
-      const n = await post('/api/note/new', { title: App.citeText(c).slice(0, 80) || c.tag, citation: c.tag, project: App.projects.current() });
+      const n = await post('/api/note/new', { title: App.citeText(c).slice(0, 80) || c.tag, citations: [c.tag], project: App.projects.current() });
       App.views.research.open(n.id);
     } catch (e) { toast(e.message, true); }
   }
@@ -533,7 +534,24 @@
   }
 
   $('#btn-newcite').onclick = () => select('+');
-  App.projects.onChange(() => renderList());
+
+  // One Markdown file of the project's sources (or the whole library's), for handing to an AI assistant to
+  // retrieve the documents: each citation with its details, DOI and link, and whether a copy is on file.
+  function bibLabel() { $('#btn-bib-export').textContent = App.projects.current() ? 'Export project bibliography' : 'Export library bibliography'; }
+  async function exportBibliography() {
+    await saver.flush(false);
+    const pid = App.projects.current();
+    try {
+      const r = await post('/api/bibliography/export', { project: pid || '' });
+      if (!r.count) toast('There are no sources in ' + (pid ? App.projects.name(pid) : 'your library') + ' yet; the file says so.');
+      const a = document.createElement('a');
+      a.href = '/build/' + r.path.split('/').map(encodeURIComponent).join('/') + '?download=1';
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (e) { toast(e.message, true); }
+  }
+  $('#btn-bib-export').onclick = exportBibliography;
+  bibLabel();
+  App.projects.onChange(() => { renderList(); bibLabel(); });
 
   App.views.citations = {
     async show() {
@@ -555,6 +573,7 @@
       }, 100);
     },
     remove: tag => deleteCitation(tag),
+    exportBibliography,
     startNote: tag => { const c = App.citation(tag); if (c) startNote(c); },
     async reload() { await this.show(); if (selected && selected !== '+') await select(selected); },
     afterSave() { renderList(); },

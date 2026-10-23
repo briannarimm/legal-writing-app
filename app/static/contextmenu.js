@@ -575,14 +575,21 @@
     ];
   }
 
+  // a note's linked sources: one item, or a submenu when there are several
+  function sourceOpenItems(tags) {
+    const open = t => async () => { await App.showView('citations'); App.views.citations.open(t); };
+    if (!tags.length) return [];
+    if (tags.length === 1) return [{ label: 'Open Its Source', icon: 'cite', disabled: !App.citation(tags[0]), run: open(tags[0]) }];
+    return [{ label: 'Open a Source', icon: 'cite', items: tags.map(t => ({ label: t, disabled: !App.citation(t), run: open(t) })) }];
+  }
+
   function noteRowItems(row) {
     const R = App.views.research, id = row.dataset.id, n = R.note(id);
     if (!n) return [];
     return [
       { header: n.title },
       { label: 'Open', icon: 'open', disabled: R.current() === id, run: () => R.open(id) },
-      n.citation ? { label: 'Open Its Source', icon: 'cite', disabled: !App.citation(n.citation),
-        run: async () => { await App.showView('citations'); App.views.citations.open(n.citation); } } : null,
+      ...sourceOpenItems(n.citations || []),
       projectItems(n.project || '', pid => R.move(id, pid)),
       '-',
       { label: 'New Research Note…', icon: 'plus', kbd: '⌃⌘N', run: () => App.cmd.global.newNote() },
@@ -664,21 +671,36 @@
         ...lookItems(text),
       ];
     }
-    return view.id === 'vf-view' ? verifyReaderItems() : readerViewItems();
+    return view.id === 'vf-view' ? verifyReaderItems() : view.id === 'ns-view' ? verifyReaderItems('ns') : readerViewItems();
   }
-  // the source beside a Verify card: its own zoom and file buttons
-  function verifyReaderItems() {
+  // the source beside a Verify card (vf), or beside a research note (ns): their own zoom and file buttons
+  function verifyReaderItems(p = 'vf') {
     const press = sel => () => clickEl($(sel));
     const has = sel => { const b = $(sel); return b && !b.disabled && !b.hidden; };
     return [
-      { label: 'Zoom In', icon: 'zoomIn', run: press('#vf-zoom-in') },
-      { label: 'Zoom Out', icon: 'zoomOut', run: press('#vf-zoom-out') },
-      { label: 'Fit Width', icon: 'fit', run: press('#vf-zoom-fit') },
+      { label: 'Zoom In', icon: 'zoomIn', run: press('#' + p + '-zoom-in') },
+      { label: 'Zoom Out', icon: 'zoomOut', run: press('#' + p + '-zoom-out') },
+      { label: 'Fit Width', icon: 'fit', run: press('#' + p + '-zoom-fit') },
       '-',
-      { label: 'Attach PDF…', icon: 'plus', disabled: !has('#vf-attach'), run: press('#vf-attach') },
-      { label: 'Snapshot the Web Page', icon: 'doc', disabled: !has('#vf-snap'), run: press('#vf-snap') },
-      { label: 'Open the Live Page', icon: 'link', disabled: !has('#vf-live'), run: press('#vf-live') },
-      { label: 'Open the Source in Citations', icon: 'open', run: press('#vf-open-cite') },
+      { label: 'Attach PDF…', icon: 'plus', disabled: !has('#' + p + '-attach'), run: press('#' + p + '-attach') },
+      { label: 'Snapshot the Web Page', icon: 'doc', disabled: !has('#' + p + '-snap'), run: press('#' + p + '-snap') },
+      { label: 'Open the Live Page', icon: 'link', disabled: !has('#' + p + '-live'), run: press('#' + p + '-live') },
+      { label: 'Open the Source in Citations', icon: 'open', run: press('#' + p + '-open-cite') },
+    ];
+  }
+  // a linked-citation card beside a note
+  function noteSourceCardItems(card) {
+    const tag = card.dataset.tag, c = App.citation(tag), R = App.views.research;
+    return [
+      { header: tag },
+      { label: 'Show Its File', icon: 'open', run: () => clickEl(card) },
+      { label: 'Open in Citations', icon: 'cite', disabled: !c, run: async () => { await App.showView('citations'); App.views.citations.open(tag); } },
+      c ? { label: 'Copy Citation', icon: 'copy', run: () => copyText(App.citeText(c)) } : null,
+      '-',
+      { label: 'Link More Sources…', icon: 'plus', run: () => R.linkSources() },
+      { label: 'New Source…', icon: 'plus', run: () => R.newSource() },
+      '-',
+      { label: 'Unlink from This Note', icon: 'trash', danger: true, run: () => clickEl(card.querySelector('.ns-unlink')) },
     ];
   }
   function readerViewItems() {
@@ -753,10 +775,13 @@
   // What to show for a right-click on `t` at (x, y).
   async function itemsFor(t, x, y) {
     // the PDF reader and its highlight list (in Citations, and beside a Verify card)
-    const view = t.closest('#src-view, #vf-view');
+    const view = t.closest('#src-view, #vf-view, #ns-view');
     if (view && view.reader) return readerItems(view, t);
-    const ann = t.closest('#src-anns .ann-item, #vf-anns .ann-item');
+    const ann = t.closest('#src-anns .ann-item, #vf-anns .ann-item, #ns-anns .ann-item');
     if (ann) return annItemItems(ann);
+    const nsCard = t.closest('#ns-cards .ns-card[data-tag]');
+    if (nsCard) return noteSourceCardItems(nsCard);
+    if (t.closest('#ns-source') && !editableOf(t) && !t.closest('.src-bar')) return verifyReaderItems('ns');
     if (t.closest('#cite-source') && !editableOf(t)) return readerViewItems();
     if (t.closest('.vf-right') && !editableOf(t) && !t.closest('.src-bar')) return verifyReaderItems();
 

@@ -106,6 +106,7 @@
       });
       $('#tb-block').disabled = !(['writing', 'research'].includes(view) && textOk);
       $('#email-tools').style.display = view === 'writing' ? '' : 'none';
+      $('#ribbon .g-layout').style.display = view === 'writing' ? '' : 'none';   // Research shows its sources instead of a page view
     },
   };
 
@@ -125,10 +126,7 @@
   /* ------------------------------------------------------------ view settings */
   const writingView = $('#view-writing');
   function setLayout(l) {
-    ['editor', 'split', 'preview'].forEach(n => {
-      writingView.classList.toggle('layout-' + n, n === l);
-      $('#note-split').classList.toggle('layout-' + n, n === l);
-    });
+    ['editor', 'split', 'preview'].forEach(n => writingView.classList.toggle('layout-' + n, n === l));
     $$('[data-layout]').forEach(b => b.classList.toggle('active', b.dataset.layout === l));
     try { localStorage.setItem('layout', l); } catch (e) { /* ignore */ }
     if (l === 'preview') App.showPreview && App.showPreview();

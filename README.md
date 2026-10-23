@@ -130,7 +130,8 @@ The window has three parts:
 - **The sidebar** on the left: Writing, Research, Citations and Verify, the project menu, and the list for
   the current work area (documents, notes or sources). ⌥⌘S hides or shows it.
 - **The toolbar** at the top: in Writing, Save, formatting, Cite, Footnote, and the layout (Editor,
-  Split, Preview). In Research and Citations it has that area's commands. Outside Writing, **Save** sits
+  Split, Preview). In Research and Citations it has that area's commands (a research note always shows
+  its linked citations beside it). Outside Writing, **Save** sits
   at the bottom of the sidebar, beside the save status (⌘S works everywhere).
 - **The inspector** on the right (⌥⌘I, or the button at the right end of the toolbar): the open
   document's template, project, version and word count, Final draft, Details, the finished files,
@@ -372,11 +373,32 @@ card at a time.
 1. Go to the Research tab.
 2. Click **+ New note**.
 3. Type a title and a topic.
-4. Select the source: a new source, an existing source, or no source.
+4. Add the sources the note is about, as many as you like (or none):
+   - Fill in the new-source form. To add another new source, click **Add this source and start
+     another**. New sources are added to Citations when you create the note.
+   - Click **Choose from Citations…** to tick sources already in your library.
 5. Click **Create note**.
 
-The page view at the right shows the note as it will print. To save the note as a file, click
-**Export PDF** or **Export Word**.
+A note can link to several sources, and a source can be linked to several notes. The right side of a
+note shows **Linked citations**: one card per source, and the PDF or saved web page of the card you
+click, with its highlights (highlights you make here are saved with the source, as in Citations).
+
+- **Link…** ticks or unticks sources from your library. **×** on a card unlinks it; the citation stays
+  in your library.
+- **+ New…** adds a source to Citations and links it. **Add, link and start another** keeps the form
+  open for the next one.
+- Each source's page in Citations lists the notes linked to it.
+
+Notes made before 1.3.2 keep their one source; nothing needs converting. To save the note as a file,
+click **Export PDF** or **Export Word**.
+
+### 9.1 Export a project bibliography
+
+In the Citations tab, click **Export project bibliography** (with no project chosen, it exports the whole
+library). ReWord saves one Markdown file listing every source in the project, grouped by type: the
+formatted citation in the project's style, every detail you entered, the DOI and link, whether a copy is
+already attached, and where to look for it. The file starts with instructions, so you can hand it to an
+AI assistant (or a librarian) and ask it to find each document.
 
 ## 10. Finished files and GitHub
 

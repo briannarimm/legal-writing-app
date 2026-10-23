@@ -127,9 +127,9 @@
       <div class="rb-group g-layout">
         <div class="rb-items">
           <div class="seg-cap" role="group" aria-label="Layout">
-            <button class="rb-btn sm" data-layout="editor" data-views="writing research" title="Editor only (⌃⌘1)">Editor</button>
-            <button class="rb-btn sm" data-layout="split" data-views="writing research" title="Editor and preview side by side (⌃⌘2)">Split</button>
-            <button class="rb-btn sm" data-layout="preview" data-views="writing research" title="Preview only (⌃⌘3)">Preview</button>
+            <button class="rb-btn sm" data-layout="editor" data-views="writing" title="Editor only (⌃⌘1)">Editor</button>
+            <button class="rb-btn sm" data-layout="split" data-views="writing" title="Editor and preview side by side (⌃⌘2)">Split</button>
+            <button class="rb-btn sm" data-layout="preview" data-views="writing" title="Preview only (⌃⌘3)">Preview</button>
           </div>
         </div>
         <div class="rb-label">Layout</div>
@@ -328,7 +328,7 @@
   <section class="detail">
     <div id="note-empty" class="empty big">
       <p>Research notes live here: one note per source, topic or idea.</p>
-      <p class="muted small">Creating a note asks for the source's citation, so it lands in your Citations library at the same time.</p>
+      <p class="muted small">A note can be about several sources, and a source can have several notes. Sources you add while making a note land in your Citations library at the same time.</p>
     </div>
     <div id="note-editor" hidden>
       <div class="note-head">
@@ -342,9 +342,8 @@
           <button id="note-export-pdf" class="btn small" title="Save this note as a PDF">Export PDF</button>
           <button id="note-delete" class="btn small danger" title="Move this note to research/_trash">Delete note</button>
         </div>
-        <div id="note-source" class="source-card"></div>
       </div>
-      <div id="note-split" class="note-split layout-split">
+      <div id="note-split" class="note-split">
         <div class="note-left">
           <div class="scroller" id="note-rich">
             <div class="page note-page">
@@ -355,9 +354,34 @@
 
 [^1]: like this."></textarea>
         </div>
-        <div class="note-right">
-          <div class="pane-label">Page view <span class="muted small" id="note-render-state"></span></div>
-          <div class="scroller"><div class="page note-render" id="note-render"></div></div>
+        <div class="note-right" id="ns-pane">
+          <div class="ns-head">
+            <span class="pane-label-text">Linked citations <span class="muted" id="ns-count"></span></span>
+            <span class="spacer"></span>
+            <button class="btn small" id="ns-link" title="Link sources already in Citations to this note">Link…</button>
+            <button class="btn small" id="ns-new" title="Add new sources to Citations and link them to this note">+ New…</button>
+          </div>
+          <div id="ns-newform" class="ns-newform" hidden></div>
+          <div id="ns-cards" class="ns-cards"></div>
+          <div id="ns-source" class="ns-source" hidden>
+            <div class="src-bar">
+              <select id="ns-file" title="Files attached to this source"></select>
+              <button class="btn small" id="ns-attach" title="Attach a PDF of this source (or drop one here)">Attach PDF…</button>
+              <input type="file" id="ns-input" accept="application/pdf,.pdf" hidden multiple>
+              <button class="btn small" id="ns-snap" title="Save the source's web page as a PDF">Snapshot page</button>
+              <button class="btn small" id="ns-live" title="Open the live web page in your browser">Live page ↗</button>
+              <span class="spacer"></span>
+              <button class="btn small" id="ns-zoom-out" title="Smaller">−</button>
+              <button class="btn small" id="ns-zoom-fit" title="Fit the width">Fit</button>
+              <button class="btn small" id="ns-zoom-in" title="Bigger">+</button>
+              <button class="btn small" id="ns-open-cite" title="Open this source in Citations">Open in Citations</button>
+            </div>
+            <div class="src-body" id="ns-src-body">
+              <div id="ns-view" class="reader"></div>
+              <aside id="ns-anns" class="ann-list"></aside>
+            </div>
+            <div id="ns-src-empty" class="empty"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -374,6 +398,7 @@
       <select id="ct-filter"><option value="">All types</option></select>
     </div>
     <button id="btn-newcite" class="btn small wide primary-soft">+ New citation</button>
+    <button id="btn-bib-export" class="btn small wide" title="Save every source in this project as one Markdown file: citations, identifiers and links, written so an AI assistant can go and find each document">Export project bibliography</button>
     <div id="cite-list"></div>
   </nav>
   <section class="detail">
@@ -559,16 +584,20 @@
   <label class="block-label">Topic (optional)
     <input id="nn-topic" list="topic-list" placeholder="e.g. Standing">
   </label>
-  <fieldset class="source-choice">
-    <legend>Source</legend>
-    <label><input type="radio" name="nn-src" value="new" checked> New source (adds it to Citations)</label>
-    <label><input type="radio" name="nn-src" value="existing"> A source already in Citations</label>
-    <label><input type="radio" name="nn-src" value="none"> No source</label>
-  </fieldset>
-  <div id="nn-new"></div>
-  <div id="nn-existing" hidden>
-    <button class="btn" id="nn-pick">Choose a citation…</button>
-    <div id="nn-picked" class="source-card" hidden></div>
+  <div class="nn-sources">
+    <div class="nn-sources-head">
+      <b>Sources</b> <span class="muted small">(optional: as many as the note is about)</span>
+      <span class="spacer"></span>
+      <button class="btn small" id="nn-pick" type="button">Choose from Citations…</button>
+      <button class="btn small" id="nn-add-new" type="button">+ New source</button>
+    </div>
+    <div id="nn-list" class="nn-list"></div>
+    <div id="nn-new-box" class="nn-new-box">
+      <div class="muted small" id="nn-new-label">New source (it’s added to Citations when you create the note)</div>
+      <div id="nn-new"></div>
+      <div class="row"><button class="btn small" id="nn-queue" type="button">Add this source and start another</button>
+        <button class="btn small" id="nn-new-close" type="button">Don’t add a new source</button></div>
+    </div>
   </div>
   <div id="nn-error" class="error" hidden></div>
   <div class="dlg-actions">
