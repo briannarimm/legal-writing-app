@@ -7,6 +7,18 @@ This folder contains the ready-to-use ReWord program for Mac.
 | `ReWord-1.3.2-mac-arm64.zip` | The program. Download this file. |
 | `ReWord-1.3.2-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
 
+## Coming in 1.4
+
+This is in the source now and in the next download (built with `make dist`).
+
+- **Part of ReSuite**, with RePublish, RePDF and the ReSuite hub, and a new icon from the same family.
+  Each app still works on its own.
+- **Make slides, a poster or a handout in RePublish** from the open document: click ReWord at the top
+  of the sidebar, or use the File menu.
+- **Open the finished PDF in RePDF**, and **⌃⌥⌘0–3** to move between the hub and the apps.
+- **Highlights from RePDF become a research note** quoting each passage with its page.
+- **One window glass setting** for every ReSuite app (View → Appearance → Translucent Window).
+
 ## What's new in 1.3.2
 
 - **Research notes link to several citations**, and a citation can be linked to several notes. Notes

@@ -40,7 +40,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = Path.home() / "Library" / "Caches" / "ReWord Build"
-VERSION = "1.3.2"          # also the name of the download in distro/
+VERSION = "1.4.0"          # also the name of the download in distro/
 DIST = ROOT / "distro"
 
 # Pinned versions. Pandoc matches the Docker image, so output is the same either way.
@@ -189,9 +189,13 @@ def build_shell(work):
 
 
 def build_icon(dest_icns, work):
-    exe, big = work / "make_icon", work / "icon-1024.png"
-    sh(["swiftc", "-O", str(ROOT / "scripts" / "make_icon.swift"), "-o", str(exe)])
-    sh([str(exe), str(big)])
+    """The ReSuite icon (app/mac/AppIcon.png, drawn with the suite's other icons by Design/build.py in
+    briannarimm/resuite); without it, the older icon drawn by scripts/make_icon.swift."""
+    big = ROOT / "app" / "mac" / "AppIcon.png"
+    if not big.exists():
+        exe, big = work / "make_icon", work / "icon-1024.png"
+        sh(["swiftc", "-O", str(ROOT / "scripts" / "make_icon.swift"), "-o", str(exe)])
+        sh([str(exe), str(big)])
     iconset = work / "AppIcon.iconset"
     iconset.mkdir()
     for base in (16, 32, 128, 256, 512):
@@ -321,6 +325,8 @@ def main():
             "NSRemovableVolumesUsageDescription": usage, "NSDocumentsFolderUsageDescription": usage,
             "NSDesktopFolderUsageDescription": usage, "NSDownloadsFolderUsageDescription": usage,
             "NSNetworkVolumesUsageDescription": usage,
+            # reword://open?doc=…, project?id=…, new, handoff?file=… from the other ReSuite apps (app/suite.py)
+            "CFBundleURLTypes": [{"CFBundleURLName": "app.reword", "CFBundleURLSchemes": ["reword"]}],
         }
         with open(app / "Contents" / "Info.plist", "wb") as f:
             plistlib.dump(plist, f)

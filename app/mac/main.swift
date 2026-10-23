@@ -6,6 +6,7 @@
 // so it runs on any Apple Silicon Mac. Your documents live in ~/Library/Application Support/ReWord
 // (on a USB drive: a "ReWord Data" folder next to the app, so they travel with it).
 import AppKit
+import CoreServices
 import WebKit
 
 let fm = FileManager.default
@@ -141,6 +142,7 @@ final class ServerController {
             "LANG": "en_US.UTF-8",
         ]
         if let t = env["LT_ONLY_CACHED"] { e["LT_ONLY_CACHED"] = t }
+        if let t = env["RESUITE_SUPPORT_DIR"] { e["RESUITE_SUPPORT_DIR"] = t }       // app/suite.py: where hand-offs go
         p.environment = e
         if let h = try? FileHandle(forWritingTo: logURL) { h.seekToEndOfFile(); p.standardOutput = h; p.standardError = h }
         p.terminationHandler = { [weak self] proc in
@@ -290,6 +292,60 @@ func translucencyScript() -> WKUserScript {
                  injectionTime: .atDocumentStart, forMainFrameOnly: true)
 }
 
+// MARK: - ReSuite: RePublish, RePDF and the ReSuite hub
+
+/// ReWord works on its own. With the other ReSuite apps installed it opens them (Window menu, ⌃⌥⌘0–3),
+/// takes links from them (reword://open?doc=…, project?id=…, new?project=…, handoff?file=…, passed to
+/// App.suite.link in app/static/suite.js) and shares their window glass. app/suite.py writes and reads the
+/// hand-offs; docs/handoffs.md in briannarimm/resuite describes how the apps talk.
+struct SuiteApp {
+    let name: String, bundleID: String, key: String, download: String
+}
+let suiteApps = [
+    SuiteApp(name: "ReSuite Hub", bundleID: "com.briannarimm.ReSuite", key: "0", download: "https://github.com/briannarimm/resuite/releases/latest"),
+    SuiteApp(name: "ReWord", bundleID: "app.reword", key: "1", download: ""),
+    SuiteApp(name: "RePublish", bundleID: "com.briannarimm.RePublish", key: "2", download: "https://github.com/briannarimm/republisher/releases/latest"),
+    SuiteApp(name: "RePDF", bundleID: "com.briannarimm.RePDF", key: "3", download: "https://github.com/briannarimm/repdf#build-and-run"),
+]
+
+/// Brings a suite app forward, starting it if needed; one that isn't installed opens its download page.
+func launchSuiteApp(_ app: SuiteApp) {
+    if app.bundleID == Bundle.main.bundleIdentifier { NSApp.activate(ignoringOtherApps: true); return }
+    if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app.bundleID) {
+        let cfg = NSWorkspace.OpenConfiguration()
+        cfg.activates = true
+        NSWorkspace.shared.openApplication(at: url, configuration: cfg, completionHandler: nil)
+    } else if let u = URL(string: app.download) {
+        NSWorkspace.shared.open(u)
+    }
+}
+
+/// ~/Library/Application Support/ReSuite, what the suite's apps share (RESUITE_SUPPORT_DIR overrides it).
+let suiteSupport: URL = {
+    if let d = env["RESUITE_SUPPORT_DIR"], !d.isEmpty { return URL(fileURLWithPath: d, isDirectory: true) }
+    return URL(fileURLWithPath: home).appendingPathComponent("Library/Application Support/ReSuite", isDirectory: true)
+}()
+let suiteAppearanceFile = suiteSupport.appendingPathComponent("Appearance.json")
+let suiteAppearanceChanged = Notification.Name("com.briannarimm.resuite.appearance")
+let suiteDefaultGlass = 0.35                   // "light frost", the suite's default
+
+/// The suite's window glass: 0 clear, 0.5 frosted, 1 solid. ReWord's window is see-through below solid.
+func suiteGlass() -> Double? {
+    guard let d = try? Data(contentsOf: suiteAppearanceFile),
+          let j = (try? JSONSerialization.jsonObject(with: d)) as? [String: Any] else { return nil }
+    return (j["windowGlass"] as? NSNumber)?.doubleValue
+}
+
+func isSeeThrough(_ glass: Double) -> Bool { glass < 0.97 }
+
+func storeSuiteGlass(_ glass: Double) {
+    try? fm.createDirectory(at: suiteSupport, withIntermediateDirectories: true)
+    if let d = try? JSONSerialization.data(withJSONObject: ["windowGlass": glass], options: [.prettyPrinted, .sortedKeys]) {
+        try? d.write(to: suiteAppearanceFile, options: .atomic)
+    }
+    DistributedNotificationCenter.default().postNotificationName(suiteAppearanceChanged, object: nil, userInfo: nil, deliverImmediately: true)
+}
+
 // MARK: - the app
 
 final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, NSWindowDelegate {
@@ -299,11 +355,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     var status: NSTextField!
     var downloadDestinations: [ObjectIdentifier: URL] = [:]
     let menuBridge = MenuBridge()
+    var pendingLinks: [String] = []
+    var deliveringLink = false
+    var glassObserver: NSObjectProtocol?
+
+    func applicationWillFinishLaunching(_ n: Notification) {
+        // before launch finishes, so a reword:// link that starts ReWord isn't lost
+        NSAppleEventManager.shared().setEventHandler(self, andSelector: #selector(handleLink(_:reply:)),
+                                                     forEventClass: AEEventClass(kInternetEventClass), andEventID: AEEventID(kAEGetURL))
+    }
 
     func applicationDidFinishLaunching(_ n: Notification) {
         UserDefaults.standard.register(defaults: ["WebContinuousSpellCheckingEnabled": true, "pageZoom": 1.0, translucentKey: true])
+        // the window glass is one setting for every ReSuite app; the first time, the suite starts from ReWord's
+        if let g = suiteGlass() { UserDefaults.standard.set(isSeeThrough(g), forKey: translucentKey) }
+        else if fm.fileExists(atPath: suiteSupport.path) { storeSuiteGlass(translucent() ? suiteDefaultGlass : 1) }
         buildMenu()
         buildWindow()
+        glassObserver = DistributedNotificationCenter.default().addObserver(forName: suiteAppearanceChanged, object: nil, queue: .main) { [weak self] _ in
+            guard let self = self, let g = suiteGlass(), isSeeThrough(g) != translucent() else { return }
+            self.setTranslucent(isSeeThrough(g), share: false)
+        }
         server.onRestart = { [weak self] url in self?.web.load(URLRequest(url: url)) }
         status.stringValue = "Starting ReWord…"
         if let m = migrationError {
@@ -383,8 +455,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 
     // View > Appearance > Translucent Window (and the page's own menus, through the bridge)
     var translucencyItem: NSMenuItem?
-    func setTranslucent(_ on: Bool) {
+    /// `share`: tell the other ReSuite apps (off when the change came from them).
+    func setTranslucent(_ on: Bool, share: Bool = true) {
         UserDefaults.standard.set(on, forKey: translucentKey)
+        if share && (suiteGlass() != nil || fm.fileExists(atPath: suiteSupport.path)) {
+            let g = suiteGlass() ?? suiteDefaultGlass
+            storeSuiteGlass(on ? (isSeeThrough(g) ? g : suiteDefaultGlass) : 1)
+        }
         styleWindow(window, dark: windowIsDark)
         let ucc = web.configuration.userContentController
         ucc.removeAllUserScripts()
@@ -394,6 +471,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         translucencyItem?.state = on ? .on : .off
     }
     @objc func toggleTranslucency(_ s: Any?) { setTranslucent(!translucent()) }
+
+    // MARK: links from the other ReSuite apps (reword://…)
+
+    @objc func handleLink(_ event: NSAppleEventDescriptor, reply: NSAppleEventDescriptor) {
+        guard let s = event.paramDescriptor(forKeyword: AEKeyword(keyDirectObject))?.stringValue,
+              s.lowercased().hasPrefix("reword:") else { return }
+        pendingLinks.append(s)
+        NSApp.activate(ignoringOtherApps: true)
+        deliverLinks()
+    }
+
+    /// Hands waiting links to the page one at a time, once it has started (App.suite.ready()); until then it
+    /// asks again every half second. A link that arrives before the page loads waits for didFinish.
+    func deliverLinks(attempt: Int = 0) {
+        guard !deliveringLink || attempt > 0, let href = pendingLinks.first, let web = web, web.url != nil else {
+            if attempt > 0 { deliveringLink = false }
+            return
+        }
+        deliveringLink = true
+        web.callAsyncJavaScript("if (!window.App || !App.suite || !App.suite.ready()) return false; await App.suite.link(href); return true;",
+                                arguments: ["href": href], in: nil, in: .page) { [weak self] result in
+            guard let self = self else { return }
+            if case .success(let v) = result, (v as? Bool) == true {
+                self.pendingLinks.removeFirst()
+                self.deliveringLink = false
+                self.deliverLinks()
+            } else if attempt < 120 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.deliverLinks(attempt: attempt + 1) }
+            } else {
+                self.pendingLinks.removeFirst()             // the page never started; don't hold the rest
+                self.deliveringLink = false
+            }
+        }
+    }
+
+    @objc func openSuiteApp(_ s: Any?) {
+        guard let item = s as? NSMenuItem, let i = item.representedObject as? Int, suiteApps.indices.contains(i) else { return }
+        launchSuiteApp(suiteApps[i])
+    }
 
     // MARK: quitting: save what's on screen, stop the server
 
@@ -499,6 +615,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     // MARK: self-test hook (used only to verify the app in the real WebKit engine)
 
     func webView(_ w: WKWebView, didFinish nav: WKNavigation!) {
+        if !pendingLinks.isEmpty { deliverLinks() }
         guard let jsPath = env["LT_SELFTEST_JS"], let out = env["LT_SELFTEST_OUT"], let js = try? String(contentsOfFile: jsPath, encoding: .utf8) else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             w.callAsyncJavaScript(js, arguments: [:], in: nil, in: .page) { result in
@@ -590,6 +707,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         js(file, "New Research Note", "newNote")
         js(file, "New Citation", "newCite")
         file.addItem(.separator())
+        js(file, "Make Slides in RePublish", "suite:slides")         // app/static/suite.js
+        js(file, "Make a Poster in RePublish", "suite:poster")
+        js(file, "Make a Handout in RePublish", "suite:handout")
+        js(file, "Open Finished PDF in RePDF", "suite:pdf")
+        file.addItem(.separator())
         add(file, "Open Data Folder", #selector(openDataFolder(_:)), "", [], target: self)
         add(file, "Choose Data Folder…", #selector(chooseDataFolder(_:)), "", [], target: self)
         add(file, "Show Log", #selector(showLog(_:)), "", [], target: self)
@@ -678,6 +800,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         let win = sub("Window")
         add(win, "Minimize", #selector(NSWindow.performMiniaturize(_:)), "m")
         add(win, "Zoom", #selector(NSWindow.performZoom(_:)))
+        win.addItem(.separator())
+        for (i, s) in suiteApps.enumerated() {                // the same keys in every ReSuite app
+            let item = NSMenuItem(title: s.name, action: #selector(openSuiteApp(_:)), keyEquivalent: s.key)
+            item.keyEquivalentModifierMask = [.control, .option, .command]
+            item.target = self
+            item.representedObject = i
+            win.addItem(item)
+        }
         NSApp.windowsMenu = win
         NSApp.mainMenu = main
     }
