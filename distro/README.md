@@ -9,6 +9,18 @@ This folder contains the ready-to-use ReWord program for Mac.
 
 ## What's new in 1.3.2
 
+- **Research notes link to several citations**, and a citation can be linked to several notes. Notes
+  you already have keep their source.
+- **Linked citations beside every note**: the Research tab shows a card for each linked source, with the
+  chosen one's PDF or saved web page and its highlights, in place of the Editor/Split/Preview page view.
+- **Add several new sources at once**: in the new-note dialog (Add this source and start another), and
+  from an open note (+ New… → Add, link and start another).
+- **Export project bibliography** in the Citations tab: one Markdown file of the project's sources with
+  their details, DOI and links, whether a copy is on file and where to look, written so an AI assistant
+  can go and find each document.
+
+## What's new in 1.3.1
+
 - **A see-through window**, like the Mac's own apps: what's behind ReWord shows through, softly blurred,
   around the glass panels. View → Appearance → Translucent Window turns it off.
 - **Save outside Writing** sits by the save status at the bottom of the sidebar instead of alone in the
