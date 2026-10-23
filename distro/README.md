@@ -4,10 +4,10 @@ This folder contains the ready-to-use ReWord program for Mac.
 
 | File | Description |
 |---|---|
-| `ReWord-1.3.1-mac-arm64.zip` | The program. Download this file. |
-| `ReWord-1.3.1-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
+| `ReWord-1.3.2-mac-arm64.zip` | The program. Download this file. |
+| `ReWord-1.3.2-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
 
-## What's new in 1.3.1
+## What's new in 1.3.2
 
 - **A see-through window**, like the Mac's own apps: what's behind ReWord shows through, softly blurred,
   around the glass panels. View → Appearance → Translucent Window turns it off.
