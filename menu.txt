@@ -1,0 +1,11 @@
+[
+  "ReSuite Hub⌃⌥⌘0",
+  "ReWord⌃⌥⌘1",
+  "RePublish⌃⌥⌘2",
+  "RePDF⌃⌥⌘3",
+  "Make Slides in RePublish",
+  "Make a Poster in RePublish",
+  "Make a Handout in RePublish",
+  "Open Finished PDF in RePDF (off)",
+  "Show “ODR Talk” in ReSuite"
+]

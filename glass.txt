@@ -1,0 +1,2 @@
+translucent after solid: 0
+translucent after frost: 1
