@@ -597,7 +597,7 @@
     for (const c of list) {
       let ann = 'Write the annotation here: what the source argues, how it was researched, and how you will use it.';
       if (opts.fromNotes) {
-        const mine = notes.filter(n => n.citation === c.tag);
+        const mine = notes.filter(n => (n.citations || []).includes(c.tag));
         const bodies = [];
         for (const n of mine) {
           try { const full = await api('/api/note?id=' + encodeURIComponent(n.id)); if ((full.body || '').trim()) bodies.push(full.body.trim()); } catch (e) { /* skip */ }

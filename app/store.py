@@ -814,6 +814,106 @@ def delete_project(pid):
     trash(p, projects_dir())
 
 
+# ------------------------------------------------------------------ project bibliography (export)
+# One Markdown file listing a project's sources (or the whole library), written to be handed to an AI
+# assistant or a research librarian who goes and finds each document: the formatted citation, every
+# field we have, the identifiers and links that find it fastest, and whether a copy is already attached.
+
+BIB_FORMS = {"apa": "apa_reference", "bluebook-lawreview": "bluebook_lawreview", "chicago": "chicago_bib",
+             "chicago-author-date": "chicago_ad_reference"}
+BIB_FALLBACK = {"chicago_bib": "chicago_note", "chicago_ad_reference": "chicago_note"}   # legal materials have no list entry
+BIB_STYLE_NAMES = {"apa": "APA", "bluebook-lawreview": "Bluebook (law review)", "chicago": "Chicago (notes and bibliography)",
+                   "chicago-author-date": "Chicago (author-date)"}
+BIB_WHERE = {
+    "case": "a case-law database (CourtListener, Google Scholar case law, Westlaw or Lexis); search the reporter citation, else the docket number and court",
+    "statute": "the official code (govinfo.gov, uscode.house.gov, or the state legislature's site; Cornell LII); search the title and section",
+    "regulation": "eCFR (ecfr.gov) or the Federal Register (federalregister.gov, govinfo.gov); search the title and section or FR page",
+    "constitution": "the official text (constitution.congress.gov, or the state's site)",
+    "rule": "the court's or rules committee's website (uscourts.gov, or the state judiciary)",
+    "restatement": "the publisher (ALI, ULC) or a law library database (Westlaw, Lexis, HeinOnline)",
+    "journal": "the DOI if there is one; else Google Scholar, HeinOnline, SSRN or the journal's site, searching the title in quotes",
+    "book": "the DOI or publisher's page; else WorldCat or Google Books, searching the title and author",
+    "chapter": "the DOI or publisher's page; else WorldCat or Google Books, searching the book title and editors",
+    "news": "the publication's site or a news archive, searching the headline in quotes and the date",
+    "webpage": "the URL; if it is gone, the Internet Archive (web.archive.org) for that URL",
+    "report": "the DOI or the publisher's site, searching the title and report number",
+    "bill": "congress.gov (or the state legislature's site), searching the bill number and session",
+    "hearing": "govinfo.gov (Congressional Hearings) or congress.gov, searching the title and session",
+    "committee_report": "congress.gov or govinfo.gov (Congressional Reports), searching the report number",
+    "filing": "PACER or CourtListener's RECAP archive, searching the docket number; the ECF number gives the document",
+}
+
+
+def _bib_value(f, v):
+    if f["kind"] == "authors":
+        return "; ".join(x.get("literal") or " ".join(y for y in (x.get("given"), x.get("family")) if y) + (", " + x["suffix"] if x.get("suffix") else "")
+                         for x in (v if isinstance(v, list) else []) if isinstance(x, dict))
+    if f["kind"] == "bool":
+        return "yes" if v else ""
+    return md_plain(v) if isinstance(v, str) else ""
+
+
+def bibliography(pid=""):
+    """The export file for a project (or, with no project, the whole library): (file name, Markdown, count)."""
+    proj = read_project(pid) if pid else None
+    style = (proj or {}).get("citation_style", "")
+    key = BIB_FORMS.get(style, "bluebook_practitioner")
+    cites = [c for c in citations() if not pid or pid in c["projects"]]
+    order = list(citeformat.TYPES)
+
+    def text_of(c):
+        t = (c["forms"].get(key) or {}).get("text", "")
+        if not t or t.startswith("(not listed"):
+            t = (c["forms"].get(BIB_FALLBACK.get(key, "bluebook_practitioner")) or c["forms"]["bluebook_practitioner"]).get("text", "")
+        return t.strip() or c["tag"]
+    cites.sort(key=lambda c: (order.index(c["type"]) if c["type"] in order else len(order), text_of(c).lower()))
+
+    name = proj["name"] if proj else "ReWord library"
+    out = ["# Bibliography: %s" % name, "",
+           "Exported from ReWord on %s. %d source%s, cited in %s style." % (
+               time.strftime("%B %-d, %Y"), len(cites), "" if len(cites) == 1 else "s", BIB_STYLE_NAMES.get(style, "Bluebook")), "",
+           "## How to use this list", "",
+           "Each source below has a tag (a short ID, written `like-this`), the formatted citation, the details it was",
+           "built from, and the identifiers that find it fastest (DOI, link, reporter citation, docket number).",
+           "To retrieve the documents, work through the list in order. For each source: use the DOI or Link first; if",
+           "there is none, or it no longer works, search where the \"Where to look\" line says, using the citation's own",
+           "words. Confirm the document matches the citation (title, author or parties, date, court or publisher)",
+           "before using it, and report any source you can't find, or that differs from the citation, by its tag.",
+           "\"Copy on file: no\" marks the sources nobody has saved yet.", ""]
+    group = None
+    for i, c in enumerate(cites, 1):
+        spec = citeformat.TYPES.get(c["type"]) or citeformat.TYPES["other"]
+        if spec["label"] != group:
+            group = spec["label"]
+            out += ["## " + group, ""]
+        out += ["### %d. %s" % (i, text_of(c)), "", "- **Tag:** `%s`" % c["tag"], "- **Type:** %s" % spec["label"]]
+        fields = c["fields"] or {}
+        for f in spec["fields"]:
+            if f["key"] in ("url", "doi", "short_name", "hereinafter", "title_apa", "book_title_apa", "text_apa", "text_chicago", "intext_apa", "short"):
+                continue
+            v = _bib_value(f, fields.get(f["key"]))
+            if v:
+                out.append("- **%s:** %s" % (f["label"].rstrip("*"), v))
+        doi = (fields.get("doi") or "").strip() if isinstance(fields.get("doi"), str) else ""
+        if doi:
+            doi = re.sub(r"^(https?://(dx\.)?doi\.org/|doi:\s*)", "", doi, flags=re.I)
+            out.append("- **DOI:** %s (https://doi.org/%s)" % (doi, doi))
+        if c.get("url"):
+            out.append("- **Link:** <%s>" % c["url"])
+        try:
+            files = [f["name"] for f in list_attachments(c["tag"]) if not f["annotated"]]
+        except StoreError:
+            files = []
+        out.append("- **Copy on file:** " + ("yes (%s)" % ", ".join(files) if files else "no"))
+        if c["type"] in BIB_WHERE:
+            out.append("- **Where to look:** " + BIB_WHERE[c["type"]])
+        out.append("")
+    if not cites:
+        out += ["_No sources yet._", ""]
+    fname = slugify(name, "library", 60) + "-bibliography.md"
+    return fname, "\n".join(out).rstrip() + "\n", len(cites)
+
+
 CITED_RE = re.compile(r'\{\.(?:cite|auth)\b[^}]*?\btag="([a-z0-9][a-z0-9-]*)"')
 
 
@@ -1290,7 +1390,7 @@ def assign_note(nid, project):
         meta.pop("project", None)
     write_atomic(p, dump_front(meta, body))
     if project:
-        assign_citations(cited_tags(body) | ({meta["citation"]} if meta.get("citation") else set()), project)
+        assign_citations(cited_tags(body) | set(note_citations(meta)), project)
     return read_note(p)
 
 
@@ -1306,10 +1406,33 @@ def note_path(nid):
     return notes_dir() / (nid + ".md")
 
 
+def note_citations(meta):
+    """The sources a note is linked to. Since 1.3.2 a note keeps a list ("citations"); notes from before
+    have one tag in "citation", read as a list of one. A tag of a deleted citation stays (shown as missing)."""
+    v = meta.get("citations")
+    if not isinstance(v, list):
+        v = [meta.get("citation")]
+    out = []
+    for t in v:
+        t = t.strip() if isinstance(t, str) else ""
+        if t and t not in out:
+            out.append(t)
+    return out
+
+
+def _note_links(tags):
+    """Front matter for a note's sources: the list, and the first one under the old key, so an older ReWord
+    still shows a source."""
+    tags = note_citations({"citations": tags if isinstance(tags, list) else []})
+    return {"citations": tags, "citation": tags[0] if tags else ""}
+
+
 def read_note(p, with_body=True):
     meta, body = parse_front(p.read_text(encoding="utf-8"))
+    links = note_citations(meta)
     out = {"id": p.stem, "title": meta.get("title") or p.stem, "topic": meta.get("topic", ""),
-           "citation": meta.get("citation", ""), "project": meta.get("project", ""), "created": meta.get("created", ""),
+           "citations": links, "citation": links[0] if links else "",
+           "project": meta.get("project", ""), "created": meta.get("created", ""),
            "updated": meta.get("updated", ""), "mtime": mtime_of(p)}
     if with_body:
         out["body"] = body.strip("\n") + "\n" if body.strip() else ""
@@ -1326,16 +1449,18 @@ def notes():
     return out
 
 
-def create_note(title, topic="", citation="", body="", project=""):
+def create_note(title, topic="", citation="", body="", project="", citations=None):
+    """A new note. `citations` lists its sources; `citation` (one tag) is the older way to give one."""
     title = (title or "").strip() or "Untitled note"
     nid = unique(slugify(title, "note", 50), lambda s: note_path(s).exists())
     project = project if project and project_exists(project) else ""
-    meta = {"title": title, "topic": (topic or "").strip(), "citation": citation or "", "created": now(), "updated": now()}
+    links = _note_links(list(citations) if isinstance(citations, list) else [citation])
+    meta = dict({"title": title, "topic": (topic or "").strip()}, **links, created=now(), updated=now())
     if project:
         meta["project"] = project
     write_atomic(note_path(nid), dump_front(meta, body or ""))
     if project:
-        assign_citations(cited_tags(body or "") | ({citation} if citation else set()), project)
+        assign_citations(cited_tags(body or "") | set(links["citations"]), project)
     return read_note(note_path(nid))
 
 
@@ -1349,16 +1474,21 @@ def write_note(nid, data, mtime=None, force=False):
     project = data.get("project", old.get("project", "")) or ""
     if project and not project_exists(project):
         project = ""
-    meta = {"title": (data.get("title") or old["title"]).strip(),
-            "topic": (data.get("topic", old["topic"]) or "").strip(),
-            "citation": data.get("citation", old["citation"]) or "",
-            "created": old["created"] or now(), "updated": now()}
+    if isinstance(data.get("citations"), list):
+        links = _note_links(data["citations"])
+    elif "citation" in data:                 # an older page sends one source
+        links = _note_links([data.get("citation")])
+    else:
+        links = _note_links(old["citations"])
+    meta = dict({"title": (data.get("title") or old["title"]).strip(),
+                 "topic": (data.get("topic", old["topic"]) or "").strip()},
+                **links, created=old["created"] or now(), updated=now())
     if project:
         meta["project"] = project
     body = data.get("body", old["body"]) or ""
     write_atomic(p, dump_front(meta, body))
-    if project:          # sources cited in the note, and the note's own source, join its project
-        assign_citations(cited_tags(body) | ({meta["citation"]} if meta["citation"] else set()), project)
+    if project:          # sources cited in the note, and the sources it's linked to, join its project
+        assign_citations(cited_tags(body) | set(links["citations"]), project)
     return read_note(p)
 
 

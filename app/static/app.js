@@ -168,7 +168,9 @@
    * App.pickCitation({ title, pickOnly, format, onPick(cite, which) })
    *   format: 'lawreview' | 'practitioner' | 'apa' | 'chicago' | 'chicago-ad' (how cites are shown, and which buttons appear)
    *   which:  'full' | 'short' (Bluebook, Chicago notes) or 'intext' | 'narrative' | 'reference' (APA, Chicago author-date), or 'pick'
-   * Used to insert a cite in Writing/Research, and to choose a source for a note. */
+   * Used to insert a cite in Writing/Research, and to choose a source for a note.
+   * With multi: checkboxes and onPickMany(cites, { fromNotes }); chosen = tags ticked at the start, addLabel = the
+   * button's verb ("Add"), notesOption: false hides "Start each annotation from my research notes". */
   const dlg = $('#dlg-cite');
   const cpSearch = $('#cp-search');
   const cpFormat = $('#cp-style');
@@ -275,20 +277,25 @@
   const cpAdd = el('button', 'btn primary', 'Add');
   cpAdd.onclick = () => {
     const tags = Array.from(cpChosen);
-    if (!tags.length) return;
+    if (!tags.length && !cpOpts.allowNone) return;
     dlg.close();
     cpOpts.onPickMany(tags.map(t => App.citation(t)).filter(Boolean), { fromNotes: cpNotesBox.checked });
   };
   cpMulti.append(cpNotes, cpAdd);
   $('#cp-list').after(cpMulti);
-  function cpCount() { cpAdd.textContent = cpChosen.size ? 'Add ' + cpChosen.size + ' source' + (cpChosen.size === 1 ? '' : 's') : 'Add'; cpAdd.disabled = !cpChosen.size; }
+  function cpCount() {
+    const verb = (cpOpts && cpOpts.addLabel) || 'Add', n = cpChosen.size;
+    cpAdd.textContent = n ? verb + ' ' + n + ' source' + (n === 1 ? '' : 's') : verb;
+    cpAdd.disabled = !n && !(cpOpts && cpOpts.allowNone);
+  }
   App.pickCitation = async function (opts) {
     cpOpts = opts;
     try { await App.loadCitations(); } catch (e) { /* use what we have */ }
     $('#cp-title').textContent = opts.title || 'Insert a citation';
     cpSearch.value = '';
     cpFormat.value = opts.format || 'practitioner';
-    cpChosen.clear(); cpMulti.hidden = !opts.multi; cpCount();
+    cpChosen.clear(); (opts.chosen || []).forEach(t => { if (App.citation(t)) cpChosen.add(t); });
+    cpMulti.hidden = !opts.multi; cpNotes.hidden = opts.notesOption === false; cpCount();
     // opened from a document or note in a project: start with that project's sources
     cpScope.innerHTML = '';
     const pid = opts.project && App.projects.get(opts.project) ? opts.project : '';

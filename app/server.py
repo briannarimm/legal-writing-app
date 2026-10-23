@@ -1196,6 +1196,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/note/project": lambda b: self.send_json(store.assign_note(b.get("id"), b.get("project") or "")),
             "/api/citation/projects": self.api_citation_projects, "/api/file/delete": self.api_file_delete,
             "/api/snapshot": self.api_snapshot, "/api/annotations/export": self.api_annotations_export, "/api/render": self.api_render, "/api/note/export": self.api_note_export,
+            "/api/bibliography/export": self.api_bibliography_export,
             "/api/git/connect": self.api_git_connect, "/api/git/create": self.api_git_create,
             "/api/git/push": self.api_git_push, "/api/sync": lambda b: self.send_json(sync_work(b.get("reason") or "sync")),
             "/api/conflict/resolve": lambda b: self.send_json({"conflicts": resolve_conflict(b.get("id"), b.get("choice"))}), "/api/publish": self.api_publish, "/api/open": self.api_open,
@@ -1279,7 +1280,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     # --- notes
     def api_note_new(self, b):
-        self.send_json(store.create_note(b.get("title"), b.get("topic", ""), b.get("citation", ""), b.get("body", ""), b.get("project") or ""))
+        self.send_json(store.create_note(b.get("title"), b.get("topic", ""), b.get("citation", ""), b.get("body", ""), b.get("project") or "",
+                                         b.get("citations") if isinstance(b.get("citations"), list) else None))
 
     def api_save_note(self, b):
         self.send_json(store.write_note(b.get("id"), b, b.get("mtime"), b.get("force")))
@@ -1492,14 +1494,17 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if fmt not in ("docx", "pdf"):
             raise store.StoreError("Choose Word or PDF.")
         style = b.get("style") if b.get("style") in ("apa", "chicago", "chicago-ad", "lawreview", "practitioner") else "practitioner"
-        src = ""
-        if n.get("citation"):
-            c = next((x for x in store.citations() if x["tag"] == n["citation"]), None)
-            if c:               # the note's source, in the note's citation style (its project's)
-                key = {"apa": "apa_reference", "chicago": "chicago_bib", "chicago-ad": "chicago_ad_reference",
-                       "lawreview": "bluebook_lawreview"}.get(style, "bluebook_practitioner")
-                src = (c["forms"].get(key) or c["forms"]["bluebook_practitioner"])["md"]
-        pandoc, ast = self._note_ast(n.get("body") or "", {"title": n["title"], "topic": n.get("topic", ""), "source": src}, style)
+        srcs = []
+        if n.get("citations"):    # the note's sources, in the note's citation style (its project's)
+            lib = {x["tag"]: x for x in store.citations()}
+            key = {"apa": "apa_reference", "chicago": "chicago_bib", "chicago-ad": "chicago_ad_reference",
+                   "lawreview": "bluebook_lawreview"}.get(style, "bluebook_practitioner")
+            for t in n["citations"]:
+                if t in lib:
+                    f = lib[t]["forms"].get(key) or {}
+                    srcs.append((f if f.get("md") and not f.get("text", "").startswith("(not listed") else lib[t]["forms"]["bluebook_practitioner"])["md"])
+        pandoc, ast = self._note_ast(n.get("body") or "", {"title": n["title"], "topic": n.get("topic", ""), "source": "; ".join(srcs),
+                                                         "sourcelabel": "Sources" if len(srcs) > 1 else ""}, style)
         out = root() / "build" / "_notes"
         out.mkdir(parents=True, exist_ok=True)
         stem = out / n["id"]
@@ -1523,6 +1528,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
             except builder.BuildError as e:
                 raise store.StoreError(str(e), 500)
         self.send_json({"path": "_notes/%s.%s" % (n["id"], fmt)})
+
+    def api_bibliography_export(self, b):
+        """A project's sources (or the whole library's) as one Markdown file in build/_bibliography/; returns its /build/ path."""
+        name, text, count = store.bibliography(b.get("project") or "")
+        out = root() / "build" / "_bibliography"
+        out.mkdir(parents=True, exist_ok=True)
+        store.write_atomic(out / name, text)
+        self.send_json({"path": "_bibliography/" + name, "count": count})
 
     def api_cite_render(self, b):
         """Chip text for live citations: {format: lawreview|practitioner|apa|chicago|chicago-ad, items: [{tag, pin, signal, paren, narrative, note}]}."""
