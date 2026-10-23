@@ -430,18 +430,21 @@ def note_from_highlights(h, project=""):
     items = [x for x in (h.get("highlights") or []) if isinstance(x, dict) and (str(x.get("text") or "").strip() or str(x.get("note") or "").strip())]
     if not items:
         raise SuiteError("There are no highlights to make a note from.")
-    items.sort(key=lambda x: x.get("page") if isinstance(x.get("page"), int) else 0)
+    items.sort(key=lambda x: x.get("page") if isinstance(x.get("page"), int) and not isinstance(x.get("page"), bool) else 0)
     source = h.get("source") if isinstance(h.get("source"), str) else ""
     name = (str(h.get("title") or "").strip() or (Path(source).stem if source else "") or "a PDF")
     parts = []
     for x in items:
-        page = x.get("page") if isinstance(x.get("page"), int) and x.get("page") > 0 else None
+        page = x.get("page") if isinstance(x.get("page"), int) and not isinstance(x.get("page"), bool) and x.get("page") > 0 else None
+        # RePDF sends the page's printed label too ("iv", "A-3"), which is what a cite uses.
+        shown = str(x.get("pageLabel") or "").strip()[:20] if isinstance(x.get("pageLabel"), str) else ""
+        shown = _quote(shown) or (str(page) if page else "")
         text, note = _quote(x.get("text")), str(x.get("note") or "").strip()
         label = _quote(x.get("label"))
         if text:
-            parts.append("> " + text + (" (p. %d)" % page if page else ""))
-        elif page:
-            parts.append("*p. %d*" % page)
+            parts.append("> " + text + (" (p. %s)" % shown if shown else ""))
+        elif shown:
+            parts.append("*p. %s*" % shown)
         if label:
             parts.append("**" + label + "**")
         if note:

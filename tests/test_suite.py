@@ -171,6 +171,11 @@ try:
         check('no highlights refused', True)
     other = suite.note_from_highlights({'kind': 'highlights', 'source': str(tmp / 'Elsewhere.pdf'), 'highlights': [{'page': 1, 'text': 'x'}]})
     check('a PDF outside the library: no source, named by its file', other['citations'] == [] and other['title'] == 'Highlights: Elsewhere')
+    labelled = suite.note_from_highlights({'kind': 'highlights', 'title': 'Brief', 'highlights': [
+        {'page': 5, 'pageLabel': 'iv', 'text': 'Roman numbered'}, {'page': 9, 'pageLabel': '', 'text': 'No label'},
+        {'page': 2, 'pageLabel': 'A-1', 'text': '', 'note': 'Margin note', 'label': 'Note'}]})
+    lb = labelled['body']
+    check('page labels used for cites', '(p. iv)' in lb and '(p. 9)' in lb and '*p. A-1*' in lb and '**Note**' in lb, lb)
 
     # old hand-offs are cleared away by the next sender
     old = support / 'Handoffs' / 'old.json'
