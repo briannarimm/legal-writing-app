@@ -46,6 +46,7 @@ documents. It does not need other software on the computer.
 | Research | Keep notes, attach PDFs of sources, and highlight and comment on them. |
 | Group | Put documents, notes and sources into projects. |
 | Back up | Send your work to a private GitHub repository (optional). |
+| Present | Make slides, a poster or a handout from a document in RePublish, and open its finished PDF in RePDF (with the other [ReSuite](#104-republish-repdf-and-the-resuite-hub) apps). |
 
 Templates:
 
@@ -460,10 +461,34 @@ stays in the GitHub history.
 > **Warning:** GitHub keeps copies of all files that you sync. Do not sync client material unless your
 > professional duties and policies permit it.
 
+### 10.4 RePublish, RePDF and the ReSuite hub
+
+ReWord is one of the [ReSuite](https://github.com/briannarimm/resuite) apps: ReWord writes,
+[RePublish](https://github.com/briannarimm/republisher) designs slides, posters and handouts, and
+[RePDF](https://github.com/briannarimm/repdf) reads and marks up PDFs. The ReSuite hub keeps the pieces of
+one piece of work (a paper, its slides, its sources) together. Each app works on its own; ReWord does
+everything above without them.
+
+With the others installed, click **ReWord** at the top of the sidebar (or use the File and Window menus):
+
+- **Make Slides, a Poster or a Handout in RePublish** from the open document. RePublish lays out its
+  title, authors, abstract, sections and references; edit the design there.
+- **Open Finished PDF in RePDF** opens the document's last build.
+- **⌃⌥⌘0** brings forward the hub, **⌃⌥⌘1** ReWord, **⌃⌥⌘2** RePublish and **⌃⌥⌘3** RePDF, from any of them.
+- Highlights sent from RePDF become a research note that quotes each passage with its page number,
+  linked to the source when the PDF is one of your library's files.
+- The hub opens your documents and projects in ReWord, and lists your finished PDFs. It only reads
+  ReWord's data folder.
+- **View → Appearance → Translucent Window** is shared with the other apps' window glass setting.
+
+The apps pass work to each other in small files in `~/Library/Application Support/ReSuite`; nothing
+there is needed for ReWord to work.
+
 ## 11. Keyboard shortcuts
 
 - Push ⌘/ to see all shortcuts.
 - Push ⌘K to search all commands, documents, notes and sources.
+- Push ⌃⌥⌘0, 1, 2 or 3 to go to the ReSuite hub, ReWord, RePublish or RePDF.
 - Right-click anything for the commands that fit it. In your text: spelling suggestions, Cut, Copy,
   Paste, italic, bold, small caps, paragraph styles, and Insert citation or footnote. On a live
   citation: edit, open, copy or remove it, or see everywhere it's cited. On a document, section, note or source in a side bar: open,
@@ -506,6 +531,7 @@ app/                 server (Python standard library) and user interface (HTML, 
 app/mac/             native Mac window and PDF helper (Swift)
 app/citeformat.py    Bluebook and APA formatter
 app/cites.py         resolves live citations (draft and final forms)
+app/suite.py         ReSuite: hand-offs to RePublish and from RePDF, links to the other apps
 templates/<id>/      one folder for each template (LaTeX, Word styles, sample sections)
 filters/             Pandoc Lua filters
 scripts/             application build, redline, editor import, table of authorities

@@ -191,6 +191,7 @@
   const rightClick = App.menu;         // contextmenu.js: App.menu.open(x, y, items) / App.menu.close()
   App.menu = function (name) {
     if (MENU[name]) { MENU[name](); return true; }
+    if (name.startsWith('suite:') && App.suite) { App.suite.menu(name.slice(6)); return true; }   // suite.js
     App.ribbon.run(name);              // any ribbon command: footnote, cite, bibAdd, addSection, newDoc, openData, …
     return true;
   };

@@ -5,11 +5,15 @@
 #                       make app                     -> open ReWord in Terminal (the Mac app is the usual way)
 #                       make mac-app                 -> (re)build ReWord.app, the double-clickable app
 #                       make dist                    -> the downloadable zip in distro/
+#                       make check                   -> the checks for a change to ReWord: the tests, and
+#                                                       the Mac window and PDF helper compile (on a Mac)
 #
 # Documents live in documents/<name>/ (document.json says which template they use, and
 # templates/<id>/ says how that template builds). Output goes to build/<name>/.
-# Everything runs inside the pinned Docker image (docker/Dockerfile) so output matches
-# GitHub Actions exactly. Set USE_DOCKER=0 to use a local pandoc instead.
+# Everything runs inside the pinned Docker image (docker/Dockerfile) so output is the same
+# on every machine. Set USE_DOCKER=0 to use a local pandoc instead.
+#
+# There is no hosted CI: `make check` is what a pull request should pass, run on a Mac.
 
 IMAGE      ?= lawreview-build:latest
 USE_DOCKER ?= 1
@@ -21,7 +25,7 @@ TDIR     := templates/$(TEMPLATE)
 BUILD    := build/$(SLUG)
 
 # `make app`, `make image` and `make clean` don't need a document.
-ifneq ($(filter-out app mac-app dist image clean,$(or $(MAKECMDGOALS),all)),)
+ifneq ($(filter-out app mac-app dist check test mac-check image clean,$(or $(MAKECMDGOALS),all)),)
 ifeq ($(TEMPLATE),)
 $(error No document found. Create one in the app, or pass DOC=documents/<name>)
 endif
@@ -58,7 +62,7 @@ PANDOC := $(RUN) $(CITES_ENV) pandoc -d defaults/common.yaml --metadata-file $(D
 # The app instead passes BASE=<version name> BASE_DIR=<folder holding that saved version>.
 BASE ?= $(shell git describe --tags --abbrev=0 --match '$(SLUG)/v*' 2>/dev/null)
 
-.PHONY: all wordcount redline import-edits app mac-app dist watch image clean $(OUTPUTS)
+.PHONY: all wordcount redline import-edits app mac-app dist check test mac-check watch image clean $(OUTPUTS)
 
 all: $(foreach o,$(OUTPUTS),$(BUILD)/$(SLUG).$(o)) wordcount
 
@@ -107,6 +111,19 @@ mac-app:
 # The download for other people: distro/ReWord-<version>-mac-arm64.zip (empty data folder, never your work)
 dist:
 	python3 scripts/make_app.py --out build/dist-app --dist
+
+# The tests use ReWord's own pandoc once `make mac-app` has unpacked it (or pandoc on the PATH).
+check: test mac-check
+	@echo "ReWord: all checks passed."
+
+test:
+	@for t in tests/test_*.py; do echo "== $$t"; python3 "$$t" || exit 1; done
+
+mac-check:
+	@command -v swiftc >/dev/null || { echo "mac-check needs a Mac with Xcode or its command-line tools"; exit 1; }
+	@mkdir -p build/mac-check
+	swiftc -O -target arm64-apple-macos12.0 -framework AppKit -framework WebKit app/mac/main.swift -o build/mac-check/ReWord-shell
+	swiftc -O -target arm64-apple-macos12.0 -framework AppKit -framework WebKit -framework PDFKit app/mac/rwpdf.swift -o build/mac-check/rwpdf
 
 watch:
 	@command -v watchexec >/dev/null || { echo "Install watchexec (brew install watchexec)"; exit 1; }

@@ -18,7 +18,7 @@
  * to the clipboard API.
  *
  *   App.menu.open(x, y, items)    show a menu; items are
- *       { label, run, icon, kbd, disabled, danger, checked, swatch, items: [submenu] } · '-' · { header }
+ *       { label, run, icon, img, kbd, disabled, danger, checked, swatch, items: [submenu] } · '-' · { header }
  *   App.menu.close()
  */
 (function () {
@@ -122,6 +122,7 @@
       if (it.items) row.setAttribute('aria-haspopup', 'menu');
       const ic = el('span', 'ctx-ic');
       if (it.swatch) ic.appendChild(el('span', 'ctx-swatch ' + it.swatch + (it.checked ? ' on' : '')));
+      else if (it.img) { const im = el('img', 'ctx-img'); im.src = it.img; im.alt = ''; ic.appendChild(im); }
       else if (it.checked) ic.innerHTML = svg('check');
       else if (it.icon) ic.innerHTML = svg(it.icon);
       const label = el('span', 'ctx-label', it.label);

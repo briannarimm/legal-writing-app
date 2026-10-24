@@ -40,6 +40,7 @@
     await App.loadCitations();
     App._first = true;
     await App.showView('writing');
+    App.booted = true;            // links from the other ReSuite apps can be opened now (suite.js)
     let mode = 'rich';
     try { mode = localStorage.getItem('editMode') || 'rich'; } catch (e) { /* ignore */ }
     App.setEditMode(mode);
