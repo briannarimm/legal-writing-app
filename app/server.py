@@ -30,6 +30,7 @@ import builder  # noqa: E402
 import citeformat  # noqa: E402
 import cites  # noqa: E402
 import lookup  # noqa: E402
+import suite  # noqa: E402
 
 STATIC = APP_DIR / "static"
 IMAGE = "lawreview-build:latest"
@@ -164,6 +165,16 @@ def status(slug=None):
     tag = last_tag(slug) if slug else None
     return {"repo": repo, "gitAvailable": bool(find_git()), "lastTag": tag.split("/", 1)[-1] if tag else None,
             "nextTag": next_tag(slug, tag), "dirty": dirty_count() if repo else 0, "running": JOB.running}
+
+
+def finished_pdf(slug):
+    """The document's newest PDF: the final copy if there is one, else the last draft."""
+    store.doc_path(slug)
+    b = root() / "build" / slug
+    for name in (slug + "-final.pdf", slug + ".pdf"):
+        if (b / name).is_file():
+            return b / name
+    return None
 
 
 def list_outputs(slug, tid, tag):
@@ -1153,6 +1164,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/ping": lambda: self.send_json({"ok": True, "since": LIFE.ping()}),
             "/api/files": lambda: self.send_json({"files": store.list_attachments(q.get("tag")), "tools": pdf_tools()}),
             "/api/annotations": lambda: self.send_json(store.read_annotations(q.get("tag"), q.get("name"))),
+            "/api/suite": lambda: self.api_suite(q.get("doc") or ""),
         }
         fn = routes.get(p)
         if not fn:
@@ -1201,6 +1213,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/git/push": self.api_git_push, "/api/sync": lambda b: self.send_json(sync_work(b.get("reason") or "sync")),
             "/api/conflict/resolve": lambda b: self.send_json({"conflicts": resolve_conflict(b.get("id"), b.get("choice"))}), "/api/publish": self.api_publish, "/api/open": self.api_open,
             "/api/bye": lambda b: (LIFE.bye(), self.send_json({"ok": True}))[1],
+            "/api/suite/open": self.api_suite_open, "/api/suite/handoff": self.api_suite_handoff,
+            "/api/suite/receive": self.api_suite_receive,
         }
         fn = routes.get(self.path)
         if not fn:
@@ -1375,6 +1389,42 @@ class Handler(http.server.BaseHTTPRequestHandler):
             path = ensure_output_repo() if which == "outputs" else repo_path(which)
             run_quiet(["open", str(path)])
         self.send_json({"ok": True})
+
+    # --- ReSuite: RePublish, RePDF and the hub (app/suite.py)
+    def api_suite(self, slug):
+        """What the suite menu can offer for the open document."""
+        out = {"available": suite.available(), "project": None, "pdf": False}
+        if slug:
+            info = store.read_doc_info(store.doc_path(slug))
+            out["project"] = suite.suite_project_summary(suite.suite_project_for(slug, info.get("project", "")))
+            out["pdf"] = finished_pdf(slug) is not None
+        self.send_json(out)
+
+    def api_suite_open(self, b):
+        """Bring a suite app forward; with a document, open its finished PDF in RePDF; with a suite
+        project, show it in the hub."""
+        if not suite.available():
+            raise store.StoreError("The other ReSuite apps run on a Mac.")
+        app, slug = b.get("app"), b.get("doc") or ""
+        if app == "repdf" and slug:
+            pdf = finished_pdf(slug)
+            if not pdf:
+                raise store.StoreError("Save the document first: RePDF opens its finished PDF.")
+            return self.send_json(suite.open_files("repdf", [pdf]))
+        if app == "hub" and b.get("project"):
+            return self.send_json(suite.open_link("hub", "project", {"id": str(b["project"])}))
+        self.send_json(suite.launch(app))
+
+    def api_suite_handoff(self, b):
+        """Hand the document to RePublish as an outline, to make slides, a poster or a handout."""
+        if not suite.available():
+            raise store.StoreError("RePublish runs on a Mac.")
+        self.send_json(suite.send_outline(b.get("doc"), b.get("make")))
+
+    def api_suite_receive(self, b):
+        """A hand-off sent to ReWord (reword://handoff?file=…): RePDF's highlights become a research note."""
+        project = b.get("project") if store.project_exists(b.get("project") or "") else ""
+        self.send_json({"note": suite.receive_highlights(b.get("file"), project)})
 
     # --- citations
     def api_citation_new(self, b):

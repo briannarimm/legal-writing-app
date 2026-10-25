@@ -1,5 +1,5 @@
-# Pinned build image. Every build (your laptop and GitHub Actions) runs in here,
-# so Pandoc and LaTeX output are identical everywhere.
+# Pinned build image. Every `make` build runs in here, so Pandoc and LaTeX output are
+# identical on every machine.
 #
 # To upgrade Pandoc: change PANDOC_VERSION, rebuild, compare a PDF, commit.
 # For a fully reproducible pin, replace the tag with its digest after the first
