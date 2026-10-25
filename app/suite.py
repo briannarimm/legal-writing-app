@@ -31,11 +31,11 @@ APPS = {
     "hub": {"name": "ReSuite", "bundle": "com.briannarimm.ReSuite", "scheme": "resuite",
             "get": "https://github.com/briannarimm/resuite/releases/latest"},
     "reword": {"name": "ReWord", "bundle": "app.reword", "scheme": "reword",
-               "get": "https://github.com/briannarimm/legal-writing-app/tree/main/distro"},
+               "get": "https://github.com/briannarimm/legal-writing-app/releases/latest"},
     "republish": {"name": "RePublish", "bundle": "com.briannarimm.RePublish", "scheme": "republish",
                   "get": "https://github.com/briannarimm/republisher/releases/latest"},
     "repdf": {"name": "RePDF", "bundle": "com.briannarimm.RePDF", "scheme": None,
-              "get": "https://github.com/briannarimm/repdf#build-and-run"},
+              "get": "https://github.com/briannarimm/repdf/releases/latest"},
 }
 MAKES = ("slides", "poster", "handout")
 MAX_HANDOFF = 4_000_000            # bytes; a hand-off is a few kilobytes of text
