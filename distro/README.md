@@ -4,12 +4,10 @@ This folder contains the ready-to-use ReWord program for Mac.
 
 | File | Description |
 |---|---|
-| `ReWord-1.3.2-mac-arm64.zip` | The program. Download this file. |
-| `ReWord-1.3.2-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
+| `ReWord-1.4.0-mac-arm64.zip` | The program. Download this file. |
+| `ReWord-1.4.0-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
 
-## Coming in 1.4
-
-This is in the source now and in the next download (built with `make dist`).
+## What's new in 1.4
 
 - **Part of ReSuite**, with RePublish, RePDF and the ReSuite hub, and a new icon from the same family.
   Each app still works on its own.
