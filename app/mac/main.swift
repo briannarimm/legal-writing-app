@@ -305,7 +305,7 @@ let suiteApps = [
     SuiteApp(name: "ReSuite Hub", bundleID: "com.briannarimm.ReSuite", key: "0", download: "https://github.com/briannarimm/resuite/releases/latest"),
     SuiteApp(name: "ReWord", bundleID: "app.reword", key: "1", download: ""),
     SuiteApp(name: "RePublish", bundleID: "com.briannarimm.RePublish", key: "2", download: "https://github.com/briannarimm/republisher/releases/latest"),
-    SuiteApp(name: "RePDF", bundleID: "com.briannarimm.RePDF", key: "3", download: "https://github.com/briannarimm/repdf#build-and-run"),
+    SuiteApp(name: "RePDF", bundleID: "com.briannarimm.RePDF", key: "3", download: "https://github.com/briannarimm/repdf/releases/latest"),
 ]
 
 /// Brings a suite app forward, starting it if needed; one that isn't installed opens its download page.

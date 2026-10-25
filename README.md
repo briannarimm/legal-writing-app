@@ -7,7 +7,7 @@ research notes and your source library in the same place.
 ReWord runs on Apple Silicon Macs (M1 or newer). It does not need an internet connection to make
 documents. It does not need other software on the computer.
 
-**To download ReWord, go to the [distro](distro/) folder.**
+**To download ReWord, go to the [latest release](https://github.com/briannarimm/legal-writing-app/releases/latest).**
 
 > **Note: this application is vibe-coded.** An AI coding assistant (Claude Code, by Anthropic) wrote
 > almost all of the code and documentation. The owner of this repository supplied the requirements,
@@ -82,8 +82,8 @@ There are two methods to install ReWord.
 
 ### 3.1 Download the application (recommended)
 
-Download the zip file from the [distro](distro/) folder. Then do the steps in
-[distro/README.md](distro/README.md).
+Download the zip file from the [latest release](https://github.com/briannarimm/legal-writing-app/releases/latest) (the same file is in the
+[distro](distro/) folder). Then do the steps in [distro/README.md](distro/README.md).
 
 ### 3.2 Build the application from the source code
 
