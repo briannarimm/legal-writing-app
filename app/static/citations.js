@@ -70,11 +70,60 @@
     };
   }
 
+  /* ------------------------------------------------------------ an edited book's chapters */
+  // Each chapter is a card with its own fields (authors, title, pages…); the book's fields are shared.
+  // A chapter keeps its id (what a citation to it records), and any keys the form doesn't show.
+  function ChaptersField(f, fire) {
+    const wrap = el('div', 'field wide chapters-field');
+    const head = el('div', 'field-head'); head.append(el('label', '', f.label.replace(/\*$/, '')));
+    const cards = el('div', 'chapter-cards');
+    const add = el('button', 'btn small', '+ Chapter'); add.type = 'button';
+    wrap.append(head);
+    if (f.hint) wrap.appendChild(el('div', 'hint', f.hint));
+    wrap.append(cards, add);
+    function number() { Array.from(cards.children).forEach((c, k) => { c._num.textContent = 'Chapter ' + (k + 1); }); }
+    function card(ch) {
+      const box = el('div', 'chapter-card');
+      const top = el('div', 'chapter-top');
+      const num = el('b', '');
+      const id = el('code', 'muted small', ch.id || 'new'); id.title = 'What citations to this chapter record';
+      const sp = el('span', 'grow');
+      const up = el('button', 'icon-btn', '↑'); up.type = 'button'; up.title = 'Move up';
+      const rm = el('button', 'icon-btn', '✕'); rm.type = 'button'; rm.title = 'Remove this chapter';
+      up.onclick = () => { if (box.previousSibling) { cards.insertBefore(box, box.previousSibling); number(); fire(); } };
+      rm.onclick = () => {
+        if (ch.id && !confirm('Remove this chapter from the book?\n\nCitations to it in your documents will show as missing until you choose another chapter.')) return;
+        box.remove(); number(); fire();
+      };
+      top.append(num, id, sp, up, rm);
+      const grid = el('div', 'cf-grid');
+      const ctl = {};
+      f.fields.forEach(sub => { const c = Field(sub, fire); ctl[sub.key] = c; grid.appendChild(c.el); c.set(ch[sub.key]); });
+      box.append(top, grid);
+      box._num = num;
+      box._get = () => {
+        const o = {};
+        Object.keys(ch).forEach(k => { if (!ctl[k]) o[k] = ch[k]; });          // id, former_tag, and keys from other tools
+        Object.entries(ctl).forEach(([k, c]) => { const v = c.get(); if (v !== '' && v !== false && !(Array.isArray(v) && !v.length)) o[k] = v; else delete o[k]; });
+        return o;
+      };
+      box._focus = () => { const i = grid.querySelector('input, [contenteditable]'); if (i) i.focus(); };
+      return box;
+    }
+    add.onclick = () => { const c = card({}); cards.appendChild(c); number(); c._focus(); fire(); };
+    return {
+      el: wrap,
+      get: () => Array.from(cards.children).map(c => c._get()).filter(o => Object.keys(o).some(k => k !== 'id')),
+      set: v => { cards.innerHTML = ''; (Array.isArray(v) ? v : []).forEach(ch => cards.appendChild(card(ch))); if (!cards.children.length) cards.appendChild(card({})); number(); },
+    };
+  }
+
   /* ------------------------------------------------------------ one field */
   function Field(f, fire) {
     const label = f.label.replace(/\*$/, '');
     const req = /\*$/.test(f.label);
     if (f.kind === 'authors') return AuthorsField(f, fire);
+    if (f.kind === 'chapters') return ChaptersField(f, fire);
     if (f.kind === 'rich') {
       const r = Rich.inlineField(label + (req ? ' *' : ''), { hint: f.hint || '' });
       r.el.classList.add('wide');
@@ -106,6 +155,20 @@
     if (f.hint) wrap.appendChild(el('div', 'hint', f.hint));
     return { el: wrap, get: () => input.value, set: v => { input.value = v || (f.kind === 'select' && f.options ? f.options[0] : ''); } };
   }
+
+  // A single chapter's fields as an edited book holding that chapter.
+  function asEditedBook(f) {
+    const book = {}, ch = {};
+    Object.entries(f).forEach(([k, v]) => {
+      if (k === 'book_title') book.title = v;
+      else if (k === 'book_title_apa') book.title_apa = v;
+      else if (['authors', 'title', 'title_apa', 'first_page', 'last_page', 'hereinafter'].includes(k)) ch[k] = v;
+      else book[k] = v;
+    });
+    book.chapters = [ch];
+    return book;
+  }
+  App.asEditedBook = asEditedBook;
 
   /* ------------------------------------------------------------ the form */
   App.CiteForm = function (opts) {
@@ -145,7 +208,7 @@
     const chooser = el('div', 'type-choice');
     chooser.appendChild(el('div', 'hint', 'What kind of source is it?'));
     schema().groups.forEach(gname => {
-      const items = Object.entries(schema().types).filter(([, t]) => t.group === gname);
+      const items = Object.entries(schema().types).filter(([, t]) => t.group === gname && !t.hidden);
       if (!items.length) return;
       const grp = el('div', 'type-group');
       grp.appendChild(el('div', 'type-group-name', gname));
@@ -162,8 +225,12 @@
     // Step 2: the fields
     const bar = el('div', 'style-bar');
     const typeSel = el('select');
-    Object.entries(schema().types).forEach(([id, t]) => { const o = el('option', '', t.group + ' · ' + t.label); o.value = id; typeSel.appendChild(o); });
-    typeSel.addEventListener('change', () => { const v = collect(); setType(typeSel.value); fill(v); fire(); });
+    Object.entries(schema().types).forEach(([id, t]) => { const o = el('option', '', t.group + ' · ' + t.label); o.value = id; o.hidden = !!t.hidden; typeSel.appendChild(o); });
+    typeSel.addEventListener('change', () => {
+      let v = collect();
+      if (type === 'chapter' && typeSel.value === 'edited_book') v = asEditedBook(v);
+      setType(typeSel.value); fill(v); fire();
+    });
     bar.append(el('span', 'muted small', 'Type'), typeSel);
     const fieldsBox = el('div', 'cf-grid');
 
@@ -188,7 +255,10 @@
     const pinIn = el('input', 'pin-try'); pinIn.placeholder = 'Try a pin cite (page, §, ¶)';
     pinIn.addEventListener('input', () => schedulePreview());
     const prevBody = el('div', 'cp-forms');
-    const prevHead = el('div', 'cp-head'); prevHead.append(el('b', '', 'How it will look'), pinIn);
+    const prevHead = el('div', 'cp-head');
+    const prevCh = el('select', 'chapter-select'); prevCh.hidden = true; prevCh.title = 'Show the citation to this chapter';
+    prevCh.addEventListener('change', () => schedulePreview());
+    prevHead.append(el('b', '', 'How it will look'), prevCh, pinIn);
     prev.append(prevHead, prevBody);
 
     // Projects this source belongs to. Citing it in a project's document or note adds that project
@@ -260,11 +330,22 @@
         let r;
         try { r = await post('/api/citation/preview', { type, fields: collect(), pin: pinIn.value }); } catch (e) { return; }
         prevBody.innerHTML = '';
+        // an edited book: the citation to one chapter (or the whole book)
+        let forms = r.forms;
+        if (r.chapters) {
+          const keep = prevCh.value;
+          prevCh.innerHTML = '';
+          r.chapters.forEach((ch, k) => { const o = el('option', '', 'Chapter ' + (k + 1) + ': ' + ch.label); o.value = String(k); prevCh.appendChild(o); });
+          const w = el('option', '', 'The whole book'); w.value = 'book'; prevCh.appendChild(w);
+          prevCh.value = Array.from(prevCh.options).some(o => o.value === keep) ? keep : (r.chapters.length ? '0' : 'book');
+          if (prevCh.value !== 'book') forms = r.chapters[+prevCh.value].forms;
+        }
+        prevCh.hidden = !r.chapters;
         if (r.missing && r.missing.length) prevBody.appendChild(el('div', 'hint warn', 'Still needed: ' + r.missing.join(', ')));
         if (r.chicago_missing && r.chicago_missing.length) prevBody.appendChild(el('div', 'hint', 'Chicago would also use: ' + r.chicago_missing.join(', ')));
         FORMS.forEach(([k, label]) => {
           const row = el('div', 'cp-form');
-          const v = el('div', 'cp-cite'); v.innerHTML = (r.forms[k] || {}).html || '';
+          const v = el('div', 'cp-cite'); v.innerHTML = (forms[k] || {}).html || '';
           row.append(el('div', 'cp-label', label), v);
           prevBody.appendChild(row);
         });
@@ -329,7 +410,8 @@
     const q = search.value.trim().toLowerCase(), ft = filter.value;
     const typeOk = c => !ft || (ft === '_unused' ? !!counts && !counts[c.tag] : c.type === ft);
     const items = App.state.citations.filter(c => App.projects.citeInScope(c) && typeOk(c) &&
-      (!q || (c.tag + ' ' + App.citeText(c) + ' ' + App.citeText(c, 'apa_reference')).toLowerCase().includes(q)));
+      (!q || (c.tag + ' ' + App.citeText(c) + ' ' + App.citeText(c, 'apa_reference') + ' ' +
+              (c.chapters || []).map(ch => ch.id + ' ' + ch.label).join(' ')).toLowerCase().includes(q)));
     if (!items.length) {
       list.appendChild(el('div', 'empty small', App.state.citations.length ? (App.projects.scope === 'all' ? 'No citations match.' : 'No sources in this project match.') : 'No citations yet.'));
     }
@@ -338,6 +420,7 @@
       row.dataset.tag = c.tag;
       const top = el('div', 'li-top'); top.append(el('span', 'chip', App.typeLabel(c.type)), el('code', '', c.tag));
       if (c.missing && c.missing.length) top.appendChild(el('span', 'warn small', '•'));
+      if (c.type === 'edited_book') { const n = (c.chapters || []).length; top.appendChild(el('span', 'muted small', n + ' chapter' + (n === 1 ? '' : 's'))); }
       if (counts) {
         const n = counts[c.tag] || 0;
         const u = el('span', 'cited-n' + (n ? '' : ' none'), n ? n + '×' : '0×');

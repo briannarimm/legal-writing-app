@@ -17,7 +17,7 @@
     const chips = [];
     roots.forEach(r => r && r.querySelectorAll('span.cite').forEach(c => chips.push(c)));
     if (!chips.length) return;
-    const items = chips.map(ch => ({ tag: ch.dataset.tag, pin: ch.dataset.pin || '', signal: ch.dataset.signal || '',
+    const items = chips.map(ch => ({ tag: ch.dataset.tag, chapter: ch.dataset.chapter || '', pin: ch.dataset.pin || '', signal: ch.dataset.signal || '',
       paren: ch.dataset.paren || '', narrative: ch.dataset.narrative || '', form: ch.dataset.form || '', note: format !== 'lawreview' || !!ch.closest('.note-body') }));
     let r;
     try { r = await post('/api/cite/render', { format, items }); } catch (e) { return; }
@@ -26,12 +26,13 @@
       if (!ch.isConnected) return;
       ch.innerHTML = it.html;
       ch.classList.toggle('missing', !!it.missing);
-      ch.title = it.missing ? 'This citation is no longer in the library (' + ch.dataset.tag + ')' : 'Live citation: click to edit the pin cite, signal or parenthetical';
+      ch.title = it.missing ? (ch.dataset.chapter && App.citation(ch.dataset.tag) ? 'This chapter is no longer in the book (' + ch.dataset.tag + ', chapter ' + ch.dataset.chapter + ')'
+        : 'This citation is no longer in the library (' + ch.dataset.tag + ')') : 'Live citation: click to edit the pin cite, signal or parenthetical';
     });
   }
 
   function chipHtml(c, attrs, format) {
-    const a = Object.assign({ tag: c.tag }, attrs || {});
+    const a = Object.assign({ tag: c.tag }, c.chapter ? { chapter: c.chapter } : {}, attrs || {});
     const text = App.citeMarkdown(c, App.isParenFormat(format) ? (a.narrative ? 'narrative' : 'intext') : 'full', format);
     return MD.citeChip(a, MD.inlineHtml(text));
   }
@@ -75,6 +76,11 @@
     const set = (k, v) => { if (v) chip.dataset[k] = v; else delete chip.dataset[k]; changed(); };
     const row = (label, input) => { const r = el('label', 'chip-row'); r.append(el('span', '', label), input); pop.appendChild(r); return input; };
 
+    // an edited book: which chapter this citation is to
+    if (c && c.type === 'edited_book') {
+      const chSel = App.chapterSelect(c, chip.dataset.chapter || '');
+      row('Chapter', chSel).addEventListener('change', () => set('chapter', chSel.value));
+    }
     const sig = el('select');
     SIGNALS.forEach(s => { const o = el('option', '', s || '(no signal)'); o.value = s; sig.appendChild(o); });
     const cur = chip.dataset.signal || '';
@@ -105,6 +111,7 @@
       const keep = chip; closePop();
       App.pickCitation({ title: 'Change the source', format, live: true, onPick: (nc, which) => {
         keep.dataset.tag = nc.tag;
+        if (nc.chapter) keep.dataset.chapter = nc.chapter; else delete keep.dataset.chapter;
         if (App.isParenFormat(format)) { if (which === 'narrative') keep.dataset.narrative = '1'; else delete keep.dataset.narrative; }
         refresh([keep.parentElement], format).then(() => opts.changed && opts.changed(keep));
       } });

@@ -216,6 +216,21 @@
     return (f[formKey(which, format)] || {}).md || c.cite || c.tag;
   };
 
+  // Edited books: a citation is to one of the book's chapters (or the whole book).
+  // App.chapterCite(c, id) = the citation as that chapter: same tag, .chapter set, the chapter's forms.
+  App.chapterCite = function (c, id) {
+    const ch = id && (c.chapters || []).find(x => x.id === id);
+    return ch ? Object.assign({}, c, { chapter: id, forms: ch.forms, chapterLabel: ch.label }) : Object.assign({}, c, { chapter: '' });
+  };
+  App.chapterSelect = function (c, value) {
+    const s = el('select', 'chapter-select'); s.title = 'Which chapter of the book';
+    (c.chapters || []).forEach(ch => { const o = el('option', '', ch.label); o.value = ch.id; s.appendChild(o); });
+    const whole = el('option', '', 'The whole book'); whole.value = ''; s.appendChild(whole);
+    if (value && !(c.chapters || []).some(ch => ch.id === value)) { const o = el('option', '', value + ' (not in the book any more)'); o.value = value; s.insertBefore(o, s.firstChild); }
+    s.value = value != null && (value || !(c.chapters || []).length) ? value : ((c.chapters || [])[0] || {}).id || '';
+    return s;
+  };
+
   function renderPicker() {
     const list = $('#cp-list');
     list.innerHTML = '';
@@ -224,20 +239,35 @@
     const shownKey = App.isParenFormat(format) ? formKey('reference', format) : formKey('full', format);
     const proj = cpScope.value;
     const items = App.state.citations.filter(c => (!proj || (c.projects || []).includes(proj)) && (!q ||
-      (c.tag + ' ' + App.typeLabel(c.type) + ' ' + App.citeText(c) + ' ' + App.citeText(c, 'apa_reference')).toLowerCase().includes(q)));
+      (c.tag + ' ' + App.typeLabel(c.type) + ' ' + App.citeText(c) + ' ' + App.citeText(c, 'apa_reference') + ' ' +
+       (c.chapters || []).map(ch => ch.id + ' ' + ch.label).join(' ')).toLowerCase().includes(q)));
     if (!items.length) {
       list.appendChild(el('div', 'empty', App.state.citations.length
         ? (cpScope.value ? 'No sources in this project match. Choose “All sources” to cite something new to it; it joins the project when you do.' : 'No citations match.')
         : 'Your library is empty. Add sources in the Citations tab (or create a research note).'));
       return;
     }
-    items.forEach(c => {
+    items.forEach(book => {
+      let c = book;
       const row = el('div', 'cp-row');
       const main = el('div', 'cp-main');
       const meta = el('div', 'cp-meta');
       meta.append(el('span', 'chip', App.typeLabel(c.type)), el('code', '', c.tag));
-      const cite = el('div', 'cp-cite'); cite.innerHTML = ((c.forms || {})[shownKey] || {}).html || '';
-      main.append(meta, cite);
+      const cite = el('div', 'cp-cite');
+      const show = () => { cite.innerHTML = ((c.forms || {})[shownKey] || {}).html || ''; };
+      main.append(meta);
+      // an edited book: choose the chapter you are citing (search words that name a chapter pick it)
+      if (book.type === 'edited_book' && (book.chapters || []).length && !cpOpts.multi) {
+        const hit = q && book.chapters.find(ch => (ch.id + ' ' + ch.label).toLowerCase().includes(q));
+        const chSel = App.chapterSelect(book, hit ? hit.id : null);
+        chSel.onclick = e => e.stopPropagation();
+        chSel.onchange = () => { c = App.chapterCite(book, chSel.value); show(); };
+        c = App.chapterCite(book, chSel.value);
+        const lab = el('label', 'cp-chapter'); lab.append(el('span', 'muted small', 'Chapter'), chSel);
+        main.append(lab);
+      }
+      show();
+      main.append(cite);
       const btns = el('div', 'cp-btns');
       const pick = (which) => { dlg.close(); cpOpts.onPick(c, which, format); };
       const btn = (label, which, primary, title) => {

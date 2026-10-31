@@ -195,7 +195,7 @@ def to_notes(text, new_label, names_for):
         marker = '[^%s]' % label
         if narrative and len(chips) == 1:
             # "Walker (2017) found …" -> "Walker[^n] found …"
-            names = names_for(chips[0][2].get('tag', ''))
+            names = names_for(_key(chips[0][2]))
             pre, post = text[:s].rstrip(GAP), text[e:]
             if names and pre.endswith(names + ',') and post[:1] == ',':
                 text = pre[:-1] + marker + post[1:]          # back from Bluebook: "Walker, [cite], found"
@@ -224,6 +224,12 @@ def to_notes(text, new_label, names_for):
 
 # ------------------------------------------------------------------ notes -> text citations
 
+def _key(attrs):
+    """The library key of a mark: its tag, or tag#chapter for a chapter of an edited book (cites.key_of)."""
+    ch = (attrs.get('chapter') or '').strip()
+    return attrs.get('tag', '') + ('#' + ch if ch else '')
+
+
 def from_note(text, at, end, note, kind, names_for=None):
     """Replace the marker text[at:end] with the note's citations, placed for `kind` (paren or sentence)."""
     found = find_chips(note)
@@ -232,7 +238,7 @@ def from_note(text, at, end, note, kind, names_for=None):
     pre, post = text[:at], text[end:]
     if kind == 'paren' and len(found) == 1 and found[0][2].get('narrative') and names_for:
         # "Walker[^n] found …" -> "Walker (2017) found …" (the narrative citation names the author itself)
-        names = names_for(found[0][2].get('tag', ''))
+        names = names_for(_key(found[0][2]))
         if names and pre.endswith(names):
             return pre[:-len(names)] + cites + post
     # the punctuation (and closing quotes) just before the marker

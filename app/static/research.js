@@ -330,6 +330,12 @@
     if (!S.reader && window.Reader) S.reader = new window.Reader($('#ns-view'), $('#ns-anns'), { onChange: anns => scheduleSave(anns) });
     return S.reader;
   }
+  // the chosen source's files, one line each
+  const stripBox = el('div', 'file-strip-wrap');
+  document.querySelector('#ns-source .src-bar').after(stripBox);
+  const strip = App.FileStrip(stripBox, { onPick: name => { $('#ns-file').value = name; openFile(name).then(drawStrip); },
+    onChanged: list => { S.files = list; } });
+  const drawStrip = () => strip.render(App.citation(S.tag), S.files, S.fileName, '');
   function closeSource() { flushAnns(); if (S.reader) S.reader.close(); S.tag = null; S.fileName = null; $('#ns-source').hidden = true; }
 
   async function choose(tag) {
@@ -358,10 +364,11 @@
     const sel = $('#ns-file');
     sel.innerHTML = '';
     S.files.forEach(f => { const o = el('option', '', f.name + (f.annotations ? '  (' + f.annotations + ')' : '')); o.value = f.name; sel.appendChild(o); });
-    sel.hidden = !S.files.length;
-    const keep = pick || (S.files.find(f => f.kind === 'pdf' && !f.annotated) || S.files[0] || {}).name;
-    if (!keep) { noFile(); return; }
+    sel.hidden = true;
+    const keep = pick || App.preferredFile(S.files, '');
+    if (!keep) { S.fileName = null; drawStrip(); noFile(); return; }
     sel.value = keep;
+    S.fileName = keep; drawStrip();
     await openFile(keep);
   }
 
@@ -470,7 +477,7 @@
       const at = [mdEd.selectionStart, mdEd.selectionEnd];
       App.pickCitation({ title: 'Insert a citation', format: noteFormat(), live: true, project: cur && cur.project, onPick: (c, which) => {
         const f = noteFormat(), narrative = which === 'narrative';
-        const md = '[' + App.citeMarkdown(c, App.isParenFormat(f) ? (narrative ? 'narrative' : 'intext') : 'full', f) + ']{.cite tag="' + c.tag + '"' + (narrative ? ' narrative="1"' : '') + '}';
+        const md = '[' + App.citeMarkdown(c, App.isParenFormat(f) ? (narrative ? 'narrative' : 'intext') : 'full', f) + ']{.cite tag="' + c.tag + '"' + (c.chapter ? ' chapter="' + c.chapter + '"' : '') + (narrative ? ' narrative="1"' : '') + '}';
         mdEd.setRangeText(md, at[0], at[1], 'end'); mdEd.focus();
         mdEd.dispatchEvent(new Event('input'));
       } });

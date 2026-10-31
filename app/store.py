@@ -281,12 +281,13 @@ def change_template(slug, tid):
             shutil.copy2(f, backup / f.name)
 
     # 2. citations: footnotes <-> text
-    lib = {c["tag"]: c for c in citations()}
+    import cites
+    lib = cites.library_from(citations())
     author_year = citeformat.chicago_ad_author_year if old_style == "chicago-ad" else citeformat.apa_author_year
 
-    def names_for(tag):
-        c = lib.get(tag)
-        return citeformat.to_md(author_year(c, True)[0]) if c else tag
+    def names_for(key):
+        c = lib.get(key)
+        return citeformat.to_md(author_year(c, True)[0]) if c else key.split("#")[0]
     sections = [(f.name, f.read_text(encoding="utf-8")) for f in section_paths(slug)]
     converted, report = convert.convert_sections(sections, src, dst, names_for)
     for (name, before), (_, after) in zip(sections, converted):
@@ -509,6 +510,12 @@ def read_citation(p):
               "projects": [x for x in (meta.get("projects") or []) if isinstance(x, str)],
               "projects_auto": [x for x in (meta.get("projects_auto") or []) if isinstance(x, str)],
               "forms": citeformat.describe(c), "missing": citeformat.warnings(c), "chicago_missing": citeformat.chicago_gaps(c)})
+    if ctype == "edited_book":                               # each chapter's forms, for the chapter menus
+        c["chapters"] = []
+        for ch in citeformat.chapters(c):
+            e = citeformat.edited_chapter(c, ch["id"])
+            c["chapters"].append({"id": ch["id"], "label": citeformat.chapter_label(ch), "forms": citeformat.describe(e),
+                                  "chicago_missing": citeformat.chicago_gaps(e)})
     return c
 
 
@@ -522,7 +529,11 @@ def citations():
 
 def clean_fields(ctype, fields):
     """Keep only the fields this type has (plus manual overrides), with tidy values."""
-    spec = {f["key"]: f for f in citeformat.TYPES[ctype]["fields"]}
+    return _clean_with(citeformat.TYPES[ctype]["fields"], fields)
+
+
+def _clean_with(spec_fields, fields):
+    spec = {f["key"]: f for f in spec_fields}
     out = {}
     for k, v in (fields or {}).items():
         if k in ("_override_bluebook", "_override_short", "_override_apa"):
@@ -542,12 +553,48 @@ def clean_fields(ctype, fields):
                     people.append(y)
             if people:
                 out[k] = people
+        elif f["kind"] == "chapters":
+            chs = clean_chapters(f, v)
+            if chs:
+                out[k] = chs
         elif f["kind"] == "bool":
             out[k] = bool(v)
         elif f["kind"] == "date" and isinstance(v, str) and v.strip():
             out[k] = citeformat.normalize_date(v)
         elif isinstance(v, str) and v.strip():
             out[k] = re.sub(r"\s+", " ", v.strip())
+    return out
+
+
+def chapter_id_for(ch, taken):
+    """A chapter's id: the first author's last name and the title's first words (spiro-religion)."""
+    who = ((ch.get("authors") or [{}])[0] or {})
+    base = slugify(" ".join(x for x in (who.get("family") or who.get("literal") or "",
+                                          " ".join(re.sub(r"[*_\[\]{}.]", "", ch.get("title") or "").split()[:3])) if x), "chapter", 40)
+    base = base.strip("-") or "chapter"
+    return unique(base, lambda x: x in taken)
+
+
+def clean_chapters(spec, chapters):
+    """An edited book's chapters: each one's fields tidied like a citation's, an id kept (or made) and unique.
+    Keys the form doesn't show (former_tag, a series…) are kept as they were."""
+    sub = {f["key"]: f for f in spec["fields"]}
+    out, taken = [], set()
+    for ch in chapters if isinstance(chapters, list) else []:
+        if not isinstance(ch, dict):
+            continue
+        shown = {k: v for k, v in ch.items() if k in sub or k.startswith("_override")}
+        clean = _clean_with(spec["fields"], shown)
+        for k, v in ch.items():
+            if k not in sub and k != "id" and not k.startswith("_override") and k not in clean and v not in ("", None, []):
+                clean[k] = v
+        if not any(clean.get(k) for k in ("title", "authors", "first_page")):
+            continue                                         # an empty chapter row
+        cid = str(ch.get("id") or "").strip().lower()
+        if not TAG_RE.match(cid) or cid in taken:
+            cid = chapter_id_for(clean, taken)
+        taken.add(cid)
+        out.append(dict({"id": cid}, **clean))
     return out
 
 
@@ -594,8 +641,12 @@ def preview_citation(data):
     """Formatted forms for a citation that hasn't been saved (the form's live preview)."""
     ctype = data.get("type") if data.get("type") in citeformat.TYPES else "other"
     c = {"type": ctype, "fields": clean_fields(ctype, data.get("fields"))}
-    return {"forms": citeformat.describe(c, (data.get("pin") or "").strip()), "missing": citeformat.warnings(c),
-            "chicago_missing": citeformat.chicago_gaps(c)}
+    pin = (data.get("pin") or "").strip()
+    out = {"forms": citeformat.describe(c, pin), "missing": citeformat.warnings(c), "chicago_missing": citeformat.chicago_gaps(c)}
+    if ctype == "edited_book":
+        out["chapters"] = [{"label": citeformat.chapter_label(ch), "forms": citeformat.describe(citeformat.edited_chapter(c, ch["id"]), pin)}
+                           for ch in citeformat.chapters(c)]
+    return out
 
 
 def delete_citation(tag):
@@ -609,6 +660,9 @@ def delete_citation(tag):
 # library/files/<tag>/<file>                     PDFs and other files attached to a citation
 # library/files/<tag>/<file>.annotations.json    highlights and comments made in ReWord (the PDF is never changed)
 # library/files/<tag>/<stem>-annotated.pdf       an exported copy with the annotations written in
+# library/files/<tag>/_files.json                what each file is: {"files": {name: {"label": "English translation",
+#                                                "chapter": "<chapter id>"}}}; a chapter's files belong to that
+#                                                chapter of an edited book, the others to the whole source
 
 FILE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._()&,'-]{0,120}$")
 MAX_ATTACH = 200_000_000
@@ -636,13 +690,58 @@ def attachment_path(tag, name):
     return p
 
 
+FILES_META = "_files.json"
+
+
+def read_files_meta(tag):
+    p = files_dir(tag) / FILES_META
+    try:
+        d = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except ValueError:
+        d = {}
+    files = d.get("files") if isinstance(d.get("files"), dict) else {}
+    return {k: v for k, v in files.items() if isinstance(v, dict)}
+
+
+def write_files_meta(tag, meta):
+    p = files_dir(tag) / FILES_META
+    meta = {k: {kk: vv for kk, vv in v.items() if vv} for k, v in sorted(meta.items())}
+    meta = {k: v for k, v in meta.items() if v}
+    if not meta:
+        if p.exists():
+            p.unlink()
+        return
+    p.parent.mkdir(parents=True, exist_ok=True)
+    write_atomic(p, json.dumps({"files": meta}, indent=1, ensure_ascii=False) + "\n")
+
+
+def set_file_meta(tag, name, label=None, chapter=None):
+    """Name a file (label: "English translation", "2019 version") and say which chapter of an edited book it is."""
+    p = attachment_path(tag, name)
+    if not p.exists():
+        raise StoreError("no such file", 404)
+    meta = read_files_meta(tag)
+    m = dict(meta.get(p.name) or {})
+    if label is not None:
+        m["label"] = re.sub(r"\s+", " ", str(label)).strip()[:120]
+    if chapter is not None:
+        chapter = str(chapter).strip()
+        if chapter and not TAG_RE.match(chapter):
+            raise StoreError("unknown chapter")
+        m["chapter"] = chapter
+    meta[p.name] = m
+    write_files_meta(tag, meta)
+    return list_attachments(tag)
+
+
 def list_attachments(tag):
     d = files_dir(tag)
     if not d.exists():
         return []
     out = []
+    meta = read_files_meta(tag)
     for p in sorted(d.iterdir()):
-        if not p.is_file() or p.name.endswith(".annotations.json") or p.name.startswith("."):
+        if not p.is_file() or p.name.endswith(".annotations.json") or p.name.startswith(".") or p.name == FILES_META:
             continue
         ann = d / (p.name + ".annotations.json")
         count = 0
@@ -654,10 +753,14 @@ def list_attachments(tag):
         out.append({"name": p.name, "size": p.stat().st_size, "mtime": mtime_of(p), "annotations": count,
                     "kind": "pdf" if p.suffix.lower() == ".pdf" else p.suffix.lower().lstrip("."),
                     "snapshot": p.name.startswith("snapshot"), "annotated": p.stem.endswith("-annotated")})
+        m = meta.get(p.name)
+        if m is None and p.stem.endswith("-annotated"):           # an exported copy is what its original is
+            m = meta.get(p.stem[:-len("-annotated")] + p.suffix)
+        out[-1].update({"label": (m or {}).get("label", ""), "chapter": (m or {}).get("chapter", "")})
     return out
 
 
-def save_attachment(tag, name, data, replace=False):
+def save_attachment(tag, name, data, replace=False, chapter="", label=""):
     if len(data) > MAX_ATTACH:
         raise StoreError("That file is larger than 200 MB, too big to keep in a GitHub repository.", 413)
     p = attachment_path(tag, name)
@@ -668,6 +771,8 @@ def save_attachment(tag, name, data, replace=False):
     tmp = p.with_name("." + p.name + ".tmp")
     tmp.write_bytes(data)
     os.replace(tmp, p)
+    if chapter or label:
+        set_file_meta(tag, p.name, label=label or None, chapter=chapter or None)
     return p.name
 
 
@@ -679,6 +784,10 @@ def delete_attachment(tag, name):
     trash(p, files_dir(tag))
     if ann.exists():
         trash(ann, files_dir(tag))
+    meta = read_files_meta(tag)
+    if p.name in meta:
+        meta.pop(p.name)
+        write_files_meta(tag, meta)
 
 
 def read_annotations(tag, name):
@@ -834,6 +943,7 @@ BIB_WHERE = {
     "journal": "the DOI if there is one; else Google Scholar, HeinOnline, SSRN or the journal's site, searching the title in quotes",
     "book": "the DOI or publisher's page; else WorldCat or Google Books, searching the title and author",
     "chapter": "the DOI or publisher's page; else WorldCat or Google Books, searching the book title and editors",
+    "edited_book": "each chapter's DOI, else the book's DOI or publisher's page; else WorldCat or Google Books, searching the book title and editors",
     "news": "the publication's site or a news archive, searching the headline in quotes and the date",
     "webpage": "the URL; if it is gone, the Internet Archive (web.archive.org) for that URL",
     "report": "the DOI or the publisher's site, searching the title and report number",
@@ -891,6 +1001,11 @@ def bibliography(pid=""):
         for f in spec["fields"]:
             if f["key"] in ("url", "doi", "short_name", "hereinafter", "title_apa", "book_title_apa", "text_apa", "text_chicago", "intext_apa", "short"):
                 continue
+            if f["kind"] == "chapters":                     # an edited book: each chapter cited, with its own form
+                for ch in c.get("chapters") or []:
+                    t = (ch["forms"].get(key) or {}).get("text", "") or ch["forms"]["bluebook_practitioner"]["text"]
+                    out.append("- **Chapter** `%s`: %s" % (ch["id"], t.strip()))
+                continue
             v = _bib_value(f, fields.get(f["key"]))
             if v:
                 out.append("- **%s:** %s" % (f["label"].rstrip("*"), v))
@@ -901,7 +1016,8 @@ def bibliography(pid=""):
         if c.get("url"):
             out.append("- **Link:** <%s>" % c["url"])
         try:
-            files = [f["name"] for f in list_attachments(c["tag"]) if not f["annotated"]]
+            files = [f["name"] + (" (%s)" % ", ".join(x for x in (f["label"], f["chapter"] and "chapter " + f["chapter"]) if x)
+                                  if f["label"] or f["chapter"] else "") for f in list_attachments(c["tag"]) if not f["annotated"]]
         except StoreError:
             files = []
         out.append("- **Copy on file:** " + ("yes (%s)" % ", ".join(files) if files else "no"))
@@ -1108,16 +1224,12 @@ def citation_uses(tag=None):
     cite_path(tag)                                           # validates the tag
     entries = {}
 
-    def entry(t):                                            # this source, and the others cited beside it
-        if t not in entries:
-            q = cite_path(t) if TAG_RE.match(t or "") else None
-            c = read_citation(q) if q and q.exists() else None
-            entries[t] = {"type": c["type"], "fields": c["fields"], "tag": t} if c else None
-        return entries[t]
+    def entry(attrs):                                        # this source, and the others cited beside it
+        return _library_entry(entries, attrs)
 
     def renderer(style, typeface):
         def render(attrs, in_note, saved=None):
-            e = entry(attrs.get("tag", ""))
+            e = entry(attrs)
             if e is None and saved is not None:              # gone from the library: what its chip last showed
                 return md_plain(saved), ""
             runs = cites.chip_text(e, attrs, typeface, style, in_note or typeface != "lawreview")
@@ -1220,6 +1332,18 @@ def _note_anchor(md, label, render=None):
     return None
 
 
+def _library_entry(cache, attrs):
+    """The library entry a citation mark points at (a chapter of an edited book when it names one), or None.
+    cache: tag -> citation, shared by one request."""
+    import cites
+    tag = attrs.get("tag", "")
+    if tag not in cache:
+        q = cite_path(tag) if TAG_RE.match(tag or "") else None
+        c = read_citation(q) if q and q.exists() else None
+        cache[tag] = dict(cites.library_entries(c)) if c else {}
+    return cache[tag].get(cites.key_of(attrs))
+
+
 def verification(pid, slug=None):
     """Every citation in the project's documents (or one of them), in reading order, with its result so far."""
     import cites
@@ -1228,12 +1352,8 @@ def verification(pid, slug=None):
     tmpls = {t["id"]: t for t in templates()}
     entries = {}
 
-    def entry(tag):
-        if tag not in entries:
-            q = cite_path(tag) if TAG_RE.match(tag) else None
-            c = read_citation(q) if q and q.exists() else None
-            entries[tag] = {"type": c["type"], "fields": c["fields"], "tag": tag} if c else None
-        return entries[tag]
+    def entry(attrs):
+        return _library_entry(entries, attrs)
     results = _read_verification(pid)["results"]
     items = []
     all_docs = sorted((d for d in documents() if d.get("project") == pid), key=lambda d: (d.get("title") or d["slug"]).lower())
@@ -1248,7 +1368,7 @@ def verification(pid, slug=None):
 
         def render(attrs, in_note, saved=None, style=style, typeface=typeface):
             """A live citation as its chip shows it in this document: (plain text, html)."""
-            e = entry(attrs.get("tag", ""))
+            e = entry(attrs)
             if e is None and saved is not None:              # gone from the library: what its chip last showed
                 return md_plain(saved), ""
             runs = cites.chip_text(e, attrs, typeface, style, in_note or typeface != "lawreview")
@@ -1261,10 +1381,11 @@ def verification(pid, slug=None):
             nth = {}
             for start, end, kind, attrs, inner in _cite_spans(md):
                 tag = attrs["tag"]
+                source = cites.key_of(attrs)                  # the tag, or tag#chapter for a chapter of an edited book
                 reg = next((r for r in regions if r[0] <= start < r[1]), (0, len(md), None))
                 label = reg[2]
                 k = nth.get((tag, label), 0)                  # which match in its body or footnote (writing.reveal)
-                entry(tag)
+                found = entry(attrs)
                 nth[(tag, label)] = k + 1
                 if kind == "cite":
                     text, html = render(attrs, bool(label))
@@ -1272,13 +1393,13 @@ def verification(pid, slug=None):
                     text, html = md_plain(inner), ""
                 before, after = _para_plain(md, reg, start, end, render)
                 pin = (attrs.get("pin") or "").strip()
-                n = seen.get((tag, pin), 0)
-                seen[(tag, pin)] = n + 1
-                key = "%s:%s:%s:%d" % (info["slug"], tag, pin, n)
+                n = seen.get((source, pin), 0)
+                seen[(source, pin)] = n + 1
+                key = "%s:%s:%s:%d" % (info["slug"], source, pin, n)
                 near = _para_plain(md, reg, start, end)[0][-160:]    # the saved words: what an approval was given for
                 sig = hashlib.sha1((text + "\x00" + near).encode("utf-8")).hexdigest()[:12]
                 it = {"key": key, "sig": sig, "slug": info["slug"], "doc": info.get("title", info["slug"]), "file": f.name,
-                      "section": section, "tag": tag, "missing": entries[tag] is None, "kind": kind, "where": "footnote" if label else "text",
+                      "section": section, "tag": tag, "chapter": (attrs.get("chapter") or "").strip(), "missing": found is None, "kind": kind, "where": "footnote" if label else "text",
                       "k": k, "start": start, "end": end, "text": text, "html": html, "before": before, "after": after,
                       "pin": pin, "signal": (attrs.get("signal") or "").strip(), "paren": md_plain(attrs.get("paren") or "")}
                 if label:

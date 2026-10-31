@@ -329,6 +329,29 @@ that section and highlights the citation.
 ReWord keeps highlights in a separate file next to the PDF. It does not change the PDF. To make a copy of
 the PDF with the highlights in it, click **Export annotated**.
 
+A source can have as many files as you like, for example a translation, another version of an article,
+or the chapters of a book. They show above the reader, one line each (with more than three, **All N ▾**
+lists the rest). Click **⋯** on a file to give it a label, such as *English translation*, which shows
+instead of the file name.
+
+### 8.3.1 Chapters in an edited book
+
+Use the type **Chapter(s) in edited book** for chapters of a book that has editors. One citation holds
+the book (its editors, title, publisher and year) and every chapter you use from it, each with its own
+authors, title, pages and DOI. Keep **Book** for a book you cite as a whole.
+
+1. In the citation form, fill in the book, then the first chapter. Click **+ Chapter** for each other
+   chapter.
+2. To cite a chapter, click **Cite…**, find the book (or type the chapter's author), choose the chapter
+   in the **Chapter** menu and click **Insert**. ReWord formats it as a chapter in that book. To change
+   the chapter later, click the citation in your text.
+3. To attach a chapter's PDF, choose the chapter in the **New PDFs** menu above the reader before you
+   attach it, or click **⋯** on a file you attached and choose its chapter. When you check a citation to
+   that chapter in Verify, its PDF opens first.
+
+*Id.* and short forms treat each chapter as its own source, so *Id.* never points to another chapter of
+the same book.
+
 ### 8.4 Highlight colors and labels
 
 There are twelve highlight colors. You can give each color a label, for example *Holding*, *Dicta*

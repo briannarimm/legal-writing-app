@@ -24,6 +24,25 @@
   let reader = null;
   let saveTimer = null;
   let tools = {};
+  // the files as one-line cards under the bar (the hidden menu keeps the choice)
+  const stripBox = el('div', 'file-strip-wrap');
+  panel.querySelector('.src-bar').after(stripBox);
+  const strip = App.FileStrip(stripBox, { onPick: name => { sel.value = name; openFile(name).then(drawStrip); },
+    onChanged: list => { files = list; } });
+  // an edited book: which chapter a new PDF is (or the whole book)
+  const attachTo = el('select', 'chapter-select'); attachTo.title = 'Which chapter the next PDF you attach is'; attachTo.hidden = true;
+  $('#src-attach').after(attachTo);
+  attachTo.addEventListener('focus', renderAttachTo);
+  function renderAttachTo() {
+    const c = App.citation(cur && cur.tag) || cur, keep = attachTo.value;
+    attachTo.innerHTML = '';
+    attachTo.hidden = !(c && c.type === 'edited_book' && (c.chapters || []).length);
+    if (attachTo.hidden) return;
+    const w = el('option', '', 'New PDFs: the whole book'); w.value = ''; attachTo.appendChild(w);
+    c.chapters.forEach((ch, k) => { const o = el('option', '', 'New PDFs: chapter ' + (k + 1) + ', ' + ch.label); o.value = ch.id; attachTo.appendChild(o); });
+    attachTo.value = Array.from(attachTo.options).some(o => o.value === keep) ? keep : '';
+  }
+  const drawStrip = () => strip.render(App.citation(cur && cur.tag) || cur, files, fileName, '');
 
   function getReader() {
     if (!reader && window.Reader) {
@@ -39,7 +58,8 @@
     cur = c;
     if (!c) fileName = null;
     work.classList.toggle('no-source', !c);
-    if (!c) { if (reader) reader.close(); return; }
+    if (!c) { if (reader) reader.close(); strip.clear(); return; }
+    renderAttachTo();
     await loadFiles();
   }
 
@@ -54,13 +74,13 @@
       const o = el('option', '', f.name + (f.annotations ? '  (' + f.annotations + ')' : ''));
       o.value = f.name; sel.appendChild(o);
     });
-    sel.hidden = !files.length;
+    sel.hidden = true;
     $('#src-export').disabled = !tools.rwpdf;
     if (!tools.rwpdf) $('#src-export').title = 'Exporting an annotated copy needs ReWord’s PDF helper, which is part of the Mac app';
-    const keep = pick || (fileName && files.some(f => f.name === fileName) ? fileName : null) ||
-      (files.find(f => f.kind === 'pdf' && !f.annotated) || files[0] || {}).name;
-    if (!keep) { fileName = null; body.hidden = true; empty.hidden = false; $('#src-remove').disabled = true; if (reader) reader.close(); return; }
+    const keep = pick || (fileName && files.some(f => f.name === fileName) ? fileName : null) || App.preferredFile(files, '');
+    if (!keep) { fileName = null; body.hidden = true; empty.hidden = false; $('#src-remove').disabled = true; if (reader) reader.close(); drawStrip(); return; }
     sel.value = keep;
+    fileName = keep; drawStrip();
     await openFile(keep);
   }
 
@@ -106,6 +126,8 @@
       p.anns.forEach(a => { delete a.dirty; });
       const opt = Array.from(sel.options).find(o => o.value === p.name);
       if (opt) opt.textContent = p.name + (r.count ? '  (' + r.count + ')' : '');
+      const f = files.find(x => x.name === p.name);
+      if (f && f.annotations !== r.count && p.tag === (cur && cur.tag)) { f.annotations = r.count; drawStrip(); }
       App.saver.status('Saved ' + new Date().toLocaleTimeString());
     } catch (e) { toast('Couldn’t save the highlights: ' + e.message, true); }
   }
@@ -124,7 +146,8 @@
       if (f.size > 50e6 && !confirm(f.name + ' is ' + Math.round(f.size / 1e6) + ' MB. Large files make the GitHub repository slow, and GitHub refuses files over 100 MB. Attach it anyway?')) continue;
       toast('Attaching ' + f.name + '…');
       try {
-        const r = await fetch('/api/attach?tag=' + encodeURIComponent(cur.tag) + '&name=' + encodeURIComponent(f.name),
+        const r = await fetch('/api/attach?tag=' + encodeURIComponent(cur.tag) + '&name=' + encodeURIComponent(f.name) +
+          (attachTo.hidden || !attachTo.value ? '' : '&chapter=' + encodeURIComponent(attachTo.value)),
           { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-ReWord': '1' }, body: f });
         const j = await r.json();
         if (!r.ok) throw new Error(j.error || r.statusText);
