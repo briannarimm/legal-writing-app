@@ -228,6 +228,12 @@
     Object.entries(schema().types).forEach(([id, t]) => { const o = el('option', '', t.group + ' · ' + t.label); o.value = id; o.hidden = !!t.hidden; typeSel.appendChild(o); });
     typeSel.addEventListener('change', () => {
       let v = collect();
+      // an edited book's chapters can't be cited from another type: ask before cutting them off
+      if (type === 'edited_book' && typeSel.value !== 'edited_book' && (v.chapters || []).length &&
+          !confirm('Change this edited book to “' + App.typeLabel(typeSel.value) + '”?\n\nIts ' + v.chapters.length + ' chapter' +
+                   (v.chapters.length === 1 ? '' : 's') + ' can’t be cited from that type: citations to them will show as missing until you change it back.')) {
+        typeSel.value = type; return;
+      }
       if (type === 'chapter' && typeSel.value === 'edited_book') v = asEditedBook(v);
       setType(typeSel.value); fill(v); fire();
     });
