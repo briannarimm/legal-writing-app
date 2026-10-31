@@ -66,12 +66,18 @@ final, _ = run(article, 'final')
 check('fn1 full, law review type', final, 'Elizabeth G. Porter & Kathryn A. Watts, *Visual Rulemaking*, 91 [N.Y.U. L. Rev.]{.smallcaps} 1183, 1190 (2016).')
 check('fn2 Id. at', final, '[^2]: *Id.* at 1200.')
 check('fn3 signal + full case (roman in footnote) + parenthetical', final, '*See* South Dakota v. Wayfair, Inc., 138 S. Ct. 2080, 2081 (2018) (holding that states may tax remote sellers).')
-check('fn4 string cite: short case; supra note 1', final, '*Wayfair*, 138 S. Ct. at 2085; Porter & Watts, *supra* note 1, at 1185.')
+check('fn4 string cite led by Id.; supra note 1', final, '[^4]: *Id.* at 2085; Porter & Watts, *supra* note 1, at 1185.')
 check('fn5 no Id. after a string cite; signal capitalized', final, '[^5]: *See also* Porter & Watts, *supra* note 1, at 1190.')
 check('fn11 five-footnote rule: full again', final, '[^11]: South Dakota v. Wayfair, Inc., 138 S. Ct. 2080, 2090 (2018).')
 check('fn12 See id.', final, '[^12]: *See id.* at 2090.')
 draft, _ = run(article, 'draft')
 check('draft: fn2 in full', draft, '[^2]: Elizabeth G. Porter & Kathryn A. Watts, *Visual Rulemaking*, 91 [N.Y.U. L. Rev.]{.smallcaps} 1183, 1200 (2016).')
+
+# Id. never points into a footnote that cited two authorities (Bluebook R4.1)
+two = ('A.[^1] B.[^2]\n\n[^1]: ' + cite('porter', pin='1190') + '. ' + cite('wayfair', pin='2081', signal='Accord') + '.\n\n'
+       '[^2]: ' + cite('wayfair', pin='2082') + '.\n')
+t2, _ = run(two, 'final')
+check('no Id. after a footnote with two authorities', t2, '[^2]: *Wayfair*, 138 S. Ct. at 2082.')
 
 # ---------------- practitioner text citations (briefs, memos)
 brief = ('The statute creates a remedy. ' + cite('usc1983') + '. It applies to states. ' + cite('usc1983', pin='(a)') + '. '
@@ -83,6 +89,8 @@ check('Id. § subsection', pf, '[*Id.* § 1983(a)]{.auth tag="usc1983"}.')
 check('case full italic + toa mark', pf, '[*South Dakota v. Wayfair, Inc.*, 138 S. Ct. 2080, 2081 (2018)]{.auth tag="wayfair"}')
 check('mid-sentence id. lowercase', pf, 'As the Court explained, [*id.* at 2082]{.auth tag="wayfair"}, the rule changed.')
 check('record: no Id.', pf, 'Again. R. at 14.')
+bare, _ = run('The Court agreed. ' + cite('wayfair', pin='2081') + '. It held so. ' + cite('wayfair') + '. Next.\n', 'final', 'practitioner')
+check('bare Id. and the typed period: one period', bare, 'It held so. *Id.* Next.')
 check('report lists cited', ' '.join(report['cited']), 'usc1983 wayfair record')
 
 # ---------------- APA

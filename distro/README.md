@@ -4,8 +4,22 @@ This folder contains the ready-to-use ReWord program for Mac.
 
 | File | Description |
 |---|---|
-| `ReWord-1.4.0-mac-arm64.zip` | The program. Download this file. |
-| `ReWord-1.4.0-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
+| `ReWord-1.4.1-mac-arm64.zip` | The program. Download this file. |
+| `ReWord-1.4.1-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
+
+## What's new in 1.4.1
+
+- **Scanned and OCR'd PDFs show their pages.** Pages stored as JBIG2 or JPEG 2000 images (common in
+  scans) used to come up blank in the reader, with only the invisible OCR text to select.
+- **Linked citations take one line each** beside a research note. A note with more than three shows the
+  chosen source and an **All N ▾** button that drops the full list down over the reader, so the PDF
+  keeps the height.
+- **Narrow windows**: under about 900 pixels wide the sidebar floats over the page (the sidebar button
+  shows it), and the editor and preview, or a note and its sources, stack top to bottom. Each part
+  still scrolls.
+- **Id. in final drafts**: no more "*Id.*." when you type a period after the citation; *Id.* can lead a
+  string citation; and in law review footnotes *Id.* is not used when the previous footnote cited more
+  than one authority (Bluebook R4.1).
 
 ## What's new in 1.4
 
@@ -136,10 +150,10 @@ You do not need other software. ReWord contains its own copies of Python, Pandoc
 
 ## Install
 
-1. Open the [latest release](https://github.com/briannarimm/legal-writing-app/releases/latest) and click `ReWord-1.4.0-mac-arm64.zip` under
+1. Open the [latest release](https://github.com/briannarimm/legal-writing-app/releases/latest) and click `ReWord-1.4.1-mac-arm64.zip` under
    **Assets**. The download starts. The file is about 90 MB. (The same file is in the list above:
    click it, then the **Download raw file** button.)
-2. Download `ReWord-1.4.0-mac-arm64.zip.sha256` too if you want to check the download (below).
+2. Download `ReWord-1.4.1-mac-arm64.zip.sha256` too if you want to check the download (below).
 3. Open your Downloads folder. Double-click the zip file. A folder named `ReWord` appears.
 4. Move `ReWord.app` to your Applications folder, or the whole `ReWord` folder to a USB drive.
 5. Double-click `ReWord.app`.
@@ -163,10 +177,10 @@ You do this one time only.
 Open Terminal, go to the folder that contains the zip file, and run:
 
 ```bash
-shasum -a 256 -c ReWord-1.4.0-mac-arm64.zip.sha256
+shasum -a 256 -c ReWord-1.4.1-mac-arm64.zip.sha256
 ```
 
-The result must be `ReWord-1.4.0-mac-arm64.zip: OK`. If the result is different, delete the file
+The result must be `ReWord-1.4.1-mac-arm64.zip: OK`. If the result is different, delete the file
 and download it again.
 
 ## Your data

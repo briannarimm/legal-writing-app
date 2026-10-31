@@ -500,20 +500,31 @@ span.cite.missing { background: color-mix(in srgb, var(--bad) 14%, transparent);
 .note-right { border-left: 1px solid var(--line); background: var(--bg); }
 @media (max-width: 1000px) { .note-split { grid-template-columns: 1fr; grid-template-rows: minmax(260px, 1fr) minmax(320px, 1fr); }
   .note-right { border-left: 0; border-top: 1px solid var(--line); } }
-/* the linked citations beside a note: one card each, and the chosen one's file in the reader */
+/* the linked citations beside a note: one line each (more than three: the chosen one, and the rest in a
+   list that drops down over the reader), and the chosen one's file in the reader */
 .ns-head { display: flex; align-items: center; gap: 6px; padding: 6px 10px 6px 12px; border-bottom: 1px solid var(--line); }
 .pane-label-text { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.ns-cards { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; max-height: 38%; overflow: auto; border-bottom: 1px solid var(--line); flex: none; }
+.ns-cards { position: relative; display: flex; flex-direction: column; gap: 3px; padding: 5px 8px; max-height: 112px; overflow: auto;
+  border-bottom: 1px solid var(--line); flex: none; }
 .ns-cards:empty { display: none; }
 .ns-cards.none { max-height: none; flex: 1; border-bottom: 0; }
-.ns-card { position: relative; padding: 7px 30px 7px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); cursor: pointer; }
+.ns-cards.many { overflow: visible; max-height: none; z-index: 5; }
+.ns-current { display: flex; gap: 6px; align-items: center; }
+.ns-current .ns-card { flex: 1; }
+.ns-more { flex: none; white-space: nowrap; }
+.ns-drop { position: absolute; left: 8px; right: 8px; top: calc(100% - 2px); max-height: min(60vh, 420px); overflow: auto; display: flex;
+  flex-direction: column; gap: 3px; padding: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel);
+  box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+.ns-card { position: relative; display: flex; align-items: center; gap: 7px; min-width: 0; padding: 3px 4px 3px 7px; border: 1px solid var(--line);
+  border-radius: 7px; background: var(--panel); cursor: pointer; font-size: 12px; line-height: 1.3; }
 .ns-card:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
-.ns-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent); }
+.ns-card.active { border-color: var(--accent); box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--accent) 22%, transparent); }
 .ns-card.missing { opacity: .75; }
-.ns-card-top { display: flex; gap: 8px; align-items: center; font-size: 12px; }
-.ns-card-top .ns-files { margin-left: auto; color: var(--muted); font-size: 11px; }
-.ns-card-cite { font: 13.5px/1.45 Georgia, "Times New Roman", serif; margin-top: 3px; }
-.ns-unlink { position: absolute; top: 5px; right: 5px; border: 0; background: transparent; color: var(--muted); font-size: 15px; line-height: 1; padding: 3px 6px; border-radius: 6px; cursor: pointer; }
+.ns-card .chip { flex: none; max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10.5px; padding: 0 6px; }
+.ns-card-cite { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 13px/1.35 Georgia, "Times New Roman", serif; }
+.ns-card-cite * { white-space: nowrap; }
+.ns-files { flex: none; color: var(--muted); font-size: 11px; }
+.ns-unlink { flex: none; border: 0; background: transparent; color: var(--muted); font-size: 15px; line-height: 1; padding: 2px 5px; border-radius: 6px; cursor: pointer; }
 .ns-unlink:hover { background: color-mix(in srgb, var(--bad) 14%, transparent); color: var(--bad); }
 .ns-none { margin: 36px auto; max-width: 24rem; text-align: center; color: var(--muted); }
 .ns-none .row { justify-content: center; margin-top: 10px; }
@@ -828,7 +839,7 @@ body:not([data-view="writing"]) #btn-tag { display: none; }
 .tab.active { background: var(--glass2); top: 0; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
 .tabbody { background: transparent; }
 .note-split, .note-right, .ns-head, .ns-cards, .ns-newform { border-color: var(--gline); }
-.ns-card { background: var(--glass2); border-color: var(--gline); } .ns-source .src-bar { background: var(--glass2); border-bottom-color: var(--gline); }
+.ns-card { background: var(--glass2); border-color: var(--gline); } .ns-drop { border-color: var(--gline); } .ns-source .src-bar { background: var(--glass2); border-bottom-color: var(--gline); }
 body.insp-open .view { margin-right: 296px; }
 
 /* ---------- inspector */
@@ -1128,3 +1139,28 @@ body[data-view="verify"] .tb-title { max-width: min(640px, 60%); }
 /* Writing: the finished files are one Download menu beside what's being viewed */
 #pdf-bar .pdf-files { display: none; }
 #pdf-bar .pdf-dl { flex: none; }
+
+/* =====================================================================================================
+ * 1.4.1: narrow windows. The sidebar floats over the page instead of taking a column, and side-by-side
+ * panes stack, each keeping enough height to read and scroll on its own (the view scrolls to reach them).
+ * ===================================================================================================== */
+@media (max-width: 900px) {
+  #app-shell { grid-template-columns: minmax(0, 1fr); position: relative; }
+  #glass-side { position: absolute; z-index: 45; left: 0; top: 0; bottom: 0; width: 256px; box-sizing: border-box;
+    background: var(--glass2); box-shadow: inset 0 1px 0 var(--edge), inset 0 0 0 1px var(--gline), 0 20px 60px rgba(0,0,0,.3); }
+  #btn-show-side { display: inline-flex; }
+  .view { padding: 0 8px 8px; }
+  .tb-title { max-width: 180px; }
+  /* Writing: the editor above the preview */
+  #view-writing.layout-split { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(340px, 1fr) minmax(380px, 1fr);
+    row-gap: 8px; overflow: auto; }
+  #view-writing.layout-split #splitter { display: none; }
+  #view-writing.layout-split .right-pane { border-left: 0; }
+  /* Research: the note above its sources; the head wraps */
+  #note-editor { overflow: auto; }
+  .note-split { grid-template-columns: minmax(0, 1fr); flex: none;
+    grid-template-rows: max(280px, calc((100vh - 240px) * .45)) max(420px, calc((100vh - 240px) * .55)); }
+  .note-right { border-left: 0; border-top: 1px solid var(--gline); }
+  .note-head .row { flex-wrap: wrap; }
+  .ns-source .src-bar { flex-wrap: wrap; }
+}

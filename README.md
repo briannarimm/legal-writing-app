@@ -381,11 +381,12 @@ card at a time.
 5. Click **Create note**.
 
 A note can link to several sources, and a source can be linked to several notes. The right side of a
-note shows **Linked citations**: one card per source, and the PDF or saved web page of the card you
-click, with its highlights (highlights you make here are saved with the source, as in Citations).
+note shows **Linked citations**: one line per source, and the PDF or saved web page of the one you
+click, with its highlights (highlights you make here are saved with the source, as in Citations). With
+more than three sources, only the chosen one shows; **All N ▾** drops the full list down over the reader.
 
-- **Link…** ticks or unticks sources from your library. **×** on a card unlinks it; the citation stays
-  in your library.
+- **Link…** ticks or unticks sources from your library. **×** on a source's line unlinks it; the
+  citation stays in your library.
 - **+ New…** adds a source to Citations and links it. **Add, link and start another** keeps the form
   open for the next one.
 - Each source's page in Citations lists the notes linked to it.

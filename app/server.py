@@ -40,6 +40,7 @@ mimetypes.add_type("application/vnd.openxmlformats-officedocument.wordprocessing
 mimetypes.add_type("application/pdf", ".pdf")
 mimetypes.add_type("text/javascript", ".js")
 mimetypes.add_type("text/javascript", ".mjs")
+mimetypes.add_type("application/wasm", ".wasm")     # PDF.js image decoders (scanned PDFs)
 
 PORT = 8765
 

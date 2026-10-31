@@ -19,7 +19,8 @@ resolve(doc, …) walks the Pandoc AST in reading order (footnotes in place) and
   draft   every citation in full (signal, pin, parenthetical)
   final   Bluebook short forms worked out:
             Id. when the immediately preceding citation was this source alone (not after a string cite,
-                never for record cites);
+                never for record cites; it may lead a string cite; in law review footnotes not when the
+                preceding footnote cited more than one authority);
             the short form once a full citation has been given (in law review footnotes, cases and other
                 primary authorities return to the full form if not cited in the previous five footnotes);
             supra (with "note N" in law review footnotes) for secondary sources; hereinafter only in the
@@ -128,6 +129,8 @@ class Resolver:
         self.last_note = {}                 # tag -> last footnote that cited it
         self.full_given = set()
         self.prev_group = None              # tags of the previous citation sentence/clause
+        self.note_tags = {}                 # footnote number -> tags it cites (law review Id. rule)
+        self.last_cited_note = None         # the last footnote that cited anything
         self.cited = []                     # tags in first-cited order
         self.missing = []
         self.suffix = {}                    # APA year suffixes: tag -> 'a' / 'b'
@@ -165,7 +168,15 @@ class Resolver:
                     self.suffix[t] = chr(ord('a') + k)
 
     # ---- one citation
-    def bluebook_one(self, c, a, cap, in_text, alone):
+    def id_allowed(self, tag):
+        """Law review footnotes (Bluebook R4.1): id. may point into the preceding footnote only when that
+        footnote cites a single authority."""
+        if self.typeface != 'lawreview' or self.in_note is None or self.note_tags.get(self.in_note):
+            return True
+        prev = self.note_tags.get(self.last_cited_note, set())
+        return len(prev) <= 1
+
+    def bluebook_one(self, c, a, cap, in_text, first):
         tag, pin = c['tag'], a.get('pin', '').strip()
         typeface = 'practitioner' if (self.typeface == 'lawreview' and in_text) else self.typeface
         t = c['type']
@@ -177,7 +188,7 @@ class Resolver:
             cap = False
         form = 'full'
         if self.mode == 'final' and a.get('form') != 'full':
-            if self.prev_group == [tag] and alone and t != 'record':
+            if self.prev_group == [tag] and first and t != 'record' and self.id_allowed(tag):
                 form = 'id'
             elif tag in self.full_given:
                 form = 'short'
@@ -235,7 +246,6 @@ class Resolver:
             if tag not in self.cited:
                 self.cited.append(tag)
             items.append((tag, c, a))
-        alone = len(items) == 1
         out = []
         if self.style in PAREN_STYLES:
             out = self.apa_group(items)
@@ -249,12 +259,15 @@ class Resolver:
                 if self.style == 'chicago':
                     runs = self.chicago_one(c, a, cap and k == 0)
                 else:
-                    runs = self.bluebook_one(c, a, cap and k == 0, in_text, alone)
+                    runs = self.bluebook_one(c, a, cap and k == 0, in_text, k == 0)
                 inl = cf.to_pandoc(runs)
                 if self.toa and c['type'] in cf.TOA_GROUP:
                     inl = [{'t': 'Span', 'c': [['', ['auth'], [['tag', tag]]], inl]}]
                 out.extend(inl)
         self.prev_group = [t for t, _, _ in items]
+        if self.in_note is not None and not in_text:
+            self.note_tags.setdefault(self.in_note, set()).update(t for t, _, _ in items)
+            self.last_cited_note = self.in_note
         return out
 
     def apa_group(self, items):
@@ -323,6 +336,11 @@ class Resolver:
                     self.mode, self.prev_group = saved
                 else:
                     rendered = self.render_group(group, cap, self.in_note is None)
+                # "Id." + the period typed after the mark: one period, not "Id.."
+                nxt = xs[j] if j < len(xs) else None
+                if (nxt and nxt.get('t') == 'Str' and nxt['c'].startswith('.') and
+                        stringify(rendered).rstrip().endswith('.')):
+                    xs = xs[:j] + ([{'t': 'Str', 'c': nxt['c'][1:]}] if nxt['c'][1:] else []) + xs[j + 1:]
                 out.extend(rendered)
                 i = j
                 continue

@@ -194,7 +194,7 @@
   /* ------------------------------------------------------------ linked citations (the right side) */
   // One card per linked source; the chosen card's files are shown in the reader below, with its highlights,
   // as in Citations and Verify (highlights made here are saved with the source and show up there too).
-  const S = { tag: null, files: [], fileName: null, annMtime: null, reader: null };
+  const S = { tag: null, files: [], fileName: null, annMtime: null, reader: null, listOpen: false };
   const fileCounts = new Map();           // tag -> number of files, for the cards
   const linked = () => (cur ? cur.citations : []);
 
@@ -211,6 +211,7 @@
     const tags = linked();
     $('#ns-count').textContent = tags.length ? '(' + tags.length + ')' : '';
     box.classList.toggle('none', !tags.length);
+    box.classList.remove('many');
     if (!tags.length) {
       const none = el('div', 'ns-none');
       none.append(el('p', '', 'No citations linked to this note.'),
@@ -222,23 +223,46 @@
       box.appendChild(none);
       return;
     }
-    tags.forEach(tag => {
+    // One line per source, so the reader keeps the height. With more than three, only the chosen one
+    // shows, and the rest open in a list that drops down over the reader.
+    const many = tags.length > 3;
+    box.classList.toggle('many', many);
+    if (!many) S.listOpen = false;
+    const row = tag => {
       const c = App.citation(tag);
       const card = el('div', 'ns-card' + (tag === S.tag ? ' active' : '') + (c ? '' : ' missing'));
       card.dataset.tag = tag;
-      const top = el('div', 'ns-card-top');
-      top.append(el('span', 'chip', c ? App.typeLabel(c.type) : 'missing'), el('code', '', tag));
+      card.appendChild(el('span', 'chip', c ? App.typeLabel(c.type) : 'missing'));
+      const cite = el('span', 'ns-card-cite');
+      if (c) cite.innerHTML = shownForm(c); else cite.innerHTML = '<i>No longer in the library</i> <code>' + App.esc(tag) + '</code>';
+      card.title = (c ? cite.textContent : tag) + '\n(' + tag + ')';
+      card.appendChild(cite);
       const n = fileCounts.get(tag);
-      if (n !== undefined) top.appendChild(el('span', 'ns-files', n ? n + ' file' + (n === 1 ? '' : 's') : 'no file'));
-      const cite = el('div', 'ns-card-cite');
-      if (c) cite.innerHTML = shownForm(c); else cite.innerHTML = '<i>This citation is no longer in the library.</i>';
+      if (n !== undefined) card.appendChild(el('span', 'ns-files', n ? n + ' file' + (n === 1 ? '' : 's') : 'no file'));
       const x = el('button', 'ns-unlink', '×'); x.title = 'Unlink ' + tag + ' from this note (the citation stays in your library)';
       x.onclick = e => { e.stopPropagation(); setCitations(linked().filter(t => t !== tag)); };
-      card.append(top, cite, x);
-      card.onclick = () => choose(tag);
-      box.appendChild(card);
-    });
+      card.appendChild(x);
+      card.onclick = () => { S.listOpen = false; choose(tag); };
+      return card;
+    };
+    if (!many) { tags.forEach(tag => box.appendChild(row(tag))); return; }
+    const head = el('div', 'ns-current');
+    head.appendChild(row(tags.includes(S.tag) ? S.tag : tags[0]));
+    const more = el('button', 'btn small ns-more', (S.listOpen ? 'Hide ▴' : 'All ' + tags.length + ' ▾'));
+    more.title = S.listOpen ? 'Close the list' : 'Show every source linked to this note';
+    more.onclick = e => { e.stopPropagation(); S.listOpen = !S.listOpen; renderCards(); };
+    head.appendChild(more);
+    box.appendChild(head);
+    if (S.listOpen) {
+      const drop = el('div', 'ns-drop');
+      tags.forEach(tag => drop.appendChild(row(tag)));
+      box.appendChild(drop);
+    }
   }
+  // a click anywhere else closes the dropped-down list
+  document.addEventListener('mousedown', e => {
+    if (S.listOpen && !e.target.closest('#ns-cards') && !e.target.closest('.ctx-menu')) { S.listOpen = false; renderCards(); }
+  }, true);
 
   // first = a note was just opened: show its first source
   function renderPane(first) {
@@ -313,7 +337,7 @@
     await flushAnns();
     S.tag = tag; S.fileName = null;
     renderCards();
-    const card = tag && $('#ns-cards .ns-card[data-tag="' + tag + '"]');
+    const card = tag && $('#ns-cards .ns-card.active');
     if (card) card.scrollIntoView({ block: 'nearest' });
     if (!tag) { $('#ns-source').hidden = true; if (S.reader) S.reader.close(); return; }
     $('#ns-source').hidden = false;
