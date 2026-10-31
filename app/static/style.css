@@ -1180,3 +1180,19 @@ body[data-view="verify"] .tb-title { max-width: min(640px, 60%); }
 .cp-chapter { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
 .cp-chapter select { flex: 1; min-width: 0; max-width: 100%; }
 .file-pop .chip-row > input, .file-pop .chip-row > select, .chip-pop .chip-row > select { min-width: 0; width: 100%; }
+/* 1.5.1: the sidebar itself doesn't scroll. Its buttons, search and filters stay put; only the list under them scrolls. */
+#side-slot { overflow: hidden; display: flex; flex-direction: column; }
+#side-slot > .sidebar { flex: 1; min-height: 0; flex-direction: column; }
+body[data-view="writing"] #side-slot > [data-for-view="writing"],
+body[data-view="research"] #side-slot > [data-for-view="research"],
+body[data-view="citations"] #side-slot > [data-for-view="citations"],
+body[data-view="verify"] #side-slot > [data-for-view="verify"] { display: flex; }
+#side-slot > .sidebar > * { flex: none; }
+#side-slot #tree, #side-slot #note-list, #side-slot #cite-list, #side-slot #vf-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+#side-slot #wordcount { margin-top: 6px; }
+#side-slot .proj-head { margin-top: 2px; padding: 4px 6px 2px; }
+#side-slot .proj-head:first-child { margin-top: 0; }
+#side-slot .doc-row { padding: 4px 6px; }
+#side-slot .sections { margin-bottom: 4px; }
+.chapter-num-label { display: flex; align-items: center; gap: 6px; }
+.chapter-num-label select { width: auto; min-width: 56px; }

@@ -90,7 +90,7 @@
       if (c && c.type === 'edited_book') {
         chSel = el('select');
         const w = el('option', '', 'The whole book (or not one chapter)'); w.value = ''; chSel.appendChild(w);
-        (c.chapters || []).forEach((ch, k) => { const o = el('option', '', 'Chapter ' + (k + 1) + ': ' + ch.label); o.value = ch.id; chSel.appendChild(o); });
+        (c.chapters || []).forEach(ch => { const o = el('option', '', ch.label); o.value = ch.id; chSel.appendChild(o); });
         if (f.chapter && !(c.chapters || []).some(ch => ch.id === f.chapter)) { const o = el('option', '', f.chapter + ' (not in the book any more)'); o.value = f.chapter; chSel.appendChild(o); }
         chSel.value = f.chapter || '';
         const r2 = el('label', 'chip-row'); r2.append(el('span', '', 'Chapter'), chSel); pop.appendChild(r2);

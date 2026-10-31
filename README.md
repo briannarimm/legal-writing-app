@@ -341,7 +341,8 @@ the book (its editors, title, publisher and year) and every chapter you use from
 authors, title, pages and DOI. Keep **Book** for a book you cite as a whole.
 
 1. In the citation form, fill in the book, then the first chapter. Click **+ Chapter** for each other
-   chapter.
+   chapter. Choose each chapter's number in the book in its **Chapter** menu (they needn't be 1, 2, 3:
+   chapters 3 and 7 are fine). The chapter menus show that number; leave it at **—** for none.
 2. To cite a chapter, click **Cite…**, find the book (or type the chapter's author), choose the chapter
    in the **Chapter** menu and click **Insert**. ReWord formats it as a chapter in that book. To change
    the chapter later, click the citation in your text.

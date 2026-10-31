@@ -53,6 +53,11 @@ check('the whole book is a book with its editor', cf.bluebook(b, 'practitioner')
 check('an unknown chapter is None', cf.edited_chapter(b, 'nope') is None)
 check('chapter label', cf.chapter_label(BOOK['fields']['chapters'][0]) == 'Spiro, Religion: Problems of Definition and Explanation (pp. 85–126)',
       cf.chapter_label(BOOK['fields']['chapters'][0]))
+check('chapter label with its chosen number', cf.chapter_label(dict(BOOK['fields']['chapters'][0], number='7')).startswith('Chapter 7: Spiro, Religion'),
+      cf.chapter_label(dict(BOOK['fields']['chapters'][0], number='7')))
+check('the number is not a field of the chapter citation',
+      'number' not in cf.edited_chapter({'type': 'edited_book', 'fields': dict(BOOK['fields'], chapters=[dict(BOOK['fields']['chapters'][0], number='7')])},
+                                        BOOK['fields']['chapters'][0]['id'])['fields'])
 check('warnings name the chapter', cf.warnings({'type': 'edited_book', 'fields': dict(BOOK['fields'], chapters=[{'id': 'x', 'first_page': '3'}])})
       == ['chapter 1: chapter title'], str(cf.warnings({'type': 'edited_book', 'fields': dict(BOOK['fields'], chapters=[{'id': 'x', 'first_page': '3'}])})))
 

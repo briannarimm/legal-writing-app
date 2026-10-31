@@ -39,7 +39,7 @@
     attachTo.hidden = !(c && c.type === 'edited_book' && (c.chapters || []).length);
     if (attachTo.hidden) return;
     const w = el('option', '', 'New PDFs: the whole book'); w.value = ''; attachTo.appendChild(w);
-    c.chapters.forEach((ch, k) => { const o = el('option', '', 'New PDFs: chapter ' + (k + 1) + ', ' + ch.label); o.value = ch.id; attachTo.appendChild(o); });
+    c.chapters.forEach(ch => { const o = el('option', '', 'New PDFs: ' + ch.label); o.value = ch.id; attachTo.appendChild(o); });
     attachTo.value = Array.from(attachTo.options).some(o => o.value === keep) ? keep : '';
   }
   const drawStrip = () => strip.render(App.citation(cur && cur.tag) || cur, files, fileName, '');

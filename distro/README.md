@@ -4,8 +4,16 @@ This folder contains the ready-to-use ReWord program for Mac.
 
 | File | Description |
 |---|---|
-| `ReWord-1.5.0-mac-arm64.zip` | The program. Download this file. |
-| `ReWord-1.5.0-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
+| `ReWord-1.5.1-mac-arm64.zip` | The program. Download this file. |
+| `ReWord-1.5.1-mac-arm64.zip.sha256` | The checksum of the zip file (optional check). |
+
+## What's new in 1.5.1
+
+- **Chapter numbers you choose.** Each chapter of an edited book has a **Chapter** menu for its number in
+  the book, so the chapters you cite can be, say, 3 and 7. The chapter menus (Cite…, the citation's
+  chapter, a file's chapter) show that number. Leave it at **—** to show no number.
+- **The sidebar no longer scrolls.** Its buttons, search and filters stay in place; only the list under
+  them scrolls, and the Writing list is tighter.
 
 ## What's new in 1.5
 
@@ -162,10 +170,10 @@ You do not need other software. ReWord contains its own copies of Python, Pandoc
 
 ## Install
 
-1. Open the [latest release](https://github.com/briannarimm/legal-writing-app/releases/latest) and click `ReWord-1.5.0-mac-arm64.zip` under
+1. Open the [latest release](https://github.com/briannarimm/legal-writing-app/releases/latest) and click `ReWord-1.5.1-mac-arm64.zip` under
    **Assets**. The download starts. The file is about 90 MB. (The same file is in the list above:
    click it, then the **Download raw file** button.)
-2. Download `ReWord-1.5.0-mac-arm64.zip.sha256` too if you want to check the download (below).
+2. Download `ReWord-1.5.1-mac-arm64.zip.sha256` too if you want to check the download (below).
 3. Open your Downloads folder. Double-click the zip file. A folder named `ReWord` appears.
 4. Move `ReWord.app` to your Applications folder, or the whole `ReWord` folder to a USB drive.
 5. Double-click `ReWord.app`.
@@ -189,10 +197,10 @@ You do this one time only.
 Open Terminal, go to the folder that contains the zip file, and run:
 
 ```bash
-shasum -a 256 -c ReWord-1.5.0-mac-arm64.zip.sha256
+shasum -a 256 -c ReWord-1.5.1-mac-arm64.zip.sha256
 ```
 
-The result must be `ReWord-1.5.0-mac-arm64.zip: OK`. If the result is different, delete the file
+The result must be `ReWord-1.5.1-mac-arm64.zip: OK`. If the result is different, delete the file
 and download it again.
 
 ## Your data

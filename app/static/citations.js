@@ -81,40 +81,47 @@
     wrap.append(head);
     if (f.hint) wrap.appendChild(el('div', 'hint', f.hint));
     wrap.append(cards, add);
-    function number() { Array.from(cards.children).forEach((c, k) => { c._num.textContent = 'Chapter ' + (k + 1); }); }
     function card(ch) {
       const box = el('div', 'chapter-card');
       const top = el('div', 'chapter-top');
-      const num = el('b', '');
+      // the chapter's number in the book, chosen (chapters you cite needn't be 1, 2, 3…); blank = not shown
+      const num = el('select', 'chapter-num'); num.title = 'Which chapter of the book this is';
+      const blank = el('option', '', '—'); blank.value = ''; num.appendChild(blank);
+      const given = String(ch.number || '');
+      for (let n = 1; n <= Math.max(60, +given || 0); n++) { const o = el('option', '', String(n)); o.value = String(n); num.appendChild(o); }
+      if (given && !Array.from(num.options).some(o => o.value === given)) { const o = el('option', '', given); o.value = given; num.appendChild(o); }
+      num.value = given;
+      num.addEventListener('change', fire);
+      const numLab = el('label', 'chapter-num-label'); numLab.append(el('b', '', 'Chapter'), num);
       const id = el('code', 'muted small', ch.id || 'new'); id.title = 'What citations to this chapter record';
       const sp = el('span', 'grow');
       const up = el('button', 'icon-btn', '↑'); up.type = 'button'; up.title = 'Move up';
       const rm = el('button', 'icon-btn', '✕'); rm.type = 'button'; rm.title = 'Remove this chapter';
-      up.onclick = () => { if (box.previousSibling) { cards.insertBefore(box, box.previousSibling); number(); fire(); } };
+      up.onclick = () => { if (box.previousSibling) { cards.insertBefore(box, box.previousSibling); fire(); } };
       rm.onclick = () => {
         if (ch.id && !confirm('Remove this chapter from the book?\n\nCitations to it in your documents will show as missing until you choose another chapter.')) return;
-        box.remove(); number(); fire();
+        box.remove(); fire();
       };
-      top.append(num, id, sp, up, rm);
+      top.append(numLab, id, sp, up, rm);
       const grid = el('div', 'cf-grid');
       const ctl = {};
       f.fields.forEach(sub => { const c = Field(sub, fire); ctl[sub.key] = c; grid.appendChild(c.el); c.set(ch[sub.key]); });
       box.append(top, grid);
-      box._num = num;
       box._get = () => {
         const o = {};
         Object.keys(ch).forEach(k => { if (!ctl[k]) o[k] = ch[k]; });          // id, former_tag, and keys from other tools
         Object.entries(ctl).forEach(([k, c]) => { const v = c.get(); if (v !== '' && v !== false && !(Array.isArray(v) && !v.length)) o[k] = v; else delete o[k]; });
+        if (num.value) o.number = num.value; else delete o.number;
         return o;
       };
       box._focus = () => { const i = grid.querySelector('input, [contenteditable]'); if (i) i.focus(); };
       return box;
     }
-    add.onclick = () => { const c = card({}); cards.appendChild(c); number(); c._focus(); fire(); };
+    add.onclick = () => { const c = card({}); cards.appendChild(c); c._focus(); fire(); };
     return {
       el: wrap,
       get: () => Array.from(cards.children).map(c => c._get()).filter(o => Object.keys(o).some(k => k !== 'id')),
-      set: v => { cards.innerHTML = ''; (Array.isArray(v) ? v : []).forEach(ch => cards.appendChild(card(ch))); if (!cards.children.length) cards.appendChild(card({})); number(); },
+      set: v => { cards.innerHTML = ''; (Array.isArray(v) ? v : []).forEach(ch => cards.appendChild(card(ch))); if (!cards.children.length) cards.appendChild(card({})); },
     };
   }
 
@@ -335,7 +342,7 @@
         if (r.chapters) {
           const keep = prevCh.value;
           prevCh.innerHTML = '';
-          r.chapters.forEach((ch, k) => { const o = el('option', '', 'Chapter ' + (k + 1) + ': ' + ch.label); o.value = String(k); prevCh.appendChild(o); });
+          r.chapters.forEach((ch, k) => { const o = el('option', '', ch.label); o.value = String(k); prevCh.appendChild(o); });
           const w = el('option', '', 'The whole book'); w.value = 'book'; prevCh.appendChild(w);
           prevCh.value = Array.from(prevCh.options).some(o => o.value === keep) ? keep : (r.chapters.length ? '0' : 'book');
           if (prevCh.value !== 'book') forms = r.chapters[+prevCh.value].forms;

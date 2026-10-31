@@ -1895,20 +1895,21 @@ def edited_chapter(c, chapter_id):
     if f.get('title_apa'):
         out['book_title_apa'] = f['title_apa']
     for k, v in ch.items():
-        if k != 'id' and v not in ('', None, []):
+        if k not in ('id', 'number') and v not in ('', None, []):
             out[k] = v
     return {'type': 'chapter', 'fields': out, 'tag': c.get('tag', ''), 'chapter': chapter_id}
 
 
 def chapter_label(ch):
-    """How a chapter is named in menus: Author, Title (pp. 85–126)."""
+    """How a chapter is named in menus: Chapter 4: Author, Title (pp. 85–126). The number is the one chosen for it, if any."""
     who = ', '.join(p.get('family') or p.get('literal') or p.get('given', '') for p in (ch.get('authors') or [])[:2] if isinstance(p, dict))
     if len(ch.get('authors') or []) > 2:
         who += ' et al.'
     title = re.sub(r'\\(.)', r'\1', re.sub(r'\]\{\.smallcaps\}|[*_\[\]]', '', ch.get('title') or '')) or ch.get('id', '')
     pages = '–'.join(x for x in (ch.get('first_page', ''), ch.get('last_page', '')) if x)
     pages = ('pp. ' if '–' in pages else 'p. ') + pages if pages else ''
-    return (who + ', ' if who else '') + title + (' (%s)' % pages if pages else '')
+    num = str(ch.get('number') or '').strip()
+    return ('Chapter %s: ' % num if num else '') + (who + ', ' if who else '') + title + (' (%s)' % pages if pages else '')
 
 
 def _formattable(c):
