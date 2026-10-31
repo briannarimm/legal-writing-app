@@ -44,7 +44,7 @@
     return -1;
   }
 
-  const CITE_ATTRS = ['tag', 'pin', 'signal', 'paren', 'narrative', 'form'];
+  const CITE_ATTRS = ['tag', 'chapter', 'pin', 'signal', 'paren', 'narrative', 'form'];
   function citeChip(attrs, html) {
     let a = '';
     CITE_ATTRS.forEach(k => { if (attrs[k]) a += ' data-' + k + '="' + escAttr(attrs[k]) + '"'; });

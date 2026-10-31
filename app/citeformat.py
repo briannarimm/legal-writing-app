@@ -190,7 +190,24 @@ TYPES = {
         F('edition', 'Edition', hint='2, 3, rev.'), F('volume', 'Volume (multi-volume works)'),
         F('publisher', 'Publisher'), F('date', 'Year*', 'date'),
         F('doi', 'DOI'), URL, HEREINAFTER]),
-    'chapter': dict(label='Chapter in an edited book', group='Academic', fields=[
+    # One edited book holding any number of its chapters. Each chapter is cited as tag + chapter
+    # ({.cite tag="book" chapter="ch-id"}) and formats as a chapter in that book (see edited_chapter);
+    # citing the book with no chapter gives the whole book. Every field of the book is shared by its chapters.
+    'edited_book': dict(label='Chapter(s) in edited book', group='Academic', fields=[
+        F('editors', 'Editors*', 'authors', 'The book’s editors.'),
+        F('title', 'Book title*', 'rich'),
+        F('title_apa', 'Book title in sentence case (APA)', 'text', TITLE_APA['hint']),
+        F('edition', 'Edition'), F('volume', 'Volume (multi-volume works)'),
+        F('publisher', 'Publisher'), F('date', 'Year*', 'date'),
+        F('doi', 'DOI (the book)', hint='A chapter’s own DOI goes with the chapter.'), URL,
+        F('hereinafter', 'Short title for the whole book (hereinafter)', 'text', HEREINAFTER['hint']),
+        F('chapters', 'Chapters', 'chapters', 'Each chapter you cite. When you cite this book, you pick the chapter.', fields=[
+            AUTHORS,
+            F('title', 'Chapter title*', 'rich'), TITLE_APA,
+            F('first_page', 'First page'), F('last_page', 'Last page'),
+            F('doi', 'Chapter DOI'), F('url', 'Chapter link (URL)', hint='Blank = the book’s link.'), HEREINAFTER])]),
+    # A single chapter. Kept so older libraries and lookups still format; new chapters go in an edited book.
+    'chapter': dict(label='Chapter in an edited book (single)', group='Academic', hidden=True, fields=[
         AUTHORS,
         F('title', 'Chapter title*', 'rich'), TITLE_APA,
         F('editors', 'Editors*', 'authors'),
@@ -1838,6 +1855,69 @@ def chicago_gaps(c):
 
 # ------------------------------------------------------------------ everything for one citation (previews, library)
 
+# ------------------------------------------------------------------ edited books and their chapters
+
+EDITED_BOOK_KEYS = ('editors', 'title', 'title_apa', 'edition', 'volume', 'publisher', 'date', 'doi', 'url', 'hereinafter', 'translator')
+CHAPTER_KEYS = ('authors', 'title', 'title_apa', 'first_page', 'last_page', 'doi', 'url', 'hereinafter')
+OVERRIDES = ('_override_bluebook', '_override_short', '_override_apa')
+
+
+def chapters(c):
+    """An edited book's chapters (dicts with an "id"), in the order they were added."""
+    if (c or {}).get('type') != 'edited_book':
+        return []
+    return [x for x in ((c.get('fields') or {}).get('chapters') or []) if isinstance(x, dict) and x.get('id')]
+
+
+def find_chapter(c, chapter_id):
+    return next((x for x in chapters(c) if x.get('id') == chapter_id), None)
+
+
+def edited_book_whole(c):
+    """An edited book cited as a whole: a book with editors."""
+    f = c.get('fields') or {}
+    out = {k: v for k, v in f.items() if k != 'chapters'}
+    return dict(c, type='book', fields=out)
+
+
+def edited_chapter(c, chapter_id):
+    """One chapter of an edited book, as a "chapter" citation: the chapter's own fields plus the book's.
+    None when the book has no such chapter."""
+    ch = find_chapter(c, chapter_id)
+    if ch is None:
+        return None
+    f = c.get('fields') or {}
+    # the book's details; not what belongs to one chapter (left over, say, from a single chapter's citation)
+    out = {k: v for k, v in f.items() if k not in ('chapters', 'title', 'title_apa', 'hereinafter', 'volume', 'authors', 'first_page',
+                                                    'last_page', 'book_title', 'book_title_apa') and not k.startswith('_override')}
+    if f.get('title'):
+        out['book_title'] = f['title']
+    if f.get('title_apa'):
+        out['book_title_apa'] = f['title_apa']
+    for k, v in ch.items():
+        if k != 'id' and v not in ('', None, []):
+            out[k] = v
+    return {'type': 'chapter', 'fields': out, 'tag': c.get('tag', ''), 'chapter': chapter_id}
+
+
+def chapter_label(ch):
+    """How a chapter is named in menus: Author, Title (pp. 85–126)."""
+    who = ', '.join(p.get('family') or p.get('literal') or p.get('given', '') for p in (ch.get('authors') or [])[:2] if isinstance(p, dict))
+    if len(ch.get('authors') or []) > 2:
+        who += ' et al.'
+    title = re.sub(r'\\(.)', r'\1', re.sub(r'\]\{\.smallcaps\}|[*_\[\]]', '', ch.get('title') or '')) or ch.get('id', '')
+    pages = '–'.join(x for x in (ch.get('first_page', ''), ch.get('last_page', '')) if x)
+    pages = ('pp. ' if '–' in pages else 'p. ') + pages if pages else ''
+    return (who + ', ' if who else '') + title + (' (%s)' % pages if pages else '')
+
+
+def _formattable(c):
+    """Formatters take a book or a chapter: an edited book given to one is formatted as the whole book."""
+    if isinstance(c, dict) and c.get('type') == 'edited_book':
+        return edited_book_whole(c)
+    return c
+
+
 def describe(c, pin=''):
     """All the forms of one citation, as Markdown and HTML, for the library and the editor."""
     forms = {
@@ -1859,7 +1939,7 @@ def describe(c, pin=''):
 
 
 def warnings(c):
-    """Fields marked * that are empty, by label."""
+    """Fields marked * that are empty, by label (for an edited book, its chapters' too)."""
     spec = TYPES.get(c.get('type', 'other'))
     if not spec:
         return []
@@ -1869,4 +1949,30 @@ def warnings(c):
             v = (c.get('fields') or {}).get(f['key'])
             if not v or (isinstance(v, str) and not v.strip()):
                 out.append(f['label'].rstrip('*'))
+        if f['kind'] == 'chapters':
+            for k, ch in enumerate((c.get('fields') or {}).get(f['key']) or []):
+                for sub in f['fields']:
+                    v = ch.get(sub['key']) if isinstance(ch, dict) else None
+                    if sub['label'].endswith('*') and (not v or (isinstance(v, str) and not v.strip())):
+                        out.append('chapter %d: %s' % (k + 1, sub['label'].rstrip('*').lower()))
     return out
+
+
+def _wrap_formatters():
+    """Every formatter (a function whose first argument is the citation) accepts an edited book."""
+    import functools
+    import inspect
+    skip = {'warnings', 'chapters', 'find_chapter', 'edited_book_whole', 'edited_chapter', 'chapter_label', '_formattable', 'g'}
+    for name, fn in list(globals().items()):
+        if not inspect.isfunction(fn) or fn.__module__ != __name__ or name in skip:
+            continue
+        params = list(inspect.signature(fn).parameters)
+        if not params or params[0] != 'c':
+            continue
+
+        def wrapped(c, *a, _fn=fn, **kw):
+            return _fn(_formattable(c), *a, **kw)
+        globals()[name] = functools.wraps(fn)(wrapped)
+
+
+_wrap_formatters()

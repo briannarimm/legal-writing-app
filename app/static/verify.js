@@ -16,7 +16,7 @@
     pid: '', slug: '', items: [], mode: 'all',
     order: [], pos: 0,              // the cards in this pass (indexes into items) and where we are
     done: false,                    // showing the summary
-    reader: null, tag: null, files: [], fileName: null, annMtime: null,
+    reader: null, tag: null, chapter: '', files: [], fileName: null, annMtime: null,
   };
   const remember = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { /* ignore */ } return null; };
   V.mode = remember('verifyMode') || 'all';
@@ -241,7 +241,9 @@
       st.appendChild(b);
     }
     if (it.was === 'approved') st.appendChild(el('div', 'vf-badge warn', 'You approved this before, but the citation or the text before it has changed since. Check it again.'));
-    if (it.missing) st.appendChild(el('div', 'vf-badge bad', 'This source isn’t in your library any more (tag “' + it.tag + '”).'));
+    if (it.missing) st.appendChild(el('div', 'vf-badge bad', it.chapter && App.citation(it.tag)
+      ? 'This chapter isn’t in the book any more (chapter “' + it.chapter + '” of “' + it.tag + '”). Click the citation in the document to choose its chapter.'
+      : 'This source isn’t in your library any more (tag “' + it.tag + '”).'));
 
     const sup = it.supports;
     $('#vf-supports-box').hidden = !sup;
@@ -272,7 +274,7 @@
     $('#vf-prev').disabled = V.pos === 0;
     $('#vf-next').textContent = V.pos >= V.order.length - 1 ? 'Finish →' : 'Next →';
     hideReason();
-    showSource(it.missing ? null : it.tag);
+    showSource(it.missing && !App.citation(it.tag) ? null : it.tag, it.chapter);
   }
 
   function when(iso) {
@@ -323,25 +325,42 @@
     return V.reader;
   }
   function closeSource() { flush(); if (V.reader) V.reader.close(); V.tag = null; V.fileName = null; }
+  // the source's files, one line each (a chapter citation opens that chapter's PDF first)
+  const stripBox = el('div', 'file-strip-wrap');
+  document.querySelector('.vf-right .src-bar').after(stripBox);
+  const strip = App.FileStrip(stripBox, { onPick: name => { $('#vf-file').value = name; openFile(name).then(drawStrip); },
+    onChanged: list => { V.files = list; } });
+  const drawStrip = () => strip.render(App.citation(V.tag), V.files, V.fileName, V.chapter);
 
-  function renderSourceHead(tag) {
+  function renderSourceHead(tag, chapter) {
     const h = $('#vf-src-head');
     h.innerHTML = '';
-    const c = tag && App.citation(tag);
+    const book = tag && App.citation(tag);
+    const c = book && chapter && book.type === 'edited_book' ? App.chapterCite(book, chapter) : book;
     if (!c) { h.appendChild(el('div', 'muted', tag ? 'Source not found in the library.' : '')); return; }
     const top = el('div', 'vf-src-top');
     top.append(el('span', 'chip', App.typeLabel ? App.typeLabel(c.type) : c.type), el('code', '', c.tag));
+    if (c.chapterLabel) top.appendChild(el('span', 'muted small', 'Chapter: ' + c.chapterLabel));
     const full = el('div', 'vf-src-cite');
     full.innerHTML = ((c.forms || {}).bluebook_practitioner || (c.forms || {}).apa_reference || {}).html || App.esc(App.citeText ? App.citeText(c) : c.tag);
     h.append(top, full);
   }
 
-  async function showSource(tag) {
-    renderSourceHead(tag);
-    if (tag === V.tag && V.fileName) return;          // same source as the last card: keep the page and the scroll
+  async function showSource(tag, chapter) {
+    chapter = chapter || '';
+    renderSourceHead(tag, chapter);
+    if (tag === V.tag && V.fileName && chapter === V.chapter) return;   // same source as the last card: keep the page and the scroll
     await flush();
-    V.tag = tag; V.fileName = null;
-    if (!tag) { V.files = []; noFile(); return; }
+    const sameTag = tag === V.tag && V.files.length;
+    V.tag = tag; V.chapter = chapter;
+    if (sameTag) {                                     // another chapter of the same book: its own PDF, when it has one
+      const want = App.preferredFile(V.files, chapter);
+      if (want && want !== V.fileName) { $('#vf-file').value = want; await openFile(want); }
+      drawStrip();
+      return;
+    }
+    V.fileName = null;
+    if (!tag) { V.files = []; strip.clear(); noFile(); return; }
     await loadFiles();
   }
 
@@ -354,10 +373,11 @@
     const sel = $('#vf-file');
     sel.innerHTML = '';
     V.files.forEach(f => { const o = el('option', '', f.name + (f.annotations ? '  (' + f.annotations + ')' : '')); o.value = f.name; sel.appendChild(o); });
-    sel.hidden = !V.files.length;
-    const keep = pick || (V.files.find(f => f.kind === 'pdf' && !f.annotated) || V.files[0] || {}).name;
-    if (!keep) { noFile(); return; }
+    sel.hidden = true;
+    const keep = pick || App.preferredFile(V.files, V.chapter);
+    if (!keep) { V.fileName = null; drawStrip(); noFile(); return; }
     sel.value = keep;
+    V.fileName = keep; drawStrip();
     await openFile(keep);
   }
 
@@ -436,7 +456,7 @@
     let last = null;
     for (const f of Array.from(list)) {
       try {
-        const r = await fetch('/api/attach?tag=' + encodeURIComponent(V.tag) + '&name=' + encodeURIComponent(f.name),
+        const r = await fetch('/api/attach?tag=' + encodeURIComponent(V.tag) + '&name=' + encodeURIComponent(f.name) + (V.chapter ? '&chapter=' + encodeURIComponent(V.chapter) : ''),
           { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-ReWord': '1' }, body: f });
         const j = await r.json();
         if (!r.ok) throw new Error(j.error || r.statusText);

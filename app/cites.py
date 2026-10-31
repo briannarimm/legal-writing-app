@@ -49,19 +49,47 @@ SIGNALS = ['see generally', 'see also', 'see, e.g.,', 'see', 'cf.', 'but see', '
 
 # ------------------------------------------------------------------ the library
 
-def load_library(data_dir):
-    """All citations under <data>/library/citations, by tag (read with the same parser the app uses)."""
-    import store       # noqa: E402  (store sets its roots; reading needs only the file parser)
+def key_of(attrs):
+    """Which library entry a citation mark points at: its tag, or tag#chapter for a chapter of an edited book."""
+    tag = (attrs or {}).get('tag', '')
+    ch = ((attrs or {}).get('chapter') or '').strip()
+    return tag + '#' + ch if ch else tag
+
+
+def library_entries(c):
+    """The library entries one citation gives: (key, entry). An edited book gives the whole book under its tag,
+    each chapter under tag#chapter, and each chapter again under the tag it had as a citation of its own
+    before it was gathered into the book ("former_tag"), so marks written then still resolve."""
+    base = {'type': c['type'], 'fields': c['fields'], 'tag': c['tag']}
+    yield c['tag'], base
+    for ch in cf.chapters(base):
+        e = cf.edited_chapter(base, ch['id'])
+        yield c['tag'] + '#' + ch['id'], e
+        if ch.get('former_tag'):
+            yield ch['former_tag'], e
+
+
+def library_from(citations):
     lib = {}
+    for c in citations:
+        for k, e in library_entries(c):
+            if k not in lib or k == c['tag']:
+                lib[k] = e
+    return lib
+
+
+def load_library(data_dir):
+    """All citations under <data>/library/citations, by key (read with the same parser the app uses)."""
+    import store       # noqa: E402  (store sets its roots; reading needs only the file parser)
+    out = []
     d = Path(data_dir) / 'library' / 'citations'
     if d.exists():
         for p in sorted(d.glob('*.md')):
             try:
-                c = store.read_citation(p)
-                lib[c['tag']] = {'type': c['type'], 'fields': c['fields'], 'tag': c['tag']}
+                out.append(store.read_citation(p))
             except (OSError, ValueError):
                 continue
-    return lib
+    return library_from(out)
 
 
 # ------------------------------------------------------------------ AST helpers
@@ -142,7 +170,7 @@ class Resolver:
         def walk(x):
             if isinstance(x, dict):
                 if is_cite(x):
-                    tags.append(attrs_of(x)[1].get('tag', ''))
+                    tags.append(key_of(attrs_of(x)[1]))
                 for v in x.values():
                     walk(v)
             elif isinstance(x, list):
@@ -236,7 +264,7 @@ class Resolver:
         items = []
         for sp in spans:
             _, a = attrs_of(sp)
-            tag = a.get('tag', '')
+            tag = key_of(a)
             c = self.lib.get(tag)
             if c is None:
                 self.missing.append(tag)
@@ -404,7 +432,7 @@ def entry_tag(b):
     if len(items) == 1 and is_cite(items[0]):
         _, a = attrs_of(items[0])
         if a.get('form') == 'entry':
-            return a.get('tag', '')
+            return key_of(a)
     return None
 
 
@@ -546,7 +574,7 @@ def chip_text(c, attrs, typeface='practitioner', style='bluebook', in_note=True)
     """What a citation chip shows in the editor: the draft (full) form with its signal, pin and
     parenthetical; APA in-text form for APA templates. Returns runs."""
     if c is None:
-        return cf.Runs().r('[missing citation: %s]' % attrs.get('tag', ''))
+        return cf.Runs().r('[missing citation: %s]' % key_of(attrs))
     pin = (attrs.get('pin') or '').strip()
     if attrs.get('form') == 'entry':
         if style in ('apa', 'chicago', 'chicago-ad'):

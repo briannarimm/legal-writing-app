@@ -501,8 +501,8 @@
   }
   function mdCite(c, which, format) {
     const text = App.citeMarkdown(c, App.isParenFormat(format) ? (which === 'narrative' ? 'narrative' : 'intext') : 'full', format);
-    const span = '[' + text + ']{.cite tag="' + c.tag + '"' + (which === 'narrative' ? ' narrative="1"' : '') + '}';
-    if (W.tmpl.cite_mode === 'footnote' && !mdInNote()) { mdFootnote({ label: c.tag, md: span + '.' }); return; }
+    const span = '[' + text + ']{.cite tag="' + c.tag + '"' + (c.chapter ? ' chapter="' + c.chapter + '"' : '') + (which === 'narrative' ? ' narrative="1"' : '') + '}';
+    if (W.tmpl.cite_mode === 'footnote' && !mdInNote()) { mdFootnote({ label: c.chapter || c.tag, md: span + '.' }); return; }
     docMd.focus();
     docMd.setRangeText(span, docMd.selectionStart, docMd.selectionEnd, 'end');
     docMd.dispatchEvent(new Event('input'));
@@ -577,7 +577,7 @@
       const html = App.chips.html(c, which === 'narrative' ? { narrative: '1' } : {}, format);
       if (!inNote && W.tmpl.cite_mode === 'footnote') {
         Rich.restoreSelection(saved);
-        insertFootnote({ label: c.tag, html: html + '.' });
+        insertFootnote({ label: c.chapter || c.tag, html: html + '.' });
       } else {
         Rich.insertHtml(saved, html);
       }

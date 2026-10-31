@@ -1207,7 +1207,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/api/project/delete": lambda b: (store.delete_project(b.get("id")), self.send_json({"ok": True}))[1],
             "/api/verify/reset": lambda b: self.send_json(store.reset_verification(b.get("project"), b.get("doc") or None)),
             "/api/note/project": lambda b: self.send_json(store.assign_note(b.get("id"), b.get("project") or "")),
-            "/api/citation/projects": self.api_citation_projects, "/api/file/delete": self.api_file_delete,
+            "/api/citation/projects": self.api_citation_projects, "/api/file/delete": self.api_file_delete, "/api/file/meta": self.api_file_meta,
             "/api/snapshot": self.api_snapshot, "/api/annotations/export": self.api_annotations_export, "/api/render": self.api_render, "/api/note/export": self.api_note_export,
             "/api/bibliography/export": self.api_bibliography_export,
             "/api/git/connect": self.api_git_connect, "/api/git/create": self.api_git_create,
@@ -1461,8 +1461,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         data = self.rfile.read(n) if n else b""
         if not data:
             raise store.StoreError("The file is empty.")
-        name = store.save_attachment(q.get("tag"), q.get("name"), data)
+        name = store.save_attachment(q.get("tag"), q.get("name"), data, chapter=q.get("chapter") or "")
         self.send_json({"name": name, "files": store.list_attachments(q.get("tag"))})
+
+    def api_file_meta(self, b):
+        """A file's label (translation, version…) and, for an edited book, which chapter it is."""
+        self.send_json({"files": store.set_file_meta(b.get("tag"), b.get("name"), b.get("label"), b.get("chapter"))})
 
     def api_file_delete(self, b):
         store.delete_attachment(b.get("tag"), b.get("name"))
@@ -1509,7 +1513,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_json({"name": out.name, "files": store.list_attachments(tag)})
 
     def _library(self):
-        return {c["tag"]: {"type": c["type"], "fields": c["fields"], "tag": c["tag"]} for c in store.citations()}
+        return cites.library_from(store.citations())
 
     def _note_ast(self, md, meta=None, fmt="practitioner"):
         """Markdown -> Pandoc JSON with live citations resolved (draft, brief/memo type)."""
@@ -1592,13 +1596,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         """Chip text for live citations: {format: lawreview|practitioner|apa|chicago|chicago-ad, items: [{tag, pin, signal, paren, narrative, note}]}."""
         fmt = b.get("format") or "practitioner"
         style, typeface = (fmt, "practitioner") if fmt in ("apa", "chicago", "chicago-ad") else ("bluebook", fmt)
-        lib = {}
-        for c in store.citations():
-            lib[c["tag"]] = {"type": c["type"], "fields": c["fields"], "tag": c["tag"]}
+        lib = cites.library_from(store.citations())
         out = []
         for it in (b.get("items") or [])[:2000]:
-            runs = cites.chip_text(lib.get(it.get("tag", "")), it, typeface, style, bool(it.get("note", True)))
-            out.append({"html": citeformat.to_html(runs), "md": citeformat.to_md(runs), "missing": it.get("tag", "") not in lib})
+            key = cites.key_of(it)
+            runs = cites.chip_text(lib.get(key), it, typeface, style, bool(it.get("note", True)))
+            out.append({"html": citeformat.to_html(runs), "md": citeformat.to_md(runs), "missing": key not in lib})
         self.send_json({"items": out})
 
     def api_lookup(self, b):

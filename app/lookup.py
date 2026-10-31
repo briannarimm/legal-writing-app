@@ -157,9 +157,12 @@ def from_doi(doi):
             f["article_number"] = w["article-number"]
         return {"type": "journal", "fields": f, "source": "CrossRef"}
     if t in ("book-chapter", "book-section", "reference-entry"):
-        return {"type": "chapter", "fields": dict(common, book_title=clean(first("container-title")), editors=people("editor"),
-                                                   publisher=w.get("publisher", ""), first_page=pages[0] if pages else "",
-                                                   last_page=pages[1] if len(pages) > 1 else ""), "source": "CrossRef"}
+        # a chapter goes into an edited book (Chapter(s) in edited book), as that book's first chapter
+        chapter = {"authors": common["authors"], "title": title, "doi": common["doi"],
+                   "first_page": pages[0] if pages else "", "last_page": pages[1] if len(pages) > 1 else ""}
+        return {"type": "edited_book", "fields": {"title": clean(first("container-title")), "editors": people("editor"),
+                                                  "publisher": w.get("publisher", ""), "date": date, "chapters": [chapter]},
+                "source": "CrossRef"}
     if t.startswith("book") or t in ("monograph", "edited-book"):
         return {"type": "book", "fields": dict(common, editors=people("editor"), publisher=w.get("publisher", ""),
                                                 edition=w.get("edition-number", "")), "source": "CrossRef"}

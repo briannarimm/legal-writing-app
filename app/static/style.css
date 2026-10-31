@@ -1164,3 +1164,19 @@ body[data-view="verify"] .tb-title { max-width: min(640px, 60%); }
   .note-head .row { flex-wrap: wrap; }
   .ns-source .src-bar { flex-wrap: wrap; }
 }
+/* a source's files, one line each, under the reader's bar (filelist.js) */
+.file-strip-wrap { flex: none; }
+.file-strip { max-height: none; }
+.file-strip[hidden] { display: none; }
+.file-card .file-name { font: 12.5px/1.35 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; }
+.file-card .file-edit { font-size: 13px; }
+.file-pop .chip-head { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* an edited book's chapters (the citation form) and the chapter menus */
+.chapters-field .chapter-cards { display: flex; flex-direction: column; gap: 10px; margin: 6px 0 8px; }
+.chapter-card { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px 4px; background: color-mix(in srgb, var(--panel) 70%, transparent); }
+.chapter-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.chapter-top .grow { flex: 1; }
+.chapter-select { max-width: 320px; }
+.cp-chapter { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+.cp-chapter select { flex: 1; min-width: 0; max-width: 100%; }
+.file-pop .chip-row > input, .file-pop .chip-row > select, .chip-pop .chip-row > select { min-width: 0; width: 100%; }
