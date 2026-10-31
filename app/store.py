@@ -510,12 +510,14 @@ def read_citation(p):
               "projects": [x for x in (meta.get("projects") or []) if isinstance(x, str)],
               "projects_auto": [x for x in (meta.get("projects_auto") or []) if isinstance(x, str)],
               "forms": citeformat.describe(c), "missing": citeformat.warnings(c), "chicago_missing": citeformat.chicago_gaps(c)})
-    if ctype == "edited_book":                               # each chapter's forms, for the chapter menus
+    if ctype in citeformat.CHAPTER_TYPES:                    # each chapter's forms, for the chapter menus
         c["chapters"] = []
         for ch in citeformat.chapters(c):
             e = citeformat.edited_chapter(c, ch["id"])
-            c["chapters"].append({"id": ch["id"], "label": citeformat.chapter_label(ch), "forms": citeformat.describe(e),
-                                  "chicago_missing": citeformat.chicago_gaps(e)})
+            c["chapters"].append({"id": ch["id"], "number": ch.get("number", ""), "label": citeformat.chapter_label(ch),
+                                  "forms": citeformat.describe(e), "chicago_missing": citeformat.chicago_gaps(e)})
+        # menus list chapters by their number in the book (unnumbered ones after, in the order they were added)
+        c["chapters"].sort(key=lambda x: (0, int(x["number"])) if str(x["number"]).isdigit() else (1, 0))
     return c
 
 
@@ -643,7 +645,7 @@ def preview_citation(data):
     c = {"type": ctype, "fields": clean_fields(ctype, data.get("fields"))}
     pin = (data.get("pin") or "").strip()
     out = {"forms": citeformat.describe(c, pin), "missing": citeformat.warnings(c), "chicago_missing": citeformat.chicago_gaps(c)}
-    if ctype == "edited_book":
+    if ctype in citeformat.CHAPTER_TYPES and citeformat.chapters(c):
         out["chapters"] = [{"label": citeformat.chapter_label(ch), "forms": citeformat.describe(citeformat.edited_chapter(c, ch["id"]), pin)}
                            for ch in citeformat.chapters(c)]
     return out

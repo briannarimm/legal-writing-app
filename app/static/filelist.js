@@ -18,9 +18,11 @@
     return pick ? pick.name : null;
   };
 
+  // a chapter's number in the book (as entered), else its place in the list
   function chapterNo(c, id) {
-    const k = ((c && c.chapters) || []).findIndex(ch => ch.id === id);
-    return k < 0 ? null : k + 1;
+    const list = (c && c.chapters) || [];
+    const k = list.findIndex(ch => ch.id === id);
+    return k < 0 ? null : (Number(list[k].number) || null);
   }
 
   // Files in the order to show them: the cited chapter's, the whole book's, then each chapter's in book order.
@@ -48,7 +50,7 @@
       row.append(chip, name);
       if (f.annotations) { const a = el('span', 'ns-files', f.annotations + ' ✎'); a.title = f.annotations + ' highlight' + (f.annotations === 1 ? '' : 's') + ' and comments'; row.appendChild(a); }
       const ed = el('button', 'ns-unlink file-edit', '⋯'); ed.type = 'button';
-      ed.title = st.c && st.c.type === 'edited_book' ? 'Name this file, or say which chapter it is' : 'Name this file (translation, version…)';
+      ed.title = App.hasChapters(st.c) ? 'Name this file, or say which chapter it is' : 'Name this file (translation, version…)';
       ed.onclick = e => { e.stopPropagation(); editMeta(f, row); };
       row.appendChild(ed);
       row.onclick = () => { dropOpen = false; if (f.name !== st.open) opts.onPick(f.name); else draw(); };
@@ -87,10 +89,10 @@
       const lab = el('input'); lab.value = f.label || ''; lab.placeholder = 'English translation · 2019 version · Ch. 3';
       const r1 = el('label', 'chip-row'); r1.append(el('span', '', 'Label'), lab); pop.appendChild(r1);
       let chSel = null;
-      if (c && c.type === 'edited_book') {
+      if (App.hasChapters(c)) {
         chSel = el('select');
         const w = el('option', '', 'The whole book (or not one chapter)'); w.value = ''; chSel.appendChild(w);
-        (c.chapters || []).forEach((ch, k) => { const o = el('option', '', 'Chapter ' + (k + 1) + ': ' + ch.label); o.value = ch.id; chSel.appendChild(o); });
+        (c.chapters || []).forEach(ch => { const o = el('option', '', ch.label); o.value = ch.id; chSel.appendChild(o); });
         if (f.chapter && !(c.chapters || []).some(ch => ch.id === f.chapter)) { const o = el('option', '', f.chapter + ' (not in the book any more)'); o.value = f.chapter; chSel.appendChild(o); }
         chSel.value = f.chapter || '';
         const r2 = el('label', 'chip-row'); r2.append(el('span', '', 'Chapter'), chSel); pop.appendChild(r2);

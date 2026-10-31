@@ -218,6 +218,7 @@
 
   // Edited books: a citation is to one of the book's chapters (or the whole book).
   // App.chapterCite(c, id) = the citation as that chapter: same tag, .chapter set, the chapter's forms.
+  App.hasChapters = c => !!c && (c.type === 'edited_book' || c.type === 'book') && !!(c.chapters || []).length;
   App.chapterCite = function (c, id) {
     const ch = id && (c.chapters || []).find(x => x.id === id);
     return ch ? Object.assign({}, c, { chapter: id, forms: ch.forms, chapterLabel: ch.label }) : Object.assign({}, c, { chapter: '' });
@@ -257,7 +258,7 @@
       const show = () => { cite.innerHTML = ((c.forms || {})[shownKey] || {}).html || ''; };
       main.append(meta);
       // an edited book: choose the chapter you are citing (search words that name a chapter pick it)
-      if (book.type === 'edited_book' && (book.chapters || []).length && !cpOpts.multi) {
+      if (App.hasChapters(book) && (book.chapters || []).length && !cpOpts.multi) {
         const hit = q && book.chapters.find(ch => (ch.id + ' ' + ch.label).toLowerCase().includes(q));
         const chSel = App.chapterSelect(book, hit ? hit.id : null);
         chSel.onclick = e => e.stopPropagation();

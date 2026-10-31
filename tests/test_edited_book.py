@@ -56,6 +56,22 @@ check('chapter label', cf.chapter_label(BOOK['fields']['chapters'][0]) == 'Spiro
 check('warnings name the chapter', cf.warnings({'type': 'edited_book', 'fields': dict(BOOK['fields'], chapters=[{'id': 'x', 'first_page': '3'}])})
       == ['chapter 1: chapter title'], str(cf.warnings({'type': 'edited_book', 'fields': dict(BOOK['fields'], chapters=[{'id': 'x', 'first_page': '3'}])})))
 
+# ---------------- a Book can hold chapters too (1.5.1), numbered in any order
+plain_book = {'type': 'book', 'tag': 'bandes', 'fields': {'editors': [P('Susan A.', 'Bandes')], 'title': 'The Passions of Law', 'date': '1999',
+                                                          'publisher': 'New York University Press',
+                                                          'chapters': [{'id': 'kahan', 'number': '3', 'authors': [P('Dan M.', 'Kahan')],
+                                                                        'title': 'The Progressive Appropriation of Disgust', 'first_page': '63'}]}}
+check('a Book with chapters still formats as the book', cf.bluebook(plain_book, 'practitioner').plain() == 'The Passions of Law (Susan A. Bandes ed., 1999)',
+      cf.bluebook(plain_book, 'practitioner').plain())
+check('a chapter of a Book', cf.bluebook(cf.edited_chapter(plain_book, 'kahan'), 'practitioner').plain() ==
+      'Dan M. Kahan, The Progressive Appropriation of Disgust, in The Passions of Law 63 (Susan A. Bandes ed., 1999)')
+check('chapter number in the label', cf.chapter_label(plain_book['fields']['chapters'][0]).startswith('Ch. 3: Kahan'))
+mono = {'type': 'book', 'fields': {'authors': [P('Talal', 'Asad')], 'title': 'Genealogies of Religion', 'date': '1993',
+                                   'chapters': [{'id': 'c1', 'title': 'The Construction of Religion', 'first_page': '27'}]}}
+check('a chapter with no author of its own is by the book\'s author', cf.bluebook(cf.edited_chapter(mono, 'c1'), 'practitioner').plain() ==
+      'Talal Asad, The Construction of Religion, in Genealogies of Religion 27 (1993)', cf.bluebook(cf.edited_chapter(mono, 'c1'), 'practitioner').plain())
+check('a Book chapter in the library', 'bandes#kahan' in cites.library_from([plain_book]))
+
 # ---------------- the library and the build
 lib = cites.library_from([dict(BOOK, tag='banton')])
 check('library keys', sorted(lib) == ['banton', 'banton#geertz', 'banton#spiro'], str(sorted(lib)))
@@ -63,7 +79,9 @@ check('key_of', cites.key_of({'tag': 'banton', 'chapter': 'spiro'}) == 'banton#s
 withold = dict(BOOK, tag='banton', fields=dict(BOOK['fields'], chapters=[dict(BOOK['fields']['chapters'][0], former_tag='spiro-1966')]))
 check('a gathered chapter still answers to its old tag', cites.library_from([withold]).get('spiro-1966', {}).get('type') == 'chapter')
 
-PANDOC = shutil.which('pandoc')
+import os  # noqa: E402
+_rt = Path(os.environ.get('LT_RUNTIME') or Path.home() / 'Library/Caches/ReWord Build/runtime')
+PANDOC = str(_rt / 'bin' / 'pandoc') if (_rt / 'bin' / 'pandoc').exists() else shutil.which('pandoc')   # ReWord's own pandoc first
 if PANDOC:
     def run(md, mode='final'):
         j = subprocess.run([PANDOC, '-f', 'markdown+smart', '-t', 'json'], input=md, capture_output=True, text=True, check=True).stdout
@@ -94,6 +112,9 @@ try:
     check('keys the form does not show are kept', chs[2].get('series') == 'kept')
     check('chapter forms for the menus', [x['id'] for x in c['chapters']] == ['spiro', 'geertz', 'wallace-rituals'] and
           c['chapters'][0]['forms']['bluebook_practitioner']['text'].startswith('Melford E. Spiro'), str(c['chapters'][0]))
+    nb = store.write_citation('numbered', {'type': 'book', 'fields': {'title': 'Numbered', 'date': '2000', 'chapters': [
+        {'number': '7', 'title': 'Seven'}, {'title': 'None'}, {'number': '2', 'title': 'Two'}]}}, create=True)
+    check('chapter menus go by chapter number', [x['number'] for x in nb['chapters']] == ['2', '7', ''], str([x['number'] for x in nb['chapters']]))
     check('preview has chapters', len(store.preview_citation({'type': 'edited_book', 'fields': BOOK['fields']})['chapters']) == 2)
 
     p = store.create_project({'name': 'Religion'})['id']

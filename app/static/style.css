@@ -1180,3 +1180,26 @@ body[data-view="verify"] .tb-title { max-width: min(640px, 60%); }
 .cp-chapter { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
 .cp-chapter select { flex: 1; min-width: 0; max-width: 100%; }
 .file-pop .chip-row > input, .file-pop .chip-row > select, .chip-pop .chip-row > select { min-width: 0; width: 100%; }
+/* 1.5.1: the sidebar holds still. Its search, filters and buttons stay put with even spacing, and only the list
+   under them scrolls (documents, notes, citations, citations to verify). */
+#side-slot { overflow: hidden; display: flex; flex-direction: column; }
+body[data-view] #side-slot > .sidebar[data-for-view] { flex: 1; min-height: 0; flex-direction: column; gap: 6px; }
+body[data-view="writing"] #side-slot > [data-for-view="writing"],
+body[data-view="research"] #side-slot > [data-for-view="research"],
+body[data-view="citations"] #side-slot > [data-for-view="citations"],
+body[data-view="verify"] #side-slot > [data-for-view="verify"] { display: flex; }
+#side-slot > .sidebar > * { flex: none; margin: 0; }
+#side-slot > .sidebar > .side-row { margin: 0; }
+#side-slot #tree, #side-slot #note-list, #side-slot #cite-list, #side-slot #vf-list {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 2px -4px 0; padding: 2px 4px 6px; }
+#side-slot > .sidebar > #wordcount:empty { display: none; }
+#side-slot .btn.wide { width: 100%; }
+#side-slot #btn-bib-export { background: transparent; border: 0; box-shadow: none; color: var(--muted); text-align: left; padding: 4px 10px; font-size: 12px; }
+#side-slot #btn-bib-export:hover { background: var(--soft); color: var(--ink); }
+/* one citation in the list: type and tag on one line, then the citation */
+#cite-list .list-item { padding: 7px 8px; margin-bottom: 2px; }
+#cite-list .li-top { flex-wrap: nowrap; min-width: 0; gap: 6px; }
+#cite-list .li-top .chip { flex: 0 0 auto; min-width: 0; max-width: 58%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#cite-list .li-top code { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+#cite-list .li-top .muted.small, #cite-list .li-top .cited-n, #cite-list .li-top .proj-dots { flex: none; white-space: nowrap; }
+#cite-list .li-body { margin-top: 3px; }
