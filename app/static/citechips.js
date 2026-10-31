@@ -77,7 +77,7 @@
     const row = (label, input) => { const r = el('label', 'chip-row'); r.append(el('span', '', label), input); pop.appendChild(r); return input; };
 
     // an edited book: which chapter this citation is to
-    if (c && c.type === 'edited_book') {
+    if (App.hasChapters(c)) {
       const chSel = App.chapterSelect(c, chip.dataset.chapter || '');
       row('Chapter', chSel).addEventListener('change', () => set('chapter', chSel.value));
     }

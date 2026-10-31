@@ -338,7 +338,9 @@ instead of the file name.
 
 Use the type **Chapter(s) in edited book** for chapters of a book that has editors. One citation holds
 the book (its editors, title, publisher and year) and every chapter you use from it, each with its own
-authors, title, pages and DOI. Keep **Book** for a book you cite as a whole.
+authors, title, pages and DOI. A **Book** can hold chapters too, the same way (for example a book with
+editors that you file as a Book, or a chapter of a book by one author). Give each chapter its **Chapter
+number** so you can add them in any order.
 
 1. In the citation form, fill in the book, then the first chapter. Click **+ Chapter** for each other
    chapter.

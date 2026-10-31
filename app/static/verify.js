@@ -336,7 +336,7 @@
     const h = $('#vf-src-head');
     h.innerHTML = '';
     const book = tag && App.citation(tag);
-    const c = book && chapter && book.type === 'edited_book' ? App.chapterCite(book, chapter) : book;
+    const c = book && chapter && App.hasChapters(book) ? App.chapterCite(book, chapter) : book;
     if (!c) { h.appendChild(el('div', 'muted', tag ? 'Source not found in the library.' : '')); return; }
     const top = el('div', 'vf-src-top');
     top.append(el('span', 'chip', App.typeLabel ? App.typeLabel(c.type) : c.type), el('code', '', c.tag));

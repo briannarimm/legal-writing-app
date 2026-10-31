@@ -202,6 +202,8 @@ TYPES = {
         F('doi', 'DOI (the book)', hint='A chapter’s own DOI goes with the chapter.'), URL,
         F('hereinafter', 'Short title for the whole book (hereinafter)', 'text', HEREINAFTER['hint']),
         F('chapters', 'Chapters', 'chapters', 'Each chapter you cite. When you cite this book, you pick the chapter.', fields=[
+            F('number', 'Chapter number', 'select', 'Its number in the book, so chapters can be added in any order.',
+              options=[''] + [str(i) for i in range(1, 101)]),
             AUTHORS,
             F('title', 'Chapter title*', 'rich'), TITLE_APA,
             F('first_page', 'First page'), F('last_page', 'Last page'),
@@ -279,6 +281,11 @@ TYPES = {
         F('intext_apa', 'APA in-text form', hint='Author, Year (without parentheses)'),
         F('short', 'Short form', 'rich'), URL]),
 }
+
+# A Book can hold chapters too (optional): cited the same way, tag + chapter.
+TYPES['book']['fields'].append(dict(TYPES['edited_book']['fields'][-1],
+                                    hint='Optional: chapters you cite from this book. When you cite it, you pick the chapter (or the whole book).'))
+CHAPTER_TYPES = {'book', 'edited_book'}           # types that can hold chapters
 
 GROUPS = ['Legal', 'Academic', 'Web & news', 'Legislative & litigation', 'Other']
 
@@ -1863,8 +1870,8 @@ OVERRIDES = ('_override_bluebook', '_override_short', '_override_apa')
 
 
 def chapters(c):
-    """An edited book's chapters (dicts with an "id"), in the order they were added."""
-    if (c or {}).get('type') != 'edited_book':
+    """A book's or edited book's chapters (dicts with an "id"), in the order they were added."""
+    if (c or {}).get('type') not in CHAPTER_TYPES:
         return []
     return [x for x in ((c.get('fields') or {}).get('chapters') or []) if isinstance(x, dict) and x.get('id')]
 
@@ -1897,6 +1904,9 @@ def edited_chapter(c, chapter_id):
     for k, v in ch.items():
         if k != 'id' and v not in ('', None, []):
             out[k] = v
+    out.pop('number', None)
+    if not out.get('authors') and f.get('authors'):         # a chapter of a book by one author: the book's author wrote it
+        out['authors'] = f['authors']
     return {'type': 'chapter', 'fields': out, 'tag': c.get('tag', ''), 'chapter': chapter_id}
 
 
@@ -1908,7 +1918,8 @@ def chapter_label(ch):
     title = re.sub(r'\\(.)', r'\1', re.sub(r'\]\{\.smallcaps\}|[*_\[\]]', '', ch.get('title') or '')) or ch.get('id', '')
     pages = '–'.join(x for x in (ch.get('first_page', ''), ch.get('last_page', '')) if x)
     pages = ('pp. ' if '–' in pages else 'p. ') + pages if pages else ''
-    return (who + ', ' if who else '') + title + (' (%s)' % pages if pages else '')
+    num = 'Ch. %s: ' % ch['number'] if ch.get('number') else ''
+    return num + (who + ', ' if who else '') + title + (' (%s)' % pages if pages else '')
 
 
 def _formattable(c):

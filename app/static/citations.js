@@ -81,7 +81,9 @@
     wrap.append(head);
     if (f.hint) wrap.appendChild(el('div', 'hint', f.hint));
     wrap.append(cards, add);
-    function number() { Array.from(cards.children).forEach((c, k) => { c._num.textContent = 'Chapter ' + (k + 1); }); }
+    function number() {
+      Array.from(cards.children).forEach((c, k) => { const n = c._ctl && c._ctl.number && c._ctl.number.get(); c._num.textContent = n ? 'Chapter ' + n : 'Chapter (' + (k + 1) + ' in this list)'; });
+    }
     function card(ch) {
       const box = el('div', 'chapter-card');
       const top = el('div', 'chapter-top');
@@ -99,8 +101,9 @@
       const grid = el('div', 'cf-grid');
       const ctl = {};
       f.fields.forEach(sub => { const c = Field(sub, fire); ctl[sub.key] = c; grid.appendChild(c.el); c.set(ch[sub.key]); });
+      if (ctl.number) ctl.number.el.addEventListener('change', () => number());
       box.append(top, grid);
-      box._num = num;
+      box._num = num; box._ctl = ctl;
       box._get = () => {
         const o = {};
         Object.keys(ch).forEach(k => { if (!ctl[k]) o[k] = ch[k]; });          // id, former_tag, and keys from other tools
@@ -136,7 +139,7 @@
     let input;
     if (f.kind === 'select') {
       input = el('select');
-      (f.options || []).forEach(o => { const op = el('option', '', o); op.value = o; input.appendChild(op); });
+      (f.options || []).forEach(o => { const op = el('option', '', o || '—'); op.value = o; input.appendChild(op); });
       input.addEventListener('change', fire);
     } else if (f.kind === 'bool') {
       const lab = el('label', 'check');
@@ -229,7 +232,8 @@
     typeSel.addEventListener('change', () => {
       let v = collect();
       // an edited book's chapters can't be cited from another type: ask before cutting them off
-      if (type === 'edited_book' && typeSel.value !== 'edited_book' && (v.chapters || []).length &&
+      const holds = t => t === 'edited_book' || t === 'book';
+      if (holds(type) && !holds(typeSel.value) && (v.chapters || []).length &&
           !confirm('Change this edited book to “' + App.typeLabel(typeSel.value) + '”?\n\nIts ' + v.chapters.length + ' chapter' +
                    (v.chapters.length === 1 ? '' : 's') + ' can’t be cited from that type: citations to them will show as missing until you change it back.')) {
         typeSel.value = type; return;
@@ -341,7 +345,7 @@
         if (r.chapters) {
           const keep = prevCh.value;
           prevCh.innerHTML = '';
-          r.chapters.forEach((ch, k) => { const o = el('option', '', 'Chapter ' + (k + 1) + ': ' + ch.label); o.value = String(k); prevCh.appendChild(o); });
+          r.chapters.forEach((ch, k) => { const o = el('option', '', ch.label); o.value = String(k); prevCh.appendChild(o); });
           const w = el('option', '', 'The whole book'); w.value = 'book'; prevCh.appendChild(w);
           prevCh.value = Array.from(prevCh.options).some(o => o.value === keep) ? keep : (r.chapters.length ? '0' : 'book');
           if (prevCh.value !== 'book') forms = r.chapters[+prevCh.value].forms;
@@ -426,7 +430,7 @@
       row.dataset.tag = c.tag;
       const top = el('div', 'li-top'); top.append(el('span', 'chip', App.typeLabel(c.type)), el('code', '', c.tag));
       if (c.missing && c.missing.length) top.appendChild(el('span', 'warn small', '•'));
-      if (c.type === 'edited_book') { const n = (c.chapters || []).length; top.appendChild(el('span', 'muted small', n + ' chapter' + (n === 1 ? '' : 's'))); }
+      if (App.hasChapters(c) || c.type === 'edited_book') { const n = (c.chapters || []).length; top.appendChild(el('span', 'muted small', n + ' chapter' + (n === 1 ? '' : 's'))); }
       if (counts) {
         const n = counts[c.tag] || 0;
         const u = el('span', 'cited-n' + (n ? '' : ' none'), n ? n + '×' : '0×');
