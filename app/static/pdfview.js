@@ -9,6 +9,10 @@
 import * as pdfjs from '/static/vendor/pdfjs/pdf.min.mjs';
 
 pdfjs.GlobalWorkerOptions.workerSrc = '/static/vendor/pdfjs/pdf.worker.min.mjs';
+// Scanned and OCR'd PDFs keep their page images as JBIG2 or JPEG 2000, which PDF.js decodes with
+// WebAssembly; without wasmUrl those pages draw blank and only the invisible OCR text is left.
+const V = '/static/vendor/pdfjs/';
+const ASSETS = { wasmUrl: V + 'wasm/', cMapUrl: V + 'cmaps/', cMapPacked: true, standardFontDataUrl: V + 'standard_fonts/', iccUrl: V + 'iccs/' };
 
 const view = document.getElementById('pdf-view');
 let doc = null;
@@ -75,7 +79,7 @@ async function open(url) {
   const key = url.split('?')[0];
   try {
     const data = await (await fetch(url)).arrayBuffer();
-    const nextTask = pdfjs.getDocument({ data });
+    const nextTask = pdfjs.getDocument(Object.assign({ data }, ASSETS));
     const next = await nextTask.promise;
     drawId++;                      // stop any redraw still working on the old file
     const old = task;

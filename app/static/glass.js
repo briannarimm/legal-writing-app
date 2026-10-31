@@ -16,13 +16,24 @@
     const n = $(sel);
     if (n) { n.dataset.forView = v; slot.appendChild(n); }
   });
+  // In a narrow window the sidebar floats over the page (style.css): it starts hidden there, closes when
+  // you click the page, and showing or hiding it doesn't change what a wide window remembers.
+  const narrow = matchMedia('(max-width: 900px)');
   function setSide(show) {
     document.body.classList.toggle('side-hidden', !show);
-    store('sidebar', show ? '1' : '0');
+    if (!narrow.matches) store('sidebar', show ? '1' : '0');
   }
+  const fitSide = () => setSide(!narrow.matches && store('sidebar') !== '0');
   $('#btn-hide-side').onclick = () => setSide(false);
   $('#btn-show-side').onclick = () => setSide(true);
-  setSide(store('sidebar') !== '0');
+  narrow.addEventListener('change', fitSide);
+  $('#main-col').addEventListener('mousedown', e => {
+    if (narrow.matches && !document.body.classList.contains('side-hidden') && !e.target.closest('#btn-show-side')) setSide(false);
+  });
+  $('#glass-side').addEventListener('click', e => {
+    if (narrow.matches && e.target.closest('#nav button, .list-item, .sections li, .vf-row')) setSide(false);
+  });
+  fitSide();
 
   // the current view, for CSS (toolbar groups, sidebar list) and the title
   const show = App.showView;

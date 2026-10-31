@@ -12,6 +12,10 @@
 import * as pdfjs from '/static/vendor/pdfjs/pdf.min.mjs';
 
 pdfjs.GlobalWorkerOptions.workerSrc = '/static/vendor/pdfjs/pdf.worker.min.mjs';
+// Scanned and OCR'd PDFs keep their page images as JBIG2 or JPEG 2000, which PDF.js decodes with
+// WebAssembly; without wasmUrl those pages draw blank and only the invisible OCR text is left.
+const V = '/static/vendor/pdfjs/';
+const ASSETS = { wasmUrl: V + 'wasm/', cMapUrl: V + 'cmaps/', cMapPacked: true, standardFontDataUrl: V + 'standard_fonts/', iccUrl: V + 'iccs/' };
 
 const HL = () => window.App.highlights;             // twelve colors with your labels (highlights.js)
 const COLORS = () => HL().colors.map(c => c.id);
@@ -51,7 +55,7 @@ class Reader {
     this.anns = (annotations || []).map(a => Object.assign({}, a));
     this.closePop(); this.bar.hidden = true;
     const old = this.task;
-    this.task = pdfjs.getDocument({ url });
+    this.task = pdfjs.getDocument(Object.assign({ url }, ASSETS));
     this.doc = await this.task.promise;
     if (old) { try { await old.destroy(); } catch (e) { /* gone */ } }
     await this.draw();
