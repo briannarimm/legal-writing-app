@@ -313,7 +313,11 @@
     doc.dataset.hs = t.heading_scheme || 'none';
     if (t.bibliography) doc.dataset.bib = '1'; else delete doc.dataset.bib;
     notesEl.dataset.hs = doc.dataset.hs;
-    $$('[data-cmd="footnote"]').forEach(b => { b.hidden = t.id === 'email'; });
+    // One way of citing per template: footnote templates cite in footnotes; APA and author-date templates
+    // (and the annotated bibliography) cite in the text, so they have no Footnote button or footnotes pane.
+    W.noFootnotes = t.id === 'email' || !!t.bibliography || App.isParenFormat(docFormat());
+    $$('[data-cmd="footnote"]').forEach(b => { b.hidden = W.noFootnotes; });
+    if (W.noFootnotes) doc.dataset.nofn = '1'; else delete doc.dataset.nofn;
     $('#tb-unnumbered').hidden = t.heading_scheme !== 'article';
     $('#tb-block').hidden = t.heading_scheme === 'none';
     $('#email-tools').hidden = t.id !== 'email';
@@ -508,6 +512,17 @@
     docMd.dispatchEvent(new Event('input'));
   }
 
+  // Several sources cited together (a string citation): the spans joined by "; "
+  function mdCiteString(list, format) {
+    const one = c => '[' + App.citeMarkdown(c, App.isParenFormat(format) ? 'intext' : 'full', format) + ']{.cite tag="' + c.tag + '"' +
+      (c.chapter ? ' chapter="' + c.chapter + '"' : '') + '}';
+    const span = list.map(one).join('; ');
+    if (W.tmpl.cite_mode === 'footnote' && !mdInNote()) { mdFootnote({ label: list[0].chapter || list[0].tag, md: span + '.' }); return; }
+    docMd.focus();
+    docMd.setRangeText(span, docMd.selectionStart, docMd.selectionEnd, 'end');
+    docMd.dispatchEvent(new Event('input'));
+  }
+
   // Insert a footnote mark at the cursor (optionally with starting text) and move into the note.
   function insertFootnote(opts) {
     opts = opts || {};
@@ -566,6 +581,9 @@
       App.pickCitation({ title: 'Insert a citation', format: docFormat(), live: true, project: W.info && W.info.project, onPick: (c, which) => {
         docMd.setSelectionRange(at[0], at[1]);
         mdCite(c, which, docFormat());
+      }, onPickString: list => {
+        docMd.setSelectionRange(at[0], at[1]);
+        mdCiteString(list, docFormat());
       } });
       return;
     }
@@ -573,17 +591,22 @@
     const inNote = saved && saved.el.classList && saved.el.classList.contains('note-body');
     if (!saved || (saved.el !== doc && !inNote)) { toast('Click in the text where the citation should go first.', true); return; }
     const format = docFormat();
-    App.pickCitation({ title: 'Insert a citation', format, live: true, project: W.info && W.info.project, onPick: (c, which) => {
-      const html = App.chips.html(c, which === 'narrative' ? { narrative: '1' } : {}, format);
-      if (!inNote && W.tmpl.cite_mode === 'footnote') {
+    // Cite… right after a citation adds to it: the two become one string citation ("; " between them)
+    const after = App.chips.chipBefore(saved.range);
+    const put = (htmls, label) => {
+      if (!after && !inNote && W.tmpl.cite_mode === 'footnote') {
         Rich.restoreSelection(saved);
-        insertFootnote({ label: c.chapter || c.tag, html: html + '.' });
+        insertFootnote({ label, html: htmls.join('; ') + '.' });
       } else {
-        Rich.insertHtml(saved, html);
+        App.chips.insertAt(saved, htmls);
+        if (after) toast('Added to the citation before the cursor, as one string cite. Click a citation to change it.');
       }
       App.chips.refresh([doc, notesEl], format);
       onChange();
-    } });
+    };
+    App.pickCitation({ title: after ? 'Add a source to this citation' : 'Insert a citation', format, live: true, project: W.info && W.info.project,
+      onPick: (c, which) => put([App.chips.html(c, which === 'narrative' ? { narrative: '1' } : {}, format)], c.chapter || c.tag),
+      onPickString: list => put(list.map(c => App.chips.html(c, {}, format)), list[0].chapter || list[0].tag) });
   }
 
   // Annotated bibliography: add sources as entries (each a live citation on its own line, the annotation below).
@@ -629,6 +652,11 @@
 
   Object.assign(App.cmd.writing, {
     footnote() {
+      if (W.noFootnotes) {
+        toast(W.tmpl && W.tmpl.id === 'email' ? 'Emails don’t have footnotes.'
+          : 'This template cites in the text, like (Author, 2020), so it has no footnotes. Use Cite… (⌃⌘C).', true);
+        return;
+      }
       const f = curFile();
       if (App.editMode === 'md' && f && f.kind === 'section') mdFootnote();
       else if (Rich.activeEditable() === doc) insertFootnote();

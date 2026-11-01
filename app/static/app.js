@@ -170,7 +170,9 @@
    *   which:  'full' | 'short' (Bluebook, Chicago notes) or 'intext' | 'narrative' | 'reference' (APA, Chicago author-date), or 'pick'
    * Used to insert a cite in Writing/Research, and to choose a source for a note.
    * With multi: checkboxes and onPickMany(cites, { fromNotes }); chosen = tags ticked at the start, addLabel = the
-   * button's verb ("Add"), notesOption: false hides "Start each annotation from my research notes". */
+   * button's verb ("Add"), notesOption: false hides "Start each annotation from my research notes".
+   * With onPickString(cites, format) (Cite… while writing): a "Cite several sources together" switch at the top
+   * turns on checkboxes, and the ticked sources are inserted as one string citation, in the order ticked. */
   const dlg = $('#dlg-cite');
   const cpSearch = $('#cp-search');
   const cpFormat = $('#cp-style');
@@ -179,6 +181,25 @@
   cpFormat.after(cpScope);
   cpScope.addEventListener('change', () => renderPicker());
   let cpOpts = null;
+  // "Cite several sources together": a string citation, (Ray, 2004; Walker, 2017) or See A; B; C.
+  let cpTogether = false;
+  const cpChapters = new Map();          // tag -> the chapter chosen in its row (edited books), for a string citation
+  const cpTogetherWrap = el('label', 'chip-check cp-together');
+  const cpTogetherBox = el('input'); cpTogetherBox.type = 'checkbox';
+  const cpTogetherText = el('span');
+  cpTogetherWrap.append(cpTogetherBox, cpTogetherText);
+  $('.cp-top', dlg).after(cpTogetherWrap);
+  cpTogetherBox.addEventListener('change', () => {
+    cpTogether = cpTogetherBox.checked;
+    cpMulti.hidden = !(cpOpts.multi || cpTogether);
+    cpNotes.hidden = cpTogether || cpOpts.notesOption === false;
+    cpCount(); renderPicker(); cpSearch.focus();
+  });
+  function togetherLabel(format) {
+    cpTogetherText.textContent = App.isParenFormat(format)
+      ? ' Cite several sources together, like ' + (format === 'apa' ? '(Ray, 2004; Walker, 2017)' : '(Ray 2004; Walker 2017)') + ': tick each one, then Insert'
+      : ' Cite several sources together (a string cite, like See A; B; C): tick each one, then Insert';
+  }
 
   // Which citation style a template uses: APA, Chicago (notes, or author-date), or Bluebook in law review or
   // practitioner type. Templates with "cite_style": "document" (the annotated bibliography) read
@@ -237,6 +258,8 @@
     list.innerHTML = '';
     const q = cpSearch.value.trim().toLowerCase();
     const format = cpFormat.value || 'practitioner';
+    const multi = cpOpts.multi || cpTogether;
+    togetherLabel(format);
     const shownKey = App.isParenFormat(format) ? formKey('reference', format) : formKey('full', format);
     const proj = cpScope.value;
     const items = App.state.citations.filter(c => (!proj || (c.projects || []).includes(proj)) && (!q ||
@@ -260,10 +283,11 @@
       // an edited book: choose the chapter you are citing (search words that name a chapter pick it)
       if (App.hasChapters(book) && (book.chapters || []).length && !cpOpts.multi) {
         const hit = q && book.chapters.find(ch => (ch.id + ' ' + ch.label).toLowerCase().includes(q));
-        const chSel = App.chapterSelect(book, hit ? hit.id : null);
+        const chSel = App.chapterSelect(book, hit ? hit.id : cpChapters.has(book.tag) ? cpChapters.get(book.tag) : null);
         chSel.onclick = e => e.stopPropagation();
-        chSel.onchange = () => { c = App.chapterCite(book, chSel.value); show(); };
+        chSel.onchange = () => { c = App.chapterCite(book, chSel.value); cpChapters.set(book.tag, chSel.value); show(); };
         c = App.chapterCite(book, chSel.value);
+        cpChapters.set(book.tag, chSel.value);
         const lab = el('label', 'cp-chapter'); lab.append(el('span', 'muted small', 'Chapter'), chSel);
         main.append(lab);
       }
@@ -275,7 +299,7 @@
         const b = el('button', 'btn small' + (primary ? ' primary' : ''), label); b.onclick = () => pick(which);
         if (title) b.title = title; btns.appendChild(b);
       };
-      if (cpOpts.multi) {
+      if (multi) {
         const cb = el('input'); cb.type = 'checkbox'; cb.checked = cpChosen.has(c.tag);
         cb.onchange = () => { if (cb.checked) cpChosen.add(c.tag); else cpChosen.delete(c.tag); cpCount(); };
         row.onclick = e => { if (e.target !== cb) { cb.checked = !cb.checked; cb.onchange(); } };
@@ -310,12 +334,22 @@
     const tags = Array.from(cpChosen);
     if (!tags.length && !cpOpts.allowNone) return;
     dlg.close();
+    if (cpTogether) {
+      const format = cpFormat.value || 'practitioner';
+      cpOpts.onPickString(tags.map(t => App.citation(t)).filter(Boolean)
+        .map(c => App.hasChapters(c) && cpChapters.has(c.tag) ? App.chapterCite(c, cpChapters.get(c.tag)) : c), format);
+      return;
+    }
     cpOpts.onPickMany(tags.map(t => App.citation(t)).filter(Boolean), { fromNotes: cpNotesBox.checked });
   };
   cpMulti.append(cpNotes, cpAdd);
   $('#cp-list').after(cpMulti);
   function cpCount() {
     const verb = (cpOpts && cpOpts.addLabel) || 'Add', n = cpChosen.size;
+    if (cpTogether) {
+      cpAdd.textContent = n > 1 ? 'Insert ' + n + ' sources together' : n ? 'Insert 1 source' : 'Insert';
+      cpAdd.disabled = !n; return;
+    }
     cpAdd.textContent = n ? verb + ' ' + n + ' source' + (n === 1 ? '' : 's') : verb;
     cpAdd.disabled = !n && !(cpOpts && cpOpts.allowNone);
   }
@@ -326,7 +360,10 @@
     cpSearch.value = '';
     cpFormat.value = opts.format || 'practitioner';
     cpChosen.clear(); (opts.chosen || []).forEach(t => { if (App.citation(t)) cpChosen.add(t); });
-    cpMulti.hidden = !opts.multi; cpNotes.hidden = opts.notesOption === false; cpCount();
+    cpChapters.clear();
+    cpTogether = !!(opts.together && opts.onPickString); cpTogetherBox.checked = cpTogether;
+    cpTogetherWrap.hidden = !opts.onPickString || !!opts.multi;
+    cpMulti.hidden = !(opts.multi || cpTogether); cpNotes.hidden = cpTogether || opts.notesOption === false; cpCount();
     // opened from a document or note in a project: start with that project's sources
     cpScope.innerHTML = '';
     const pid = opts.project && App.projects.get(opts.project) ? opts.project : '';

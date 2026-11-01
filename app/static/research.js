@@ -480,16 +480,25 @@
         const md = '[' + App.citeMarkdown(c, App.isParenFormat(f) ? (narrative ? 'narrative' : 'intext') : 'full', f) + ']{.cite tag="' + c.tag + '"' + (c.chapter ? ' chapter="' + c.chapter + '"' : '') + (narrative ? ' narrative="1"' : '') + '}';
         mdEd.setRangeText(md, at[0], at[1], 'end'); mdEd.focus();
         mdEd.dispatchEvent(new Event('input'));
+      }, onPickString: list => {
+        const f = noteFormat();
+        const md = list.map(c => '[' + App.citeMarkdown(c, App.isParenFormat(f) ? 'intext' : 'full', f) + ']{.cite tag="' + c.tag + '"' +
+          (c.chapter ? ' chapter="' + c.chapter + '"' : '') + '}').join('; ');
+        mdEd.setRangeText(md, at[0], at[1], 'end'); mdEd.focus();
+        mdEd.dispatchEvent(new Event('input'));
       } });
       return;
     }
     const saved = Rich.saveSelection();
-    App.pickCitation({ title: 'Insert a citation', format: noteFormat(), live: true, project: cur && cur.project, onPick: (c, which) => {
-      const html = App.chips.html(c, which === 'narrative' ? { narrative: '1' } : {}, noteFormat());
-      if (!Rich.insertHtml(saved, html)) { body.focus(); Rich.insertHtmlKeepingSpans(html); }
+    const after = saved && App.chips.chipBefore(saved.range);          // right after a citation: add to it (a string cite)
+    const put = htmls => {
+      if (!App.chips.insertAt(saved, htmls)) { body.focus(); Rich.insertHtmlKeepingSpans(htmls.join('; ')); }
       App.chips.refresh([body], noteFormat());
       changed();
-    } });
+    };
+    App.pickCitation({ title: after ? 'Add a source to this citation' : 'Insert a citation', format: noteFormat(), live: true, project: cur && cur.project,
+      onPick: (c, which) => put([App.chips.html(c, which === 'narrative' ? { narrative: '1' } : {}, noteFormat())]),
+      onPickString: list => put(list.map(c => App.chips.html(c, {}, noteFormat()))) });
   };
   body.addEventListener('click', e => {
     const chip = e.target.closest && e.target.closest('span.cite');
