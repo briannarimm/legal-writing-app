@@ -301,6 +301,18 @@ If you change a source in the library, all chips for that source change.
 - In a law review article, a citation in the main text goes into a new footnote.
 - In a brief, ReWord adds each authority to the table of authorities.
 - In an APA document, ReWord adds each source to the References page.
+- Each template cites one way. APA and Chicago author-date templates (and the annotated bibliography)
+  cite in the text, so they have no Footnote button; law review and Chicago notes templates cite in
+  footnotes.
+
+**Cite several sources together** (a string citation, such as *(Ray, 2004; Walker, 2017)* or
+*See A; B; C*), in any of three ways:
+
+- In Cite…, tick **Cite several sources together**, tick each source, and click **Insert**.
+- Push ⌃⌘C again right after a citation: the new source joins that citation.
+- Click a citation and click **+ Add a source**.
+
+The editor shows the sources as one citation, and the build formats them together.
 
 Cite… (⌃⌘C) and Footnote (⌥⌘F) also work when you edit as Markdown: ReWord types the citation or the
 footnote into the Markdown for you.

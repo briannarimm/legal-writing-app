@@ -6,6 +6,13 @@
  *   App.chips.refresh(roots, format)        re-render chip text in these elements
  *   App.chips.html(c, attrs)                a new chip's HTML (with the library's current full form)
  *   App.chips.edit(chip, {format, changed}) the little editor that opens when you click a chip
+ *   App.chips.stringHtml(cites, format)     several sources cited together: chips joined by "; "
+ *   App.chips.chipBefore(range)             the chip right before the cursor (Cite… there adds to its string cite)
+ *   App.chips.group(roots, format)          mark string citations so they read as one while drafting
+ *
+ * String citations: chips separated only by "; " are one citation. The build formats them together
+ * ((Ray, 2004; Walker, 2017), See A; B; C); in the editor a group is drawn as one, and in APA and author-date
+ * the inner parentheses are hidden, so it looks while drafting the way it will print.
  */
 (function () {
   'use strict';
@@ -26,9 +33,99 @@
       if (!ch.isConnected) return;
       ch.innerHTML = it.html;
       ch.classList.toggle('missing', !!it.missing);
+      ch.innerHTML = parenWrap(ch.innerHTML);
       ch.title = it.missing ? (ch.dataset.chapter && App.citation(ch.dataset.tag) ? 'This chapter is no longer in the book (' + ch.dataset.tag + ', chapter ' + ch.dataset.chapter + ')'
         : 'This citation is no longer in the library (' + ch.dataset.tag + ')') : 'Live citation: click to edit the pin cite, signal or parenthetical';
     });
+    group(roots, format);
+  }
+
+  // An in-text citation's outer parentheses, in spans the editor can hide inside a string citation. The text
+  // is unchanged, so the Markdown keeps "(Walker, 2017)".
+  function parenWrap(html) {
+    if (!/^\(/.test(html) || !/\)$/.test(html)) return html;
+    return '<span class="cparen">(</span>' + html.slice(1, -1) + '<span class="cparen">)</span>';
+  }
+  const JOIN = /^[\s\u00a0\u200b;]*$/;
+  // The chip that follows `chip` in the same string citation (only spaces and a ";" between), or null.
+  function nextInString(chip) {
+    let n = chip.nextSibling, semi = false;
+    while (n && n.nodeType === 3 && JOIN.test(n.nodeValue)) { semi = semi || n.nodeValue.includes(';'); n = n.nextSibling; }
+    return semi && n && n.nodeType === 1 && n.classList.contains('cite') ? n : null;
+  }
+  let lastFormat = 'practitioner';
+  function group(roots, format) {
+    if (format) lastFormat = format;
+    (roots || []).forEach(r => {
+      if (!r) return;
+      const chips = Array.from(r.querySelectorAll('span.cite'));
+      chips.forEach(ch => ch.classList.remove('str-first', 'str-mid', 'str-last'));
+      chips.forEach(ch => {
+        const nx = nextInString(ch);
+        if (!nx) return;
+        ch.classList.add(ch.classList.contains('str-mid') || ch.classList.contains('str-last') ? 'str-mid' : 'str-first');
+        ch.classList.remove('str-last');
+        nx.classList.add('str-last');
+      });
+      chips.forEach(ch => {
+        const inStr = ch.classList.contains('str-first') || ch.classList.contains('str-mid') || ch.classList.contains('str-last');
+        ch.classList.toggle('in-string', inStr);
+        ch.classList.toggle('paren-fmt', App.isParenFormat(lastFormat));
+      });
+    });
+  }
+  // Retag as the text changes (typing or deleting the "; " between two chips joins or splits them).
+  let groupTimer;
+  document.addEventListener('input', e => {
+    const r = e.target && e.target.closest && e.target.closest('[data-rich]');
+    if (!r || !r.querySelector('span.cite')) return;
+    clearTimeout(groupTimer); groupTimer = setTimeout(() => group([r]), 120);
+  });
+
+  // The chip just before a collapsed cursor (only zero-width spaces between), or null.
+  function chipBefore(range) {
+    if (!range || !range.collapsed) return null;
+    let node = range.startContainer, off = range.startOffset, prev;
+    if (node.nodeType === 3) {
+      if (!/^[\u200b]*$/.test(node.nodeValue.slice(0, off))) return null;
+      prev = node.previousSibling;
+    } else prev = node.childNodes[off - 1];
+    while (prev && prev.nodeType === 3 && /^[\u200b]*$/.test(prev.nodeValue)) prev = prev.previousSibling;
+    return prev && prev.nodeType === 1 && prev.classList.contains('cite') ? prev : null;
+  }
+
+  function stringHtml(list, format) {
+    return list.map(c => chipHtml(c, {}, format)).join('; ');
+  }
+
+  // Add chips (HTML strings) to the string citation that `chip` is in, at its end, joined by "; ". Done in the
+  // DOM rather than with the browser's insertHTML, which can lose text between two chips at a paragraph's end.
+  function appendToString(chip, htmls) {
+    let last = chip, nx;
+    while ((nx = nextInString(last))) last = nx;
+    htmls.forEach(h => {
+      const tmp = document.createElement('span'); tmp.innerHTML = h;
+      const node = tmp.firstChild;
+      last.after(document.createTextNode('; '), node);
+      last = node;
+    });
+    placeCaretAfter(last);
+    return last;
+  }
+  // Insert one or more sources at a saved cursor: right after a chip they join its string citation;
+  // otherwise the first goes in at the cursor and the rest follow it.
+  function insertAt(saved, htmls) {
+    const after = chipBefore(saved && saved.range);
+    if (after) { const last = appendToString(after, htmls); fireInput(last); return last; }
+    if (!Rich.insertHtml(saved, htmls[0])) return null;
+    const s = getSelection();
+    const first = s.rangeCount && chipBefore(s.getRangeAt(0));
+    if (first && htmls.length > 1) { const last = appendToString(first, htmls.slice(1)); fireInput(last); return last; }
+    return first;
+  }
+  function fireInput(node) {
+    const ed = node && node.closest('[contenteditable="true"]');
+    if (ed) ed.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   function chipHtml(c, attrs, format) {
@@ -102,10 +199,26 @@
       nar.addEventListener('change', () => set('narrative', nar.checked ? '1' : ''));
       pop.appendChild(nl);
     }
+    if (chip.classList.contains('in-string')) {
+      let n = 1, a = chip;
+      while (a.previousSibling && (a = prevInString(a))) n++;
+      let b = chip; while ((b = nextInString(b))) n++;
+      head.appendChild(el('span', 'str-badge', 'String cite · ' + n + ' sources'));
+    }
     pop.appendChild(el('div', 'hint', apa ? 'In-text citations are the same every time; the References list is built from them.'
       : format === 'chicago' ? 'Drafts show every note in full. With Final draft on, Save also builds a copy with shortened notes after the first full one.'
       : 'Drafts show every citation in full. With Final draft on, Save also builds a copy with Id., short forms and supra.'));
     const acts = el('div', 'row');
+    // Cite another source together with this one: a new chip after it, joined by "; "
+    const more = el('button', 'btn small', '+ Add a source'); more.type = 'button';
+    more.title = 'Cite another source together with this one (a string citation: ' + (apa ? '(Ray, 2004; Walker, 2017)' : 'See A; B; C') + ')';
+    more.onclick = () => {
+      const keep = chip; closePop();
+      App.pickCitation({ title: 'Cite another source with this one', format, live: true, onPick: (nc, which) => {
+        const added = appendToString(keep, [chipHtml(nc, which === 'narrative' ? { narrative: '1' } : {}, format)]);
+        refresh([added.parentElement], format).then(() => opts.changed && opts.changed(added));
+      } });
+    };
     const swap = el('button', 'btn small', 'Change source…'); swap.type = 'button';
     swap.onclick = () => {
       const keep = chip; closePop();
@@ -122,7 +235,7 @@
     rm.onclick = () => { const p = chip.parentElement; chip.remove(); closePop(); if (opts.changed) opts.changed(null, p); };
     const done = el('button', 'btn small primary', 'Done'); done.type = 'button';
     done.onclick = () => { const ch = chip; closePop(); placeCaretAfter(ch); };
-    acts.append(swap, open, rm, done);
+    acts.append(more, swap, open, rm, done);
     pop.appendChild(acts);
     document.body.appendChild(pop);
     const r = chip.getBoundingClientRect();
@@ -196,5 +309,11 @@
     return true;
   }
 
-  App.chips = { refresh, html: chipHtml, edit, close: closePop, reveal, revealText };
+  function prevInString(chip) {
+    let n = chip.previousSibling, semi = false;
+    while (n && n.nodeType === 3 && JOIN.test(n.nodeValue)) { semi = semi || n.nodeValue.includes(';'); n = n.previousSibling; }
+    return semi && n && n.nodeType === 1 && n.classList.contains('cite') ? n : null;
+  }
+
+  App.chips = { refresh, html: chipHtml, edit, close: closePop, reveal, revealText, stringHtml, chipBefore, group, insertAt };
 })();

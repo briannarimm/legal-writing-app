@@ -2,6 +2,7 @@
 --   Div.bib-entry [ Para (the formatted citation), Div.bib-annotation [ the annotation ] ]
 -- PDF:  environments bibentry (hanging indent) and bibannotation (indented block), in document.latex
 -- Word: paragraph styles "Bibliography" and "Annotation" (templates/bibliography/reference.docx)
+-- Div.bib-intro (the note before the first entry) prints flush left: \noindent in PDF, style "Normal" in Word.
 
 local function latex(name, blocks, wrap)
   local out = { pandoc.RawBlock('latex', '\\begin{' .. name .. '}') }
@@ -16,6 +17,16 @@ end
 
 function Div(d)
   local is_latex, is_docx = FORMAT:match('latex') ~= nil, FORMAT:match('docx') ~= nil
+  if d.classes:includes('bib-intro') then
+    if is_latex then
+      return d.content:walk({ Para = function(p)
+        p.content:insert(1, pandoc.RawInline('latex', '\\noindent '))
+        return p
+      end })
+    end
+    if is_docx then return styled('Normal', d.content) end
+    return d.content
+  end
   if d.classes:includes('bib-annotation') then
     if is_latex then return latex('bibannotation', d.content) end
     if is_docx then return styled('Annotation', d.content) end

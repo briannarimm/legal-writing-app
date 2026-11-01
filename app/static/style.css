@@ -265,6 +265,8 @@ input:focus, select:focus, textarea:focus, .rich-inline:focus { outline: 2px sol
 .note-label:focus { opacity: 1; color: var(--ink); }
 #notes:empty::before { content: "No footnotes in this section yet."; color: var(--muted); font: 12px -apple-system, sans-serif; }
 #doc[data-hs="brief"] ~ #notes-title { display: none; }
+/* in-text (APA, author-date) templates: no footnotes pane unless a section already has notes */
+#doc[data-nofn] ~ #notes:empty, #doc[data-nofn] ~ #notes-title:has(+ #notes:empty) { display: none; }
 
 #meta-wrap { max-width: 44rem; margin: 0 auto; }
 #meta-editor {
@@ -598,7 +600,9 @@ span.cite.missing { background: color-mix(in srgb, var(--bad) 14%, transparent);
 #doc p:has(> span.cite[data-form="entry"]) { padding-left: 2em; text-indent: -2em; margin-top: 1.2em; }
 #doc span.cite[data-form="entry"] { background: none; border-bottom: 0; }
 #doc span.cite[data-form="entry"]:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
-#doc[data-bib] p:not(:has(> span.cite[data-form="entry"])) { padding-left: 2em; text-indent: 1.5em; }
+/* annotations (paragraphs after an entry) are indented; a note before the first entry stays flush left */
+#doc[data-bib] p:has(> span.cite[data-form="entry"]) ~ p:not(:has(> span.cite[data-form="entry"])) { padding-left: 2em; text-indent: 1.5em; }
+#doc[data-bib] p { text-indent: 0; }
 .rb-tab.ctx { color: var(--accent); }
 .rb-tab.ctx.active { border-bottom-color: var(--accent); }
 .rb-tab[hidden] { display: none; }
@@ -1203,3 +1207,44 @@ body[data-view="verify"] #side-slot > [data-for-view="verify"] { display: flex; 
 #cite-list .li-top code { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
 #cite-list .li-top .muted.small, #cite-list .li-top .cited-n, #cite-list .li-top .proj-dots { flex: none; white-space: nowrap; }
 #cite-list .li-body { margin-top: 3px; }
+
+/* =====================================================================================================
+ * 1.5.2
+ * ===================================================================================================== */
+/* Menus never push past their box: a menu is as wide as its longest choice, so long project or type names
+   are cut off with an ellipsis instead of widening the page */
+select { max-width: 100%; min-width: 0; text-overflow: ellipsis; }
+.style-bar > select, .row > select, .proj-chips > select, .src-bar > select { flex: 0 1 auto; min-width: 0; }
+.proj-add { max-width: min(100%, 320px); }
+/* the citation picker: the search box gets its own full-width line, the style and project menus share the next */
+.cp-top { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
+.cp-top #cp-search { flex: 1 1 100%; width: 100%; margin: 0; box-sizing: border-box; font-size: 15px; padding: 8px 12px; }
+.cp-top select { flex: 1 1 0; min-width: 0; }
+.cp-top select#cp-style { flex: 0 1 auto; }
+.cp-together { margin: 4px 0 10px; font-size: 12.5px; }
+.cp-together[hidden] { display: none; }
+/* string citations in the editor: drawn as one; in APA and author-date the inner parentheses are hidden */
+span.cite.in-string { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+span.cite.paren-fmt.str-first .cparen:last-child,
+span.cite.paren-fmt.str-mid .cparen,
+span.cite.paren-fmt.str-last .cparen:first-child { display: none; }
+.str-badge { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 1px 8px; }
+/* Citations: the reader and the citation's fields stack (fields above, the PDF below, as in Research)
+   whenever the space beside the sidebar is too narrow for both, not only when the window is */
+#view-citations > .detail { container-type: inline-size; }
+@container (max-width: 1050px) {
+  #cite-work, #cite-work:not(.no-source) { display: block; overflow: auto; }
+  #cite-work #cite-editor { overflow: visible; max-width: none; }
+  #cite-work #cite-source { height: max(420px, 80vh); border-right: 0; border-top: 1px solid var(--gline); }
+  #cite-source .src-bar { flex-wrap: wrap; }
+}
+#cite-work:not(.no-source) { grid-template-columns: minmax(0, 1fr) minmax(400px, 38%); }
+/* the citation's form and preview fit whatever width they get */
+.cite-step2 { container-type: inline-size; min-width: 0; }
+.cite-preview { container-type: inline-size; }
+.cp-head { flex-wrap: wrap; }
+.cp-head .pin-try { width: auto; flex: 1 1 180px; min-width: 0; max-width: 260px; }
+.cp-form { grid-template-columns: minmax(0, 190px) minmax(0, 1fr); }
+.cp-cite { overflow-wrap: anywhere; }
+@container (max-width: 520px) { .cp-form { grid-template-columns: minmax(0, 1fr); gap: 2px; } .cf-grid { grid-template-columns: 1fr; } }
+.cp-multi > .btn { margin-left: auto; }

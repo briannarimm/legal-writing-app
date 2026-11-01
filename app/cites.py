@@ -438,7 +438,8 @@ def entry_tag(b):
 
 def annotated_bibliography(blocks, library, style, typeface, resolver):
     """Entries (an entry mark plus the paragraphs after it, its annotation) sorted and formatted:
-    Div.bib-entry [Para entry, Div.bib-annotation [...]]. Blocks before the first entry stay first."""
+    Div.bib-entry [Para entry, Div.bib-annotation [...]]. Blocks before the first entry (a note on the
+    bibliography) stay first, in a Div.bib-intro so they print flush left, not indented."""
     intro, entries, cur = [], [], None
     for b in blocks:
         t = entry_tag(b)
@@ -456,7 +457,7 @@ def annotated_bibliography(blocks, library, style, typeface, resolver):
         if not c:
             return ('~', e['tag'])
         return sort_key(c, style)          # by author surname (or title), then year, in every style
-    out = list(intro)
+    out = [{'t': 'Div', 'c': [['', ['bib-intro'], []], intro]}] if intro else []
     for e in sorted(entries, key=key):
         c = library.get(e['tag'])
         if c is None:
